@@ -19,4 +19,6 @@ config :ash,
   default_string_length_count: :codepoints,
   many_to_many_destroy_destination_on_match?: true
 
+config :phoenix, :json_library, Jason
+
 import_config "#{config_env()}.exs"

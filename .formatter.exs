@@ -25,8 +25,9 @@ locals_without_parens = [
 ]
 
 [
-  import_deps: [:ash, :ash_postgres, :spark],
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  import_deps: [:ash, :ash_postgres, :spark, :phoenix],
+  plugins: [Phoenix.LiveView.HTMLFormatter],
+  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{heex,ex,exs}"],
   locals_without_parens: locals_without_parens,
   export: [locals_without_parens: locals_without_parens]
 ]
