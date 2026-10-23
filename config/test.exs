@@ -1,6 +1,6 @@
 import Config
 
-config :billboard, site: Billboard.Test.Site
+config :billboard, site: Billboard.Test.Shop
 
 # The test site's repo and its domains. Only the library's own tests have
 # a database; a site's config is its own.

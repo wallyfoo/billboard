@@ -1,8 +1,9 @@
 defmodule Billboard.Test.Site do
   @moduledoc """
-  The site the library's tests run against. Each answer can be replaced
-  for one test with `Billboard.Test.Env.put_site!/1`, which writes under
-  `Application.get_env(:billboard, Billboard.Test.Site)`.
+  A site written by hand against `Billboard.Site`'s required callbacks,
+  for the component unit tests, which swap its components per test.
+  `Billboard.Test.Env.put_site!/1` makes it the site for one test; the
+  configured site is `Billboard.Test.Shop`.
   """
   @behaviour Billboard.Site
 
