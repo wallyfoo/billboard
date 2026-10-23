@@ -7,8 +7,8 @@ defmodule Billboard.MixProject do
       version: "0.2.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
-      # Colocated hooks, from step 5b on, reach the site's bundle only if
-      # billboard runs LiveView's compiler itself.
+      # Colocated hooks reach a site's bundle only if billboard runs
+      # LiveView's compiler itself.
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :test,
@@ -34,13 +34,17 @@ defmodule Billboard.MixProject do
       {:simple_sat, "~> 0.1"},
       # Renderers are function components; the theme and the editor are
       # drawn with them.
-      {:phoenix, "~> 1.8.14"},
-      {:phoenix_live_view, "~> 1.1.33"},
+      {:phoenix, "~> 1.8"},
+      {:phoenix_live_view, "~> 1.1"},
       {:phoenix_html, "~> 4.1"},
       {:jason, "~> 1.2"},
       # Words a site types are Markdown.
       {:mdex, "~> 0.14.2"},
-      {:lazy_html, "~> 0.1.12", only: :test},
+      # `Billboard.Plugs.UploadsStatic` is a Plug.
+      {:plug, "~> 1.15"},
+      # Uploads are named with `Ecto.UUID`.
+      {:ecto, "~> 3.14"},
+      {:lazy_html, "~> 0.1", only: :test},
       {:sourceror, "~> 1.8", only: [:dev, :test]}
     ]
   end

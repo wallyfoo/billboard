@@ -1,6 +1,8 @@
 defmodule Billboard.UploadsTest do
-  # "stores a real image" writes to Uploads.dir(), and one test changes
-  # application env, so not async.
+  @moduledoc """
+  Photographs stored, listed, and deleted. "stores a real image" writes
+  to `Uploads.dir()`, and one test changes application env, so not async.
+  """
   use ExUnit.Case, async: false
 
   import Billboard.Test.Env
@@ -18,8 +20,11 @@ defmodule Billboard.UploadsTest do
   test "stores a real image under a random name", %{path: path} do
     File.write!(path, @png)
     assert {:ok, "/uploads/" <> name} = Uploads.store_image(path)
+    stored = Path.join(Uploads.dir(), name)
+    on_exit(fn -> File.rm(stored) end)
+
     assert String.ends_with?(name, ".png")
-    assert File.exists?(Path.join(Uploads.dir(), name))
+    assert File.exists?(stored)
   end
 
   test "rejects a file that is not an image, whatever its name", %{path: path} do
