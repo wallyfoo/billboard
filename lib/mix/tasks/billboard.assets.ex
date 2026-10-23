@@ -6,12 +6,16 @@ defmodule Mix.Tasks.Billboard.Assets do
   git dependency (`deps/billboard`) or a local checkout (`path:`):
 
       @import "../vendor/billboard/assets/css/theme.css";
-      @source "../vendor/billboard/lib";
+      @source "../vendor/billboard/lib/billboard/sections";
+
+  Tailwind reads billboard's sections alone, where every class it draws
+  is, so the words in the rest of its code build no utilities.
 
   It points the link at billboard as Mix found it, every run, so run it
   before Tailwind and esbuild, in the site's `assets.build` and
-  `assets.deploy` aliases. Keep `assets/vendor/billboard` out of git.
-  `--to PATH` links somewhere else.
+  `assets.deploy` aliases. The link is relative, so it holds wherever
+  the site's checkout sits, as in a container that copies it. Keep
+  `assets/vendor/billboard` out of git. `--to PATH` links somewhere else.
   """
   use Mix.Task
 
@@ -19,7 +23,7 @@ defmodule Mix.Tasks.Billboard.Assets do
   def run(args) do
     {opts, _rest} = OptionParser.parse!(args, strict: [to: :string])
     to = Keyword.get(opts, :to, "assets/vendor/billboard")
-    from = source()
+    from = Path.relative_to(source(), Path.expand(Path.dirname(to)), force: true)
 
     File.mkdir_p!(Path.dirname(to))
 

@@ -12,7 +12,11 @@
    makes:
 
      @import "../vendor/billboard/assets/css/theme.css";
-     @source "../vendor/billboard/lib";
+     @source "../vendor/billboard/lib/billboard/sections";
+
+   Every class billboard draws is in its sections, so Tailwind reads only
+   them: the words in the rest of its code would build utilities no page
+   uses, such as table and shrink.
 
    A site that clears Tailwind's colours (--color-*: initial) does so
    before this file, or it clears the theme's too. */
