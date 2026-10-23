@@ -20,6 +20,23 @@ defmodule Billboard.CacheTest do
     live
   end
 
+  describe "starting" do
+    test "loads the site's actions and context, whose atoms stored content holds" do
+      modules = [Billboard.Test.Actions, Billboard.Test.Context]
+
+      for module <- modules do
+        :code.delete(module)
+        :code.purge(module)
+        refute :code.is_loaded(module)
+      end
+
+      :ok = Supervisor.terminate_child(Billboard.Test.Supervisor, Cache)
+      {:ok, _pid} = Supervisor.restart_child(Billboard.Test.Supervisor, Cache)
+
+      for module <- modules, do: assert({:file, _} = :code.is_loaded(module))
+    end
+  end
+
   describe "page_for/1" do
     test "a page that has never been committed renders its starter" do
       assert %{status: :starter} = Shop.Pages.page_for("/about")

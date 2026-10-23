@@ -21,7 +21,9 @@ defmodule Billboard.Cache do
 
   It needs the site configured (`config :billboard, site: MySite.Billboard`)
   and the site's `pubsub:` answer, which it broadcasts on. Without
-  either, its start fails, naming the fix.
+  either, its start fails, naming the fix. Before it warms, it loads the
+  site's `actions:` and `context:` modules, since stored content holds
+  atoms only they name.
   """
   use GenServer
 
@@ -125,6 +127,7 @@ defmodule Billboard.Cache do
   def init(_opts) do
     :ets.new(@table, [:named_table, :public, :set, read_concurrency: true])
     Phoenix.PubSub.subscribe(Billboard.Site.pubsub!(), @topic)
+    load_site_modules()
     warm()
     {:ok, %{}}
   end
@@ -133,6 +136,21 @@ defmodule Billboard.Cache do
   def handle_info({:pages_updated, origin, _snapshot}, state) do
     if origin != node(), do: invalidate()
     {:noreply, state}
+  end
+
+  # Stored content holds some atoms that only the site's own modules
+  # name, such as an action's kind (`:visit`) or a hero's binding, and Ash
+  # casts them back with `String.to_existing_atom/1`. A release loads
+  # every module at boot, but where code loads on demand, as under
+  # `mix phx.server`, such an atom doesn't exist until its module loads,
+  # and the first read of a section that holds it would fail. So the
+  # modules that name them load before anything reads content. Components
+  # and parts need nothing: Ash calls into each before it casts its
+  # attributes, which loads it.
+  defp load_site_modules do
+    for module <- [Billboard.Site.actions(), Billboard.Site.context()], module do
+      Code.ensure_loaded(module)
+    end
   end
 
   defp warm do

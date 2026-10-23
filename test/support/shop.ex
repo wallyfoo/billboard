@@ -5,7 +5,8 @@ defmodule Billboard.Test.Shop do
   A test overrides its surfaces, offers, options, rules, kinds, and
   palette with `Billboard.Test.Env.put_shop!/1`.
 
-  Its pages: a free home page and about page, an item page whose kind
+  Its action kinds and context are the test site's (`Billboard.Test.Actions`
+  and `Billboard.Test.Context`). Its pages: a free home page and about page, an item page whose kind
   takes no Two columns, a fixed terms page, and the library.
   """
   alias Billboard.Test
@@ -25,6 +26,8 @@ defmodule Billboard.Test.Shop do
     surfaces: [%{name: "plain", label: "Plain"}, %{name: "loud", label: "Loud"}],
     offered: [page: ["plain"], stand_out: ["loud"], card: []],
     starter: Test.Shop.Starter,
+    actions: Test.Actions,
+    context: Test.Context,
     reserved_ids: [
       ids: ~w(shop-header),
       prefixes: ~w(item-),
