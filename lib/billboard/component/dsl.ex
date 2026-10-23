@@ -17,6 +17,10 @@ defmodule Billboard.Component.Dsl do
       name: [type: :atom, required: true, doc: "The attribute's name."],
       type: [type: :module, required: true, doc: "The part's embedded resource."],
       allow_nil?: [type: :boolean, default: true, doc: "Whether the part may be left out."],
+      default: [
+        type: :any,
+        doc: "What a new component holds in the part, such as `%MySite.Parts.Head{}`."
+      ],
       description: [type: :string, doc: "The attribute's description."]
     ]
   }

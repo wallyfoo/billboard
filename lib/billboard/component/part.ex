@@ -10,6 +10,7 @@ defmodule Billboard.Component.Part do
   defstruct [
     :name,
     :type,
+    :default,
     :description,
     allow_nil?: true,
     __identifier__: nil,
@@ -20,6 +21,7 @@ defmodule Billboard.Component.Part do
           name: atom(),
           type: module(),
           allow_nil?: boolean(),
+          default: struct() | nil,
           description: String.t() | nil
         }
 end

@@ -62,7 +62,9 @@ defmodule Billboard.Component do
 
     * `part name, type` holds one part, in
       `attribute name, type, public?: true`. Its options are `allow_nil?`
-      (default `true`) and `description`.
+      (default `true`), `default`, such as
+      `default: %MySite.Parts.Head{heading: "What clients say"}`, and
+      `description`.
     * `parts name, type` holds a list, in
       `attribute name, {:array, type}, public?: true, allow_nil?: false, default: []`.
       Its options are `min` and `max`, which become the `min_length` and

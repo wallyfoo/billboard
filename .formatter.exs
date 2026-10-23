@@ -17,6 +17,7 @@ locals_without_parens = [
   parts: 3,
   min: 1,
   allow_nil?: 1,
+  default: 1,
   description: 1
 ]
 

@@ -17,6 +17,10 @@ defmodule Billboard.Test.PartsByHand do
       public?: true,
       description: "The shelf's label."
 
+    attribute :sign, Billboard.Test.Title,
+      public?: true,
+      default: %Billboard.Test.Title{title: "Open"}
+
     attribute :things, {:array, Billboard.Test.Item} do
       allow_nil? true
       default []

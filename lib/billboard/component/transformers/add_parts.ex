@@ -12,7 +12,8 @@ defmodule Billboard.Component.Transformers.AddParts do
       #   constraints: [min_length: 1, max_length: 3]
 
   `min_length` and `max_length` are set only when `min` and `max` are
-  given, and `description` only when it is.
+  given, and a part's `default` and either's `description` only when
+  they are.
 
   It runs after `AddTag` and before `AddActions` and every Ash resource
   transformer, so `accept: :*` takes the parts in.
@@ -118,7 +119,9 @@ defmodule Billboard.Component.Transformers.AddParts do
 
   defp attribute(%Part{} = part) do
     {part.type,
-     [public?: true, allow_nil?: part.allow_nil?] |> put_given(:description, part.description)}
+     [public?: true, allow_nil?: part.allow_nil?]
+     |> put_given(:default, part.default)
+     |> put_given(:description, part.description)}
   end
 
   defp attribute(%Parts{} = parts) do

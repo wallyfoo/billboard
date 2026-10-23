@@ -1,5 +1,5 @@
 defmodule Billboard.Test.Shelf do
-  @moduledoc "A component whose parts set the other options, and leave `min` and `max` out."
+  @moduledoc "A component whose parts set the other options, a struct default among them, and leave `min` and `max` out."
   use Billboard.Component
 
   component do
@@ -9,6 +9,7 @@ defmodule Billboard.Test.Shelf do
     category :paper
 
     part :label, Billboard.Test.Title, allow_nil?: false, description: "The shelf's label."
+    part :sign, Billboard.Test.Title, default: %Billboard.Test.Title{title: "Open"}
 
     parts :things, Billboard.Test.Item do
       allow_nil? true

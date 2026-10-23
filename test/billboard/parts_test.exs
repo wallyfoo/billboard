@@ -12,6 +12,7 @@ defmodule Billboard.PartsTest do
             {Cards, :head},
             {Cards, :items},
             {Shelf, :label},
+            {Shelf, :sign},
             {Shelf, :things}
           ] do
         assert attribute(component, name) == attribute(PartsByHand, name), "#{name} differs"
@@ -45,6 +46,18 @@ defmodule Billboard.PartsTest do
       things = Ash.Resource.Info.attribute(Shelf, :things)
       assert things.allow_nil?
       assert things.description == "What's on it."
+    end
+
+    test "a part takes a default, which a new component starts with" do
+      assert Ash.Resource.Info.attribute(Shelf, :sign).default == %Title{title: "Open"}
+      assert Ash.Resource.Info.attribute(Shelf, :label).default == nil
+
+      shelf =
+        Shelf
+        |> Ash.Changeset.for_create(:create, %{label: %{title: "Books"}})
+        |> Ash.create!()
+
+      assert %Title{title: "Open"} = shelf.sign
     end
 
     test "leave min and max out when they aren't given" do
