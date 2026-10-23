@@ -31,6 +31,13 @@ defmodule Billboard.SectionTest do
              Shop.Pages.get_section!(section.id, @opts).content
   end
 
+  test "content built with Billboard.Component.build!/2 is created as it was built" do
+    hero = Billboard.Component.build!(:hero, %{heading: "Built"})
+    section = section_fixture(version_fixture(path: "/about"), :hero, hero)
+
+    assert %{heading: "Built"} = Shop.Pages.get_section!(section.id, @opts).content.value
+  end
+
   test "content is validated by its component" do
     version = version_fixture(path: "/about")
 
