@@ -18,7 +18,10 @@ locals_without_parens = [
   min: 1,
   allow_nil?: 1,
   default: 1,
-  description: 1
+  description: 1,
+  page: 2,
+  page: 3,
+  library: 1
 ]
 
 [
