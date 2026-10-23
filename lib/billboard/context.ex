@@ -60,9 +60,6 @@ defmodule Billboard.Context do
       end
   """
 
-  # `binding/1` is this module's, not Kernel's.
-  import Kernel, except: [binding: 1]
-
   @typedoc "A set of choices. See the moduledoc."
   @type choices :: %{
           options: [{String.t(), String.t()}],
@@ -90,14 +87,14 @@ defmodule Billboard.Context do
   The binding `bind` names, an atom or a form's string, as
   `{name, options}`, or nil for `:none` and for one the site doesn't list.
   """
-  @spec binding(atom() | String.t() | nil) :: {atom(), keyword()} | nil
-  def binding(bind),
+  @spec binding_for(atom() | String.t() | nil) :: {atom(), keyword()} | nil
+  def binding_for(bind),
     do: Enum.find(bindings(), fn {name, _opts} -> to_string(name) == to_string(bind) end)
 
   @doc "Whether a hero bound to `bind` draws the binding's words in place of its own."
   @spec replaces_words?(atom() | String.t() | nil) :: boolean()
   def replaces_words?(bind) do
-    case binding(bind) do
+    case binding_for(bind) do
       {_name, opts} -> Keyword.get(opts, :replaces_words, false)
       nil -> false
     end

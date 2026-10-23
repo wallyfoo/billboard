@@ -25,8 +25,8 @@ defmodule Billboard.ContextTest do
     assert Context.replaces_words?("product")
     refute Context.replaces_words?(:visit)
     refute Context.replaces_words?(:none)
-    assert Context.binding("visit") == {:visit, []}
-    assert Context.binding(:gone) == nil
+    assert Context.binding_for("visit") == {:visit, []}
+    assert Context.binding_for(:gone) == nil
   end
 
   test "a site's choices are read by name, several at once for the editor" do
