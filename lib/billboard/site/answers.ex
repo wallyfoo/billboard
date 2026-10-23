@@ -35,7 +35,19 @@ defmodule Billboard.Site.Answers do
         suffixes: [type: {:list, :string}, default: []],
         owned: [type: {:map, :string, :atom}, default: %{}]
       ]
-    ]
+    ],
+    actions: [type: :atom],
+    context: [type: :atom],
+    kinds: [type: {:custom, __MODULE__, :check_kinds, []}, default: []],
+    palette: [
+      type: :keyword_list,
+      default: [],
+      keys: [
+        hints: [type: {:custom, __MODULE__, :check_words, [:hints]}, default: []],
+        categories: [type: {:custom, __MODULE__, :check_words, [:categories]}, default: []]
+      ]
+    ],
+    example_path: [type: :string, default: "/about"]
   ]
 
   @doc false
@@ -89,6 +101,32 @@ defmodule Billboard.Site.Answers do
   end
 
   @doc false
+  def check_kinds(kinds) do
+    if Keyword.keyword?(kinds) and
+         Enum.all?(kinds, fn {_key, page_kinds} ->
+           is_list(page_kinds) and Enum.all?(page_kinds, &is_atom/1)
+         end),
+       do: {:ok, kinds},
+       else:
+         {:error,
+          "kinds gives each component's key the page kinds it may go on, such as " <>
+            "`[hero: [:free, :service]]`, not #{inspect(kinds)}"}
+  end
+
+  @doc false
+  def check_words(words, name) do
+    if Keyword.keyword?(words) and Enum.all?(words, fn {_key, text} -> is_binary(text) end),
+      do: {:ok, words},
+      else:
+        {:error,
+         "palette's #{name} gives each key its words, such as " <>
+           "`[#{name}: [#{example_words(name)}]]`, not #{inspect(words)}"}
+  end
+
+  defp example_words(:hints), do: ~S|points: "Short points side by side."|
+  defp example_words(:categories), do: ~S|content: "On the page"|
+
+  @doc false
   def surfaces(answers, env), do: Keyword.get(env, :surfaces, answers[:surfaces])
 
   @doc false
@@ -107,4 +145,10 @@ defmodule Billboard.Site.Answers do
 
   @doc false
   def rules(answers, env), do: Keyword.get(env, :rules, answers[:rules])
+
+  @doc false
+  def kinds(answers, env), do: Keyword.get(env, :kinds, answers[:kinds])
+
+  @doc false
+  def palette(answers, env), do: Keyword.get(env, :palette, answers[:palette])
 end

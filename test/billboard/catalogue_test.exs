@@ -77,5 +77,23 @@ defmodule Billboard.CatalogueTest do
     assert Catalogue.placeholder(:boxed) == %{words: "Your words"}
   end
 
+  describe "the site's narrowing" do
+    test "keeps a component to the site's kinds, and gives it the site's hint" do
+      put_shop!(kinds: [cards: [:free]], palette: [hints: [cards: "Cards, the shop's way."]])
+      entry = Catalogue.fetch!(:cards)
+
+      assert entry.kinds == [:free]
+      assert entry.hint == "Cards, the shop's way."
+    end
+
+    test "labels a category the site's way, billboard's way, or by its name" do
+      put_shop!(palette: [categories: [opener: "First things"]])
+
+      assert Catalogue.category_label(:opener) == "First things"
+      assert Catalogue.category_label(:content) == "On the page"
+      assert Catalogue.category_label(:odds_and_ends) == "Odds and ends"
+    end
+  end
+
   defp keys_in(category), do: for(e <- Catalogue.entries(), e.category == category, do: e.key)
 end

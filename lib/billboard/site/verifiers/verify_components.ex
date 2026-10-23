@@ -3,7 +3,8 @@ defmodule Billboard.Site.Verifiers.VerifyComponents do
   Checks the site's `components:`. Each must be a billboard component,
   since the content union and the palette are built from them, each is
   listed once, and no two may share a key, since a section's key is how
-  billboard finds its component. It reports every problem at once.
+  billboard finds its component. Each key `kinds:` narrows must be one
+  of theirs. It reports every problem at once.
 
   Like every Spark verifier, it runs once the module has compiled, and
   its errors are printed as compile warnings rather than raised, so
@@ -19,17 +20,29 @@ defmodule Billboard.Site.Verifiers.VerifyComponents do
   @impl true
   def verify(dsl_state) do
     site = Verifier.get_persisted(dsl_state, :module)
-    listed = Verifier.get_persisted(dsl_state, :billboard_answers)[:components]
+    answers = Verifier.get_persisted(dsl_state, :billboard_answers)
+    listed = answers[:components]
     {components, others} = listed |> Enum.uniq() |> Enum.split_with(&component?/1)
+    keys = Enum.map(components, &Info.component_key!/1)
 
     messages =
-      Enum.map(others, &not_a_component(site, &1)) ++
-        Enum.map(twice(listed), &listed_twice(site, &1)) ++
-        Enum.map(shared_keys(components), fn {key, modules} -> shared_key(site, key, modules) end)
+      Enum.map(others, &{:components, not_a_component(site, &1)}) ++
+        Enum.map(twice(listed), &{:components, listed_twice(site, &1)}) ++
+        Enum.map(shared_keys(components), fn {key, modules} ->
+          {:components, shared_key(site, key, modules)}
+        end) ++
+        for(
+          {key, _page_kinds} <- answers[:kinds],
+          key not in keys,
+          do: {:kinds, stray(site, key)}
+        )
 
     case messages do
-      [] -> :ok
-      messages -> {:error, Enum.map(messages, &error(site, &1))}
+      [] ->
+        :ok
+
+      messages ->
+        {:error, Enum.map(messages, fn {path, message} -> error(site, path, message) end)}
     end
   end
 
@@ -63,6 +76,11 @@ defmodule Billboard.Site.Verifiers.VerifyComponents do
   defp listed_twice(site, module),
     do: "#{inspect(site)} lists #{inspect(module)} twice in `components:`. Take one out."
 
+  defp stray(site, key) do
+    "#{inspect(site)} narrows the kinds of #{inspect(key)}, but lists no component with that " <>
+      "key. Add the component to `components:`, or take #{inspect(key)} out of `kinds:`."
+  end
+
   defp shared_key(site, key, [first, second]) do
     "#{inspect(site)} lists two components with the key #{inspect(key)}: " <>
       "#{inspect(first)} and #{inspect(second)}. Give one another key, or take one out."
@@ -76,6 +94,6 @@ defmodule Billboard.Site.Verifiers.VerifyComponents do
       "all but one out."
   end
 
-  defp error(site, message),
-    do: Spark.Error.DslError.exception(module: site, path: [:components], message: message)
+  defp error(site, path, message),
+    do: Spark.Error.DslError.exception(module: site, path: [path], message: message)
 end

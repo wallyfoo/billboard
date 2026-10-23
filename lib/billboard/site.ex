@@ -22,7 +22,12 @@ defmodule Billboard.Site do
           options: [points: [look: [:rows], columns: [3, 2], points: 1..3]],
           rules: [MySite.SiteRules],
           starter: MySite.Pages.Starter,
-          reserved_ids: [ids: ~w(site-header site-footer), prefixes: ~w(team-)]
+          reserved_ids: [ids: ~w(site-header site-footer), prefixes: ~w(team-)],
+          actions: MySiteWeb.Actions,
+          context: MySite.Pages.Context,
+          kinds: [faq: [:free, :service]],
+          palette: [hints: [faq: "Questions, each with its answer."], categories: [content: "Words"]],
+          example_path: "/about"
 
         pages do
           page "/", "Home", kind: :free, title: "A title for the browser"
@@ -64,6 +69,21 @@ defmodule Billboard.Site do
       and `owned`, an id a component may take for itself, as
       `%{"reviews" => :reviews}`. Billboard adds the ids it draws itself
       (`Billboard.Section.Validations.AnchorAvailable`).
+    * `actions` names its `Billboard.Actions`: the site's own kinds of
+      action, such as booking or ringing, and the component that draws
+      them. Without one, an action is a link to a page on the site.
+    * `context` names its `Billboard.Context`: the bindings a hero may
+      take, and the choices the editor's pickers offer. Without one,
+      there are no bindings and no choices.
+    * `kinds` narrows, by component key, the page kinds a component may
+      go on, over the component's own `kinds`. A component it leaves out
+      keeps its own. See `Billboard.Catalogue`.
+    * `palette` sets the palette's words: `hints:`, by component key,
+      over each component's own hint, and `categories:`, each category's
+      label. See `Billboard.Catalogue.category_label/1`.
+    * `example_path` is a page on the site, which the editor's hints and
+      one of its messages give as an example. It's `"/about"` unless the
+      site says.
 
   The site module answers with its options, never with functions that
   call the site's other modules. Billboard reads the modules an answer
@@ -98,8 +118,8 @@ defmodule Billboard.Site do
 
   ## Overriding in tests
 
-  A test can override the surfaces, offers, options, and rules under the
-  site module's key in its application's env:
+  A test can override the surfaces, offers, options, rules, kinds, and
+  palette under the site module's key in its application's env:
 
       config :my_site, MySite.Billboard,
         surfaces: [%{name: "bg", label: "Background"}, %{name: "night", label: "Night"}],
@@ -112,7 +132,8 @@ defmodule Billboard.Site do
   be among the test's. Without it, `:offered` is merged over the site's
   offer one kind at a time, so a test can widen one kind and leave the
   rest. `:options` is merged over the site's one type at a time, then one
-  field at a time. `:rules` replaces the site's rules whole.
+  field at a time. `:rules`, `:kinds`, and `:palette` each replace the
+  site's whole.
 
   The components, the pages, and the resources can't be overridden: the
   content union and the resources are compiled from them.
@@ -124,7 +145,9 @@ defmodule Billboard.Site do
   `surfaces/0`, `offered/0`, `options/0`, and `rules/0` are required, and
   they're enough for components, surfaces, and site options. Pages,
   resources, and the engine need the rest, which `use Billboard.Site`
-  defines.
+  defines. A hand-written site that leaves out `actions/0`, `context/0`,
+  `kinds/0`, `palette/0`, or `example_path/0` reads as one that gave
+  none (`actions/0` and the rest below).
   """
 
   @typedoc "A surface's name, its `bb-surface-NAME` class, and the label the editor shows."
@@ -183,6 +206,21 @@ defmodule Billboard.Site do
   @doc "The DOM ids the site's own markup uses, which no section's anchor may take."
   @callback reserved_ids() :: reserved_ids()
 
+  @doc "The site's action kinds and the component that draws them (`Billboard.Actions`), or nil for links alone."
+  @callback actions() :: module() | nil
+
+  @doc "What the site's pages are about (`Billboard.Context`), or nil."
+  @callback context() :: module() | nil
+
+  @doc "The page kinds each component the site narrows may go on, by key."
+  @callback kinds() :: keyword([atom()])
+
+  @doc "The palette's words the site sets: `hints:` by component key, and `categories:` by category."
+  @callback palette() :: keyword(keyword(String.t()))
+
+  @doc ~S|A page on the site, as the editor's hints give one, such as "/about".|
+  @callback example_path() :: String.t()
+
   @optional_callbacks pages: 0,
                       resources: 0,
                       domain: 0,
@@ -190,7 +228,12 @@ defmodule Billboard.Site do
                       pubsub: 0,
                       starter: 1,
                       starter!: 1,
-                      reserved_ids: 0
+                      reserved_ids: 0,
+                      actions: 0,
+                      context: 0,
+                      kinds: 0,
+                      palette: 0,
+                      example_path: 0
 
   @doc false
   defmacro __using__(opts) do
@@ -275,6 +318,21 @@ defmodule Billboard.Site do
       @impl Billboard.Site
       def reserved_ids, do: @billboard_answers[:reserved_ids]
 
+      @impl Billboard.Site
+      def actions, do: @billboard_answers[:actions]
+
+      @impl Billboard.Site
+      def context, do: @billboard_answers[:context]
+
+      @impl Billboard.Site
+      def kinds, do: Billboard.Site.Answers.kinds(@billboard_answers, __billboard_env__())
+
+      @impl Billboard.Site
+      def palette, do: Billboard.Site.Answers.palette(@billboard_answers, __billboard_env__())
+
+      @impl Billboard.Site
+      def example_path, do: @billboard_answers[:example_path]
+
       @doc false
       def __billboard_env__, do: Application.get_env(unquote(otp_app), __MODULE__, [])
 
@@ -290,7 +348,12 @@ defmodule Billboard.Site do
                      pubsub: 0,
                      starter: 1,
                      starter!: 1,
-                     reserved_ids: 0
+                     reserved_ids: 0,
+                     actions: 0,
+                     context: 0,
+                     kinds: 0,
+                     palette: 0,
+                     example_path: 0
     end
   end
 
@@ -372,12 +435,32 @@ defmodule Billboard.Site do
 
   @doc "The DOM ids the site's own markup uses, each list empty for a site that doesn't say."
   @spec reserved_ids() :: reserved_ids()
-  def reserved_ids do
-    site = get!()
+  def reserved_ids, do: optional(:reserved_ids, Billboard.Site.Answers.no_reserved_ids())
 
-    if exports?(site, :reserved_ids, 0),
-      do: site.reserved_ids(),
-      else: Billboard.Site.Answers.no_reserved_ids()
+  @doc "The site's actions module (`Billboard.Actions`), or nil for links alone."
+  @spec actions() :: module() | nil
+  def actions, do: optional(:actions, nil)
+
+  @doc "The site's context module (`Billboard.Context`), or nil."
+  @spec context() :: module() | nil
+  def context, do: optional(:context, nil)
+
+  @doc "The page kinds the site keeps each component it narrows to, by key."
+  @spec kinds() :: keyword([atom()])
+  def kinds, do: optional(:kinds, [])
+
+  @doc "The palette's words the site sets (`hints:` and `categories:`)."
+  @spec palette() :: keyword(keyword(String.t()))
+  def palette, do: optional(:palette, [])
+
+  @doc ~S|A page on the site, for the editor's hints: "/about" unless it says.|
+  @spec example_path() :: String.t()
+  def example_path, do: optional(:example_path, "/about")
+
+  # An answer a hand-written site may leave out.
+  defp optional(name, default) do
+    site = get!()
+    if exports?(site, name, 0), do: apply(site, name, []), else: default
   end
 
   defp answer!(name, example, naming) do

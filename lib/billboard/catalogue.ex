@@ -13,10 +13,25 @@ defmodule Billboard.Catalogue do
   (`Billboard.Site.components/0`). Entries are in that order, the
   palette's, which is also the order of the types in the site's content
   union (`Billboard.Content`).
+
+  A site narrows a component, by its key, in `use Billboard.Site`: its
+  `kinds:` keeps a component to some kinds of page, over the
+  component's own `kinds`, and its `palette:` gives a component a hint
+  of the site's own (`hints:`) and labels the palette's categories
+  (`categories:`, read by `category_label/1`).
   """
   alias Billboard.Catalogue.Entry
   alias Billboard.Component.Info
   alias Billboard.{Site, SiteOptions}
+
+  @labels [
+    opener: "Openers",
+    band: "Bands",
+    content: "On the page",
+    data: "From the site's records",
+    layout: "Layout",
+    special: "From the shared library"
+  ]
 
   @doc "Every entry, in palette order."
   @spec entries() :: [Entry.t()]
@@ -62,19 +77,34 @@ defmodule Billboard.Catalogue do
   @spec categories() :: [atom()]
   def categories, do: Site.components() |> Enum.map(&Info.component_category!/1) |> Enum.uniq()
 
-  # Each option left out of the `component` section reads as its default.
+  @doc """
+  What the palette calls `category`: the site's label for it
+  (`palette: [categories: …]`), billboard's for its stock categories, or
+  its name, as "Odds and ends" for `:odds_and_ends`.
+  """
+  @spec category_label(atom()) :: String.t()
+  def category_label(category) do
+    Keyword.get(Site.palette()[:categories] || [], category) ||
+      Keyword.get(@labels, category) ||
+      category |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()
+  end
+
+  # Each option left out of the `component` section reads as its default,
+  # and the site's narrowing, by key, stands over the component's own.
   defp entry(module) do
+    key = Info.component_key!(module)
+
     %Entry{
-      key: Info.component_key!(module),
+      key: key,
       module: module,
       label: Info.component_label!(module),
       category: Info.component_category!(module),
-      hint: Info.component_hint!(module),
+      hint: Keyword.get(Site.palette()[:hints] || [], key, Info.component_hint!(module)),
       mirror?: Info.component_mirror?(module),
       max: Info.component_max!(module),
       column?: Info.component_column?(module),
-      kinds: Info.component_kinds!(module),
-      placeholder: module |> Info.component_key!() |> SiteOptions.placeholder()
+      kinds: Keyword.get(Site.kinds(), key, Info.component_kinds!(module)),
+      placeholder: SiteOptions.placeholder(key)
     }
   end
 end

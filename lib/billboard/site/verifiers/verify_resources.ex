@@ -2,9 +2,11 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
   @moduledoc """
   Checks the modules the site's answers name for billboard to use: its
   page, version, and section resources must each do the `use` that
-  writes that resource, its content must do `use Billboard.Content`, and
-  its starter must define `version/1`. It checks only what the site
-  gives, so a site that names none of them passes.
+  writes that resource, its content must do `use Billboard.Content`, its
+  starter must define `version/1`, its actions `kinds/0` and `action/1`
+  (`Billboard.Actions`), and its context must be a module that, if it
+  gives choices, says which (`Billboard.Context`). It checks only what
+  the site gives, so a site that names none of them passes.
 
   Like every Spark verifier, it runs once the module has compiled, and
   its errors are printed as compile warnings rather than raised, so
@@ -26,7 +28,9 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
         resource(site, :version, resources[:version]),
         resource(site, :section, resources[:section]),
         content(site, resources[:content]),
-        starter(site, answers[:starter])
+        starter(site, answers[:starter]),
+        actions(site, answers[:actions]),
+        context(site, answers[:context])
       ]
       |> Enum.reject(&is_nil/1)
 
@@ -71,6 +75,54 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
         "#{inspect(site)}'s `starter:` is #{inspect(module)}, which doesn't define version/1. " <>
           "Give it `@behaviour Billboard.Starter` and its callbacks."
       )
+    end
+  end
+
+  defp actions(_site, nil), do: nil
+
+  defp actions(site, module) do
+    unless exports?(module, :kinds, 0) and exports?(module, :action, 1) do
+      error(
+        site,
+        [:actions],
+        "#{inspect(site)}'s `actions:` is #{inspect(module)}, which doesn't define kinds/0 " <>
+          "and action/1. Give it `@behaviour Billboard.Actions` and its callbacks."
+      )
+    end
+  end
+
+  defp context(_site, nil), do: nil
+
+  defp context(site, module) do
+    cond do
+      not match?({:module, _}, Code.ensure_compiled(module)) ->
+        error(
+          site,
+          [:context],
+          "#{inspect(site)}'s `context:` is #{inspect(module)}, which isn't a module. " <>
+            "Name its `Billboard.Context` module."
+        )
+
+      exports?(module, :choices, 1) and not exports?(module, :choice_sets, 0) ->
+        error(
+          site,
+          [:context],
+          "#{inspect(site)}'s `context:` is #{inspect(module)}, which defines choices/1 but " <>
+            "not choice_sets/0. Give it `choice_sets/0`, listing the sets its choices/1 gives " <>
+            "(`Billboard.Context`)."
+        )
+
+      exports?(module, :choice_sets, 0) and not exports?(module, :choices, 1) ->
+        error(
+          site,
+          [:context],
+          "#{inspect(site)}'s `context:` is #{inspect(module)}, which defines choice_sets/0 " <>
+            "but not choices/1. Give it a `choices/1` clause for each set choice_sets/0 lists " <>
+            "(`Billboard.Context`)."
+        )
+
+      true ->
+        nil
     end
   end
 

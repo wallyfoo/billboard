@@ -2,8 +2,8 @@ defmodule Billboard.Test.Shop do
   @moduledoc """
   The site the engine's tests run against, and the configured site: its
   answers, its `pages` section, and its resources on the test database.
-  A test overrides its surfaces, offers, options, and rules with
-  `Billboard.Test.Env.put_shop!/1`.
+  A test overrides its surfaces, offers, options, rules, kinds, and
+  palette with `Billboard.Test.Env.put_shop!/1`.
 
   Its pages: a free home page and about page, an item page whose kind
   takes no Two columns, a fixed terms page, and the library.

@@ -74,6 +74,11 @@ defmodule Billboard.SiteDslTest do
     end
   end
 
+  defmodule UnnamedSets do
+    @moduledoc "A context that gives a set of choices without saying which sets it gives."
+    def choices(:scope), do: %{options: [], every: "All", none_yet: "None yet.", gone: "gone"}
+  end
+
   describe "its answers" do
     test "are what it wrote, ranges and sigils included" do
       assert PlainSite.components() == [Banner, Cards, Note]
@@ -108,6 +113,24 @@ defmodule Billboard.SiteDslTest do
 
     test "can be written by the site itself, with billboard's as super" do
       assert Overriding.rules() == [Another.Rule, Some.Rule]
+    end
+
+    test "name the site's actions and context, and narrow the palette" do
+      assert PlainSite.actions() == Billboard.Test.Actions
+      assert PlainSite.context() == Billboard.Test.Context
+      assert PlainSite.kinds() == [cards: [:free]]
+      assert PlainSite.palette()[:hints] == [note: "A short note."]
+      assert PlainSite.example_path() == "/terms"
+    end
+
+    test "default to links alone, no context, and the component's own kinds and words" do
+      assert Overriding.actions() == nil
+      assert Overriding.context() == nil
+      assert Overriding.kinds() == []
+      # Spark.Options may not fill a nested default the site never wrote,
+      # so read it as the catalogue does.
+      assert (Overriding.palette()[:hints] || []) == []
+      assert Overriding.example_path() == "/about"
     end
   end
 
@@ -171,6 +194,12 @@ defmodule Billboard.SiteDslTest do
     test "replace the rules whole" do
       put_env_for_test(:billboard, PlainSite, rules: [Mine])
       assert PlainSite.rules() == [Mine]
+    end
+
+    test "replace the kinds and the palette whole" do
+      put_env_for_test(:billboard, PlainSite, kinds: [], palette: [categories: [paper: "Paper"]])
+      assert PlainSite.kinds() == []
+      assert PlainSite.palette() == [categories: [paper: "Paper"]]
     end
   end
 
@@ -316,6 +345,64 @@ defmodule Billboard.SiteDslTest do
       assert Enum.any?(messages, &(&1 =~ "names the page \"/\" twice"))
       assert Enum.any?(messages, &(&1 =~ "\"terms\" doesn't start with /"))
       assert Enum.any?(messages, &(&1 =~ "fixes :hero on \"/fixed\", but lists no component"))
+    end
+
+    test "refuse kinds for a component the site doesn't list" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.StrayKinds do
+            use Billboard.Site,
+              otp_app: :billboard,
+              components: [Billboard.Test.Note],
+              kinds: [cards: [:free]]
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message =~ "narrows the kinds of :cards, but lists no component with that key"
+    end
+
+    test "refuse an actions module without its callbacks" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoKinds do
+            use Billboard.Site,
+              otp_app: :billboard,
+              components: [],
+              actions: Billboard.Test.Context
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message =~ "doesn't define kinds/0 and action/1"
+    end
+
+    test "refuse a context that isn't a module, or gives choices without naming them" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoContext do
+            use Billboard.Site, otp_app: :billboard, context: Billboard.SiteDslTest.Nowhere
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message =~ "`context:` is Billboard.SiteDslTest.Nowhere, which isn't a module"
+
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.UnnamedChoices do
+            use Billboard.Site,
+              otp_app: :billboard,
+              context: Billboard.SiteDslTest.UnnamedSets
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message =~ "defines choices/1 but not choice_sets/0"
     end
 
     test "pass a site that keeps every rule" do

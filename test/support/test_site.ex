@@ -1,7 +1,9 @@
 defmodule Billboard.Test.Site do
   @moduledoc """
   A site written by hand against `Billboard.Site`'s required callbacks,
-  for the component unit tests, which swap its components per test.
+  and the optional answers components and the editor read (its actions,
+  context, kinds, palette, and example path), for the component unit
+  tests, which swap them per test.
   `Billboard.Test.Env.put_site!/1` makes it the site for one test; the
   configured site is `Billboard.Test.Shop`.
   """
@@ -12,7 +14,12 @@ defmodule Billboard.Test.Site do
     surfaces: [%{name: "plain", label: "Plain"}, %{name: "loud", label: "Loud"}],
     offered: [page: ["plain"], stand_out: ["loud"], card: []],
     options: [],
-    rules: []
+    rules: [],
+    actions: nil,
+    context: nil,
+    kinds: [],
+    palette: [],
+    example_path: "/about"
   ]
 
   @impl true
@@ -29,6 +36,21 @@ defmodule Billboard.Test.Site do
 
   @impl true
   def rules, do: get(:rules)
+
+  @impl true
+  def actions, do: get(:actions)
+
+  @impl true
+  def context, do: get(:context)
+
+  @impl true
+  def kinds, do: get(:kinds)
+
+  @impl true
+  def palette, do: get(:palette)
+
+  @impl true
+  def example_path, do: get(:example_path)
 
   defp get(key) do
     :billboard
