@@ -62,6 +62,15 @@ defmodule Billboard.Component do
       warns about on a page until it's written over. The default is
       `true`; `false` suits a placeholder that reads as finished words,
       such as "What's on".
+    * `context` is the page context entries its renderer reads, such as
+      `[:bindings]` or `[:scope]`. The default is `[]`. It declares what
+      the renderer reads, and nothing more: the site builds the context
+      itself (`Billboard.Context`).
+    * `rules` is its own rules, each a `Billboard.Component.Rule`, such
+      as `[MySite.Rules.UnansweredQuestions]`. The default is `[]`.
+      `Billboard.Rules.check/3` runs them on each of its sections, after
+      the stock rules and before the site's. Naming them makes no
+      compile-time dependency, as with `renderer`.
 
   ## Parts
 

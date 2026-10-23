@@ -11,6 +11,8 @@ defmodule Billboard.Test.Faq do
     category :content
     renderer Billboard.Test.FaqRenderer
     filler? false
+    context [:scope]
+    rules [Billboard.Test.NoQuestions]
     placeholder %{title: "Questions"}
 
     parts :questions, Billboard.Test.Question, min: 1, max: 8

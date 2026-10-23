@@ -24,14 +24,19 @@ defmodule Billboard.Rules do
       page may take its anchor, so no DOM id repeats.
     * A shared section whose source has left the library is a warning.
 
-  A site adds its own rules, each a `Billboard.Rule`, through its site
-  module's `rules/0`, and `check/3` runs them after these, so their issues
-  come last. "Never the same ground twice in a row" would be one.
+  A component adds rules about its own sections, each a
+  `Billboard.Component.Rule`, through its `component` section's `rules`,
+  and `check/3` runs them after the stock rules, on each of its sections,
+  those in columns included. A site adds its own rules, each a
+  `Billboard.Rule`, through its site module's `rules/0`, and `check/3`
+  runs them last, so their issues come last. "Never the same ground twice
+  in a row" would be one.
   `everything/1`, `type/1`, `effective_type/2`, and `actions_of/1` are
   public so a site's rules can read sections as these do.
   """
   alias Billboard.{Catalogue, Site}
   alias Billboard.Catalogue.Entry
+  alias Billboard.Component.Info
   alias Billboard.Directory.Page
 
   import Billboard.Rule, only: [error: 2, warning: 2]
@@ -41,8 +46,9 @@ defmodule Billboard.Rules do
 
   @doc """
   Every issue with `sections` on `page`: errors and warnings, with the
-  section each is about. The stock rules' issues come first, then each of
-  the site's rules' in the order `rules/0` lists them.
+  section each is about. The stock rules' issues come first, then the
+  components' own rules', section by section in the page's order, then
+  each of the site's rules' in the order `rules/0` lists them.
   """
   @spec check(Page.t(), [map()], shared()) :: [issue()]
   def check(%Page{} = page, sections, shared) do
@@ -58,9 +64,10 @@ defmodule Billboard.Rules do
         shared_refs(sections, shared)
       ])
 
+    components = component_issues(page, sections, shared)
     site = Enum.flat_map(Site.get!().rules(), & &1.check(page, sections, shared))
 
-    stock ++ site
+    stock ++ components ++ site
   end
 
   @doc "Only the issues that block a commit."
@@ -69,6 +76,15 @@ defmodule Billboard.Rules do
     page
     |> check(sections, shared)
     |> Enum.filter(&(&1.level == :error))
+  end
+
+  # Each component's own rules, on each of its sections, in the page's
+  # order, columns' sections included.
+  defp component_issues(page, sections, shared) do
+    for s <- everything(sections),
+        rule <- Info.component_rules!(Catalogue.module!(type(s))),
+        issue <- rule.check(s, page, shared),
+        do: issue
   end
 
   defp heroes(page, sections) do

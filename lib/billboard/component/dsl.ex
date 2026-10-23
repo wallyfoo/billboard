@@ -244,6 +244,18 @@ defmodule Billboard.Component.Dsl do
         type: :module,
         doc: "Its renderer, a module that does `use Billboard.Renderer`."
       ],
+      context: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "The page context entries its renderer reads (`Billboard.Context`), such as " <>
+            "`:bindings` or `:scope`."
+      ],
+      rules: [
+        type: {:list, :module},
+        default: [],
+        doc: "Its own rules (`Billboard.Component.Rule`), run on each of its sections."
+      ],
       filler?: [
         type: :boolean,
         default: true,

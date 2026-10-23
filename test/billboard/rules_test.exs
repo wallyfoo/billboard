@@ -296,6 +296,27 @@ defmodule Billboard.RulesTest do
     assert Rules.check(page, [s(:text, %{body: "Words"})], %{}) == []
   end
 
+  describe "a component's own rules" do
+    test "run on each of its sections, after the stock rules and before the site's" do
+      put_site!(components: [Billboard.Test.Faq], rules: [GroundRule])
+      page = %Billboard.Directory.Page{pattern: "/", label: "Home", kind: :free}
+
+      faq = s(:faq, %{title: "Asked", questions: [%{question: "Open?", answer: nil}]})
+
+      assert [%{level: :warning, message: "a question has no answer yet"} | _] =
+               Rules.check(page, [faq], %{})
+    end
+
+    test "say nothing of a section they find nothing wrong with" do
+      put_site!(components: [Billboard.Test.Faq])
+      page = %Billboard.Directory.Page{pattern: "/", label: "Home", kind: :free}
+
+      faq = s(:faq, %{title: "Asked", questions: [%{question: "Open?", answer: "Yes."}]})
+
+      assert Rules.check(page, [faq], %{}) == []
+    end
+  end
+
   describe "actions_of/1" do
     # Built by hand, since no shop component has every kind of action.
     test "gives a section's list, then its single action, then its head's action" do

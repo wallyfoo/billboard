@@ -13,6 +13,8 @@ locals_without_parens = [
   placeholder: 1,
   renderer: 1,
   filler?: 1,
+  context: 1,
+  rules: 1,
   field: 1,
   field: 2,
   words: 1,

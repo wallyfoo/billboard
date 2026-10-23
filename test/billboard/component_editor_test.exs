@@ -29,7 +29,13 @@ defmodule Billboard.ComponentEditorTest do
     assert Info.editor_fields(Billboard.Test.Note) == []
   end
 
-  test "names its renderer without depending on it at compile time" do
+  test "names the context it reads, and its own rules" do
+    assert Info.component_context!(Faq) == [:scope]
+    assert Info.component_context!(Billboard.Test.Note) == []
+    assert Info.component_rules!(Faq) == [Billboard.Test.NoQuestions]
+  end
+
+  test "names its renderer and its rules without depending on them at compile time" do
     {graph, 0} =
       System.cmd(
         "mix",
@@ -38,6 +44,7 @@ defmodule Billboard.ComponentEditorTest do
       )
 
     refute graph =~ "faq_renderer.ex"
+    refute graph =~ "no_questions.ex"
   end
 
   describe "the checks" do
