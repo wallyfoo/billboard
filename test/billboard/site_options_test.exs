@@ -6,7 +6,7 @@ defmodule Billboard.SiteOptionsTest do
 
   alias Ash.Error.Changes.InvalidAttribute
   alias Billboard.SiteOptions
-  alias Billboard.Test.{Banner, Cards, Note, Section}
+  alias Billboard.Test.{Banner, Cards, Note, Section, Shelf}
 
   defmodule Preset do
     @moduledoc "A component whose own change sets a field the site narrows."
@@ -31,10 +31,27 @@ defmodule Billboard.SiteOptionsTest do
     end
   end
 
+  defmodule Styled do
+    @moduledoc "A component with a map setting and an optional one, whose values aren't simple."
+    use Billboard.Component
+
+    component do
+      key :styled
+      label "Styled"
+      hint "Takes a style."
+      category :paper
+    end
+
+    attributes do
+      attribute :style, :map, public?: true
+      attribute :tone, :atom, public?: true, constraints: [one_of: [:warm, :cool]]
+    end
+  end
+
   @looks [{"Rows", :rows}, {"Cards", :cards}]
 
   setup do
-    put_site!(components: [Banner, Cards, Note, Preset])
+    put_site!(components: [Banner, Cards, Note, Preset, Shelf, Styled])
   end
 
   describe "an offer" do
@@ -58,6 +75,18 @@ defmodule Billboard.SiteOptionsTest do
       put_site!(options: [cards: [look: [:cards]]])
       assert SiteOptions.options(:cards, :look, @looks) == [{"Cards", :cards}]
       refute SiteOptions.offers?(:cards, :look, :rows)
+    end
+
+    test "of a range measures only a list, and says so" do
+      put_site!(options: [cards: [items: 1..2]])
+
+      assert_raise ArgumentError, ~r/measures a list for :cards's :items, and 3 isn't one/, fn ->
+        SiteOptions.offers?(:cards, :items, 3)
+      end
+
+      assert_raise ArgumentError, ~r/and 2 isn't one/, fn ->
+        SiteOptions.options(:cards, :items, [{"Two", 2}])
+      end
     end
 
     test "of a range offers a list whose length is in it" do
@@ -97,21 +126,50 @@ defmodule Billboard.SiteOptionsTest do
     test "offers only the field's own options" do
       put_site!(options: [cards: [look: [:rows, :tiles]]])
 
-      assert_raise ArgumentError, ~r/:cards's :look :tiles, which isn't one of its options/, fn ->
-        SiteOptions.options(:cards, :look, @looks)
-      end
+      assert_raise ArgumentError,
+                   ~r/:cards's :look :tiles, which it can't hold: atom must be one of rows, cards, got: tiles. Take it out of the site's options\/0/,
+                   fn -> SiteOptions.options(:cards, :look, @looks) end
     end
 
     test "offers an integer within its bounds" do
-      for outside <- [1, 5, "3"] do
+      for {outside, reason} <- [
+            {1, "must be greater than or equal to 2"},
+            {5, "must be less than or equal to 4"}
+          ] do
         put_site!(options: [cards: [columns: [3, outside]]])
 
         assert_raise ArgumentError,
-                     ~r/:cards's :columns .*, which is outside what it allows, 2 to 4/,
-                     fn ->
-                       SiteOptions.offered(:cards, :columns)
-                     end
+                     ~r/:cards's :columns #{outside}, which it can't hold: #{reason}/,
+                     fn -> SiteOptions.offered(:cards, :columns) end
       end
+    end
+
+    test "offers a value the field can hold" do
+      put_site!(options: [cards: [columns: [3, "three"]]])
+
+      assert_raise ArgumentError, ~r/:columns "three", which it can't hold: is invalid/, fn ->
+        SiteOptions.offered(:cards, :columns)
+      end
+    end
+
+    test "offers each value as the field stores it" do
+      put_site!(options: [cards: [columns: [3, "2"]], styled: [tone: ["warm"]]])
+
+      assert_raise ArgumentError, ~r/:columns "2", which it stores as 2. Offer 2 instead/, fn ->
+        SiteOptions.offered(:cards, :columns)
+      end
+
+      assert_raise ArgumentError, ~r/:tone "warm", which it stores as :warm/, fn ->
+        SiteOptions.offered(:styled, :tone)
+      end
+    end
+
+    test "offers a list of values only for a field that isn't a list" do
+      put_site!(options: [cards: [items: [1, 2]]])
+
+      assert_raise ArgumentError,
+                   ~r/:cards's :items a list of values, but :items is a list, so offer a range of its lengths, such as 1..3/,
+                   fn -> SiteOptions.offered(:cards, :items) end
     end
 
     test "offers a range only for a list" do
@@ -163,7 +221,7 @@ defmodule Billboard.SiteOptionsTest do
     test "is checked by narrowed/1 too" do
       put_site!(options: [cards: [look: [:tiles]]])
 
-      assert_raise ArgumentError, ~r/isn't one of its options/, fn ->
+      assert_raise ArgumentError, ~r/which it can't hold/, fn ->
         SiteOptions.narrowed(:cards)
       end
     end
@@ -214,8 +272,20 @@ defmodule Billboard.SiteOptionsTest do
       assert SiteOptions.max_length(:cards, :items) == 4
     end
 
-    test "is nil for a field with no max_length" do
-      assert SiteOptions.max_length(:cards, :columns) == nil
+    test "is nil for a list with no max_length" do
+      assert SiteOptions.max_length(:shelf, :things) == nil
+    end
+
+    test "raises for a field that isn't a list, naming the fix" do
+      assert_raise ArgumentError,
+                   ~r/:cards's :columns isn't a list, so it has no length. Ask max_length\/2 about a list field/,
+                   fn -> SiteOptions.max_length(:cards, :columns) end
+
+      put_site!(options: [cards: [columns: [2, 3]]])
+
+      assert_raise ArgumentError, ~r/isn't a list/, fn ->
+        SiteOptions.max_length(:cards, :columns)
+      end
     end
   end
 
@@ -257,14 +327,63 @@ defmodule Billboard.SiteOptionsTest do
       assert errors(create(%{items: items(3)})) == [items: "this site shows at most 2 here"]
     end
 
-    test "is refused a list shorter than the range" do
-      put_site!(options: [cards: [items: 2..3]])
+    test "saves a list nobody chose, even one shorter than the range" do
+      put_site!(options: [shelf: [things: 1..2], cards: [items: 2..3]])
 
-      assert errors(create(%{items: items(1)})) == [items: "this site needs at least 2 here"]
+      assert %Shelf{things: []} =
+               Shelf
+               |> Ash.Changeset.for_create(:create, %{label: %{title: "A"}})
+               |> Ash.create!()
+
+      assert %Cards{items: [_]} = create!(%{items: items(1)})
+    end
+
+    test "is refused a list past the range's last, given or not" do
+      put_site!(options: [shelf: [things: 1..2]])
+
+      assert {:error, %Ash.Error.Invalid{errors: [%InvalidAttribute{field: :things} = error]}} =
+               Shelf
+               |> Ash.Changeset.for_create(:create, %{label: %{title: "A"}, things: items(3)})
+               |> Ash.create()
+
+      assert error.message == "this site shows at most 2 here"
+    end
+
+    test "puts the refused value on the error" do
+      put_site!(options: [cards: [look: [:rows]]])
+
+      assert {:error, %Ash.Error.Invalid{errors: [%InvalidAttribute{value: :cards}]}} =
+               create(%{look: :cards})
+    end
+
+    test "says a value that isn't text or a number plainly" do
+      put_site!(options: [styled: [style: [%{"weight" => "bold"}]]])
+
+      assert {:error, %Ash.Error.Invalid{errors: [error]}} =
+               Styled
+               |> Ash.Changeset.for_create(:create, %{style: %{"weight" => "light"}})
+               |> Ash.create()
+
+      assert error.message == ~s(this site doesn't offer “%{"weight" => "light"}” here)
+    end
+
+    test "may be nil for a field that allows it" do
+      put_site!(options: [styled: [tone: [:warm]]])
+
+      assert {:ok, %Styled{tone: nil}} =
+               Styled |> Ash.Changeset.for_create(:create, %{tone: nil}) |> Ash.create()
     end
   end
 
   describe "an updated component" do
+    test "is refused nil only by the field itself, when it doesn't allow it" do
+      cards = create!(%{})
+      put_site!(options: [cards: [look: [:rows]]])
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.Required{field: :look}]}} =
+               update(cards, %{look: nil})
+    end
+
     test "never takes a default" do
       cards = create!(%{})
       put_site!(options: [cards: [look: [:cards, :rows], columns: [2, 3]]])

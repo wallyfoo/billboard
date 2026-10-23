@@ -32,9 +32,11 @@ defmodule Billboard.SiteOptions do
   section could save:
 
     * the field must be one of the component's attributes;
-    * a list must offer at least one value, each within the attribute's
-      `one_of` constraint when it has one, and within its `min` and `max`
-      when it's an integer;
+    * a list is only for an attribute that isn't a list, and must offer
+      at least one value. Each value must cast to the attribute's type
+      as it is, so it matches what sections store, and pass the
+      attribute's constraints, such as `one_of`, or an integer's `min`
+      and `max`;
     * a range is only for a list attribute, `{:array, _}`, must step by
       one, and must sit within the attribute's `min_length` and
       `max_length`.
@@ -60,11 +62,11 @@ defmodule Billboard.SiteOptions do
   @doc """
   Whether the site offers `value` for `type`'s `field`. For a range,
   `value` is the list, and it's offered when its length is in the range;
-  `nil` counts as empty.
+  `nil` counts as empty, and anything else raises.
   """
   @spec offers?(atom(), atom(), term()) :: boolean()
   def offers?(type, field, value) when is_atom(type) and is_atom(field),
-    do: offer_includes?(offered(type, field), value)
+    do: offer_includes?(offered(type, field), value, type, field)
 
   @doc """
   The `{label, value}` options of the select for `type`'s `field` that
@@ -73,7 +75,7 @@ defmodule Billboard.SiteOptions do
   @spec options(atom(), atom(), [{String.t(), term()}]) :: [{String.t(), term()}]
   def options(type, field, options) when is_atom(type) and is_atom(field) do
     offer = offered(type, field)
-    Enum.filter(options, fn {_label, value} -> offer_includes?(offer, value) end)
+    Enum.filter(options, fn {_label, value} -> offer_includes?(offer, value, type, field) end)
   end
 
   @doc """
@@ -107,13 +109,21 @@ defmodule Billboard.SiteOptions do
   @doc """
   The most items `type`'s list `field` may hold: the range's last when the
   site offers a range, and otherwise the attribute's own `max_length`, or
-  `nil` when it has none.
+  `nil` when it has none. Raises for a field that isn't a list.
   """
   @spec max_length(atom(), atom()) :: non_neg_integer() | nil
   def max_length(type, field) do
+    attribute = attribute!(type, field)
+
+    unless list?(attribute) do
+      raise ArgumentError,
+            "#{inspect(type)}'s #{inspect(field)} isn't a list, so it has no length. Ask " <>
+              "max_length/2 about a list field, one whose type is `{:array, _}`"
+    end
+
     case offered(type, field) do
       %Range{last: last} -> last
-      _ -> Keyword.get(attribute!(type, field).constraints, :max_length)
+      :all -> Keyword.get(attribute.constraints, :max_length)
     end
   end
 
@@ -127,9 +137,19 @@ defmodule Billboard.SiteOptions do
     for {field, offer} <- site_options(type), do: {field, check_offer!(type, field, offer)}
   end
 
-  defp offer_includes?(:all, _value), do: true
-  defp offer_includes?(%Range{} = range, value), do: length(value || []) in range
-  defp offer_includes?(values, value), do: value in values
+  defp offer_includes?(:all, _value, _type, _field), do: true
+
+  defp offer_includes?(%Range{} = range, value, _type, _field)
+       when is_list(value) or is_nil(value),
+       do: length(value || []) in range
+
+  defp offer_includes?(%Range{}, value, type, field) do
+    raise ArgumentError,
+          "the site's range of lengths measures a list for #{inspect(type)}'s " <>
+            "#{inspect(field)}, and #{inspect(value)} isn't one. Pass the list itself"
+  end
+
+  defp offer_includes?(values, value, _type, _field), do: value in values
 
   defp site_options(type), do: Keyword.get(Site.get!().options(), type, [])
 
@@ -150,40 +170,68 @@ defmodule Billboard.SiteOptions do
   end
 
   defp check_values!(type, field, attribute, values) do
-    allowed = Keyword.get(attribute.constraints, :one_of)
-
-    case allowed && Enum.reject(values, &(&1 in allowed)) do
-      [unknown | _] ->
-        raise ArgumentError,
-              "the site offers #{inspect(type)}'s #{inspect(field)} #{inspect(unknown)}, " <>
-                "which isn't one of its options, #{inspect(allowed)}. Take it out of the " <>
-                "site's options/0"
-
-      _ ->
-        :ok
+    if list?(attribute) do
+      raise ArgumentError,
+            "the site offers #{inspect(type)}'s #{inspect(field)} a list of values, but " <>
+              "#{inspect(field)} is a list, so offer a range of its lengths, such as 1..3"
     end
 
-    if attribute.type == Ash.Type.Integer, do: check_bounds!(type, field, attribute, values)
+    Enum.each(values, &check_value!(type, field, attribute, &1))
   end
 
-  defp check_bounds!(type, field, attribute, values) do
-    min = Keyword.get(attribute.constraints, :min)
-    max = Keyword.get(attribute.constraints, :max)
+  # Casting the value as a save would, then applying the attribute's
+  # constraints, covers every type: `one_of`, an integer's bounds, a
+  # string's length, and so on. A value that casts to something else, such
+  # as "3" for an integer, would never match what a section stores.
+  defp check_value!(type, field, attribute, value) do
+    offered = "the site offers #{inspect(type)}'s #{inspect(field)} #{inspect(value)}"
 
-    case Enum.find(values, &(not is_integer(&1) or below?(&1, min) or above?(&1, max))) do
-      nil ->
-        :ok
-
-      outside ->
+    with {:ok, cast} <- Ash.Type.cast_input(attribute.type, value, attribute.constraints),
+         {:ok, cast} <- Ash.Type.apply_constraints(attribute.type, cast, attribute.constraints) do
+      if cast != value do
         raise ArgumentError,
-              "the site offers #{inspect(type)}'s #{inspect(field)} #{inspect(outside)}, " <>
-                "which is outside what it allows, #{bounds(min, max)}. Take it out of the " <>
+              "#{offered}, which it stores as #{inspect(cast)}. Offer #{inspect(cast)} " <>
+                "instead, so it matches what sections hold"
+      end
+    else
+      {:error, error} ->
+        raise ArgumentError,
+              "#{offered}, which it can't hold: #{describe(error)}. Take it out of the " <>
                 "site's options/0"
+
+      :error ->
+        raise ArgumentError,
+              "#{offered}, which it can't hold. Take it out of the site's options/0"
     end
   end
+
+  # Ash's type errors come as a string, a keyword list with a `message`
+  # and its variables, or a list of either.
+  defp describe(error) when is_binary(error), do: error
+
+  defp describe(error) when is_list(error) do
+    if Keyword.keyword?(error) and Keyword.has_key?(error, :message) do
+      {message, vars} = Keyword.pop(error, :message)
+
+      Enum.reduce(vars, message, fn {key, value}, message ->
+        String.replace(message, "%{#{key}}", show(value))
+      end)
+    else
+      Enum.map_join(error, "; ", &describe/1)
+    end
+  end
+
+  defp describe(error), do: inspect(error)
+
+  defp show(value) when is_binary(value) or is_atom(value) or is_number(value),
+    do: to_string(value)
+
+  defp show(value), do: inspect(value)
+
+  defp list?(attribute), do: match?({:array, _}, attribute.type)
 
   defp check_range!(type, field, attribute, range) do
-    unless match?({:array, _}, attribute.type) do
+    unless list?(attribute) do
       raise ArgumentError,
             "the site offers #{inspect(type)}'s #{inspect(field)} the range #{inspect(range)}, " <>
               "but a range offers a list's lengths, and #{inspect(field)} isn't a list. " <>
@@ -234,7 +282,6 @@ defmodule Billboard.SiteOptions do
       "isn't a list or a range. Offer a list of values, or a range of lengths for a list"
   end
 
-  defp below?(value, min), do: is_integer(min) and value < min
   defp above?(value, max), do: is_integer(max) and value > max
 
   defp bounds(nil, nil), do: "any number"

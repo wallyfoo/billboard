@@ -22,12 +22,15 @@ defmodule Billboard.Changes.SiteOptions do
   **Offers.** A field being changed must keep to the offer.
 
     * For a list offer, a value the site doesn't offer is refused with
-      "this site doesn't offer “VALUE” here".
-    * For a range offer, an update is refused when the list grows past the
+      "this site doesn't offer “VALUE” here". `nil` is left to the
+      attribute: it's allowed where the attribute allows it, and the
+      attribute's own error refuses it where it doesn't.
+    * For a range offer, a save is refused when the list grows past the
       range's last ("this site shows at most N here") or shrinks below its
       first ("this site needs at least N here"), measured against the
-      stored list, with `nil` counted as empty. A create has no stored list
-      to measure against, so its list must be within the range.
+      stored list, with `nil` counted as empty. A create measures against
+      an empty list, so it's refused only for growing past the last: a
+      new section whose list nobody has filled in yet still saves.
 
   It checks only when the field changes, as a section's surface is
   checked only when it changes. A section keeps a value the site has
@@ -76,8 +79,15 @@ defmodule Billboard.Changes.SiteOptions do
   defp check({field, offer}, changeset) do
     if Changeset.changing_attribute?(changeset, field) do
       case refusal(offer, changeset, field) do
-        nil -> changeset
-        message -> Changeset.add_error(changeset, field: field, message: message)
+        nil ->
+          changeset
+
+        message ->
+          Changeset.add_error(changeset,
+            field: field,
+            message: message,
+            value: Changeset.get_attribute(changeset, field)
+          )
       end
     else
       changeset
@@ -89,20 +99,27 @@ defmodule Billboard.Changes.SiteOptions do
 
     was =
       if changeset.action_type == :create,
-        do: nil,
+        do: 0,
         else: changeset |> Changeset.get_data(field) |> count()
 
     cond do
-      now > last and (is_nil(was) or now > was) -> "this site shows at most #{last} here"
-      now < first and (is_nil(was) or now < was) -> "this site needs at least #{first} here"
+      now > last and now > was -> "this site shows at most #{last} here"
+      now < first and now < was -> "this site needs at least #{first} here"
       true -> nil
     end
   end
 
   defp refusal(values, changeset, field) do
-    value = Changeset.get_attribute(changeset, field)
-    if value not in values, do: "this site doesn't offer “#{value}” here"
+    case Changeset.get_attribute(changeset, field) do
+      nil -> nil
+      value -> if value not in values, do: "this site doesn't offer “#{show(value)}” here"
+    end
   end
+
+  defp show(value) when is_binary(value) or is_atom(value) or is_number(value),
+    do: to_string(value)
+
+  defp show(value), do: inspect(value)
 
   defp count(nil), do: 0
   defp count(list) when is_list(list), do: length(list)
