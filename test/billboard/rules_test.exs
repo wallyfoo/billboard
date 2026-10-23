@@ -298,13 +298,21 @@ defmodule Billboard.RulesTest do
 
   describe "a component's own rules" do
     test "run on each of its sections, after the stock rules and before the site's" do
-      put_site!(components: [Billboard.Test.Faq], rules: [GroundRule])
+      put_site!(
+        components: [Billboard.Test.Hero, Billboard.Test.Faq],
+        rules: [Billboard.Test.PageNote]
+      )
+
       page = %Billboard.Directory.Page{pattern: "/", label: "Home", kind: :free}
 
       faq = s(:faq, %{title: "Asked", questions: [%{question: "Open?", answer: nil}]})
+      key = faq.key
 
-      assert [%{level: :warning, message: "a question has no answer yet"} | _] =
-               Rules.check(page, [faq], %{})
+      assert Rules.check(page, [faq], %{}) == [
+               %{level: :error, key: key, message: "the page opens with its hero"},
+               %{level: :warning, key: key, message: "a question has no answer yet"},
+               %{level: :warning, key: nil, message: "a note on the page"}
+             ]
     end
 
     test "say nothing of a section they find nothing wrong with" do
