@@ -257,6 +257,15 @@ makes the site's `--bb-*` tokens Tailwind utilities, such as
    "assets.build": ["compile", "billboard.assets", "tailwind my_site", "esbuild my_site"],
    ```
 
+   The development server's Tailwind watcher reads the link as it
+   finds it, so a site that switches between a local checkout and the
+   git dependency runs `mix assets.build` after the switch, or links
+   afresh on every start in development:
+
+   ```elixir
+   "phx.server": if(Mix.env() == :dev, do: ["billboard.assets", "phx.server"], else: ["phx.server"]),
+   ```
+
 2. In `app.css`, import `theme.css` after the site's tokens, and let
    Tailwind read billboard's sections:
 
