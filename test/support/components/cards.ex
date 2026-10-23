@@ -1,7 +1,8 @@
 defmodule Billboard.Test.Cards do
   @moduledoc """
   A component with a part and a list of parts, and settings a site can
-  narrow: a `look` with `one_of`, and bounded `columns`.
+  narrow: a `look` with `one_of`, bounded `columns`, and its layouts,
+  which its `editor` section offers, with its list of items.
   """
   use Billboard.Component
 
@@ -16,12 +17,31 @@ defmodule Billboard.Test.Cards do
     parts :items, Billboard.Test.Item, min: 1, max: 4
   end
 
+  editor do
+    field :variant, as: :variants, options: [:text_only, :media_left, :media_right]
+    field :look, as: :select, label: "Look", options: [{"Rows", :rows}, {"Cards", :cards}]
+
+    field :columns,
+      as: :select,
+      label: "Columns",
+      options: [{"Two", 2}, {"Three", 3}, {"Four", 4}]
+
+    field :items, as: :list, part: :point, min: 1, max: 4, item_label: "card"
+  end
+
   attributes do
     attribute :columns, :integer do
       allow_nil? false
       default 3
       public? true
       constraints min: 2, max: 4
+    end
+
+    attribute :variant, :atom do
+      allow_nil? false
+      default :text_only
+      public? true
+      constraints one_of: [:text_only, :media_left, :media_right]
     end
 
     attribute :look, :atom do

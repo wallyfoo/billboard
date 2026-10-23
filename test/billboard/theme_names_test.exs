@@ -19,6 +19,10 @@ defmodule Billboard.ThemeNamesTest do
     files = Enum.map(@files, &Path.relative_to(&1, @root))
 
     for file <- ~w(lib/billboard/sections/buttons.ex
+                   lib/billboard/sections/blocks.ex
+                   lib/billboard/sections/words.ex
+                   lib/billboard/sections/parts.ex
+                   lib/billboard/sections/editor_fields.ex
                    assets/css/theme.css) do
       assert file in files
     end

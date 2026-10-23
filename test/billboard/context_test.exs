@@ -18,6 +18,12 @@ defmodule Billboard.ContextTest do
     end
   end
 
+  test "a site with no context module opens the editor with no choices, whatever it picks from" do
+    put_site!(components: [Billboard.Test.Faq], context: nil)
+
+    assert Context.choices_for(Billboard.Sections.EditorFields.choice_names()) == %{}
+  end
+
   test "a site's bindings say which replace the hero's words, by name or by its string" do
     put_site!(context: Billboard.Test.Context)
 

@@ -18,7 +18,8 @@ defmodule Billboard.ComponentEditorTest do
                item_label: "question",
                max: 8,
                part: {:detail, except: [:only_for_group]}
-             ]
+             ],
+             sign_off: [as: :text, label: "Sign-off", more: true]
            ] = Info.editor_fields(Faq)
   end
 

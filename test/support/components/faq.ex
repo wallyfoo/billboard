@@ -30,11 +30,14 @@ defmodule Billboard.Test.Faq do
       except: [:only_for_group],
       max: 8,
       item_label: "question"
+
+    words :sign_off, label: "Sign-off", more: true
   end
 
   attributes do
     attribute :title, :string, public?: true
     attribute :intro, :string, public?: true
+    attribute :sign_off, :string, public?: true
 
     attribute :style, :atom do
       allow_nil? false

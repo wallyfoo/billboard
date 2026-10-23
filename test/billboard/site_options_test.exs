@@ -143,7 +143,7 @@ defmodule Billboard.SiteOptionsTest do
       put_site!(options: [cards: [layout: [:grid]]])
 
       assert_raise ArgumentError,
-                   ~r/:cards's :layout, which isn't one of its fields. Take it out .* or name one of \[:columns, :look, :head, :items\]/,
+                   ~r/:cards's :layout, which isn't one of its fields. Take it out .* or name one of \[:columns, :variant, :look, :head, :items\]/,
                    fn -> SiteOptions.offered(:cards, :layout) end
     end
 
