@@ -6,7 +6,7 @@ defmodule Billboard.Parts.OthersTest do
 
   alias Billboard.Parts
 
-  setup do: put_site!(actions: Billboard.Test.Actions, example_path: "/the-salon")
+  setup do: put_site!(actions: Billboard.Test.Actions)
 
   defp part!(module, attrs) do
     module

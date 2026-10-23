@@ -9,7 +9,7 @@ defmodule Billboard.Parts.ActionTest do
 
   alias Billboard.Parts.Action
 
-  setup do: put_site!(actions: Billboard.Test.Actions, example_path: "/the-salon")
+  setup do: put_site!(actions: Billboard.Test.Actions)
 
   defp create(attrs), do: Action |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
 
@@ -22,7 +22,7 @@ defmodule Billboard.Parts.ActionTest do
     assert %Action{kind: :link, style: :secondary} =
              create!(%{label: "Prices", path: "/price-list"})
 
-    assert_raise Ash.Error.Invalid, ~r/starting with \/, such as \/the-salon/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/starting with \/, such as \/about/, fn ->
       create!(%{label: "Fresha", path: "https://fresha.com"})
     end
   end

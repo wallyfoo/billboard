@@ -6,7 +6,7 @@ defmodule Billboard.Parts.PointTest do
 
   alias Billboard.Parts.{Action, Point}
 
-  setup do: put_site!(actions: Billboard.Test.Actions, example_path: "/the-salon")
+  setup do: put_site!(actions: Billboard.Test.Actions)
 
   defp part!(attrs), do: Point |> Ash.Changeset.for_create(:create, attrs) |> Ash.create!()
 
@@ -19,7 +19,7 @@ defmodule Billboard.Parts.PointTest do
 
   test "links only to a page on this site" do
     assert %Point{link: %Action{kind: :link}} =
-             part!(%{title: "Quiet", link: %{label: "The salon", path: "/the-salon"}})
+             part!(%{title: "Quiet", link: %{label: "About", path: "/about"}})
 
     assert_raise Ash.Error.Invalid, ~r/a point links to a page on this site/, fn ->
       part!(%{title: "Quiet", link: %{kind: :visit}})

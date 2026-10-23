@@ -6,7 +6,7 @@ defmodule Billboard.Parts.PhotoTest do
 
   alias Billboard.Parts.Photo
 
-  setup do: put_site!(actions: Billboard.Test.Actions, example_path: "/the-salon")
+  setup do: put_site!(actions: Billboard.Test.Actions)
 
   defp part!(attrs), do: Photo |> Ash.Changeset.for_create(:create, attrs) |> Ash.create!()
 
@@ -20,7 +20,7 @@ defmodule Billboard.Parts.PhotoTest do
 
   test "with an upload, describes it for people who can't see it" do
     assert %Photo{path: "/uploads/room.jpg"} =
-             part!(%{label: "x", path: "/uploads/room.jpg", alt: "The salon floor"})
+             part!(%{label: "x", path: "/uploads/room.jpg", alt: "The shop floor"})
 
     assert_raise Ash.Error.Invalid, ~r/describe the photograph/, fn ->
       part!(%{label: "x", path: "/uploads/room.jpg"})
