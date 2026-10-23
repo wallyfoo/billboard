@@ -103,7 +103,8 @@ defmodule Billboard.Component.Dsl do
     transformers: [
       Billboard.Component.Transformers.AddTag,
       Billboard.Component.Transformers.AddParts,
-      Billboard.Component.Transformers.AddActions
+      Billboard.Component.Transformers.AddActions,
+      Billboard.Component.Transformers.AddSiteOptions
     ],
     verifiers: [
       Billboard.Component.Verifiers.VerifyTag,

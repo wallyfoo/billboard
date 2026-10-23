@@ -1,5 +1,8 @@
 defmodule Billboard.Test.Cards do
-  @moduledoc "A component with a part and a list of parts, as Points has."
+  @moduledoc """
+  A component with a part and a list of parts, and settings a site can
+  narrow, as Points has: a `look` with `one_of`, and bounded `columns`.
+  """
   use Billboard.Component
 
   component do
@@ -14,6 +17,18 @@ defmodule Billboard.Test.Cards do
   end
 
   attributes do
-    attribute :columns, :integer, public?: true, default: 3
+    attribute :columns, :integer do
+      allow_nil? false
+      default 3
+      public? true
+      constraints min: 2, max: 4
+    end
+
+    attribute :look, :atom do
+      allow_nil? false
+      default :rows
+      public? true
+      constraints one_of: [:rows, :cards]
+    end
   end
 end

@@ -99,6 +99,11 @@ defmodule Billboard.Component do
       the others are still added. Create and update accept every public
       attribute, the tag and the parts included.
     * **An attribute for each part**, see Parts.
+    * **The site's options**, `Billboard.Changes.SiteOptions`, as a
+      global change on create and update, after any global changes the
+      component writes. A new component takes the site's defaults, and a
+      change to a value the site doesn't offer is refused. See
+      `Billboard.SiteOptions`.
 
   ## Checks
 
