@@ -145,9 +145,33 @@ defmodule Billboard.Component do
   attribute on the component, Ash updates the stored component with the
   params instead. The editor can then save one field, push a variant, or
   set a photograph without sending every other field. Storage stays
-  `:type_and_value`; `:map_with_tag` isn't needed. The union's form sends
-  `_union_type` for you, and because every type is tagged, a save without
-  it still finds the component from the section.
+  `:type_and_value`; `:map_with_tag` isn't needed.
+
+  ## Editing content through a form
+
+  A section's editor form is an AshPhoenix form whose `content` is a
+  nested form for the section's component.
+
+    * **The union type is sent for you.** `<.inputs_for field={f[:content]}>`
+      renders `_union_type` as a hidden input, so the editor needs no
+      input of its own. Because every type is tagged, a save without it
+      still finds the component from the section. Untagged, it raises.
+
+    * **Errors sit on the content form.** A failed rule shows on the nested
+      field (`c[:heading].errors`), and
+      `AshPhoenix.Form.errors(form, for_path: [:content])` lists them.
+      `AshPhoenix.Form.submit/2` returns `{:error, form}` and saves nothing.
+
+    * **Pass `params:` to `AshPhoenix.Form.submit/2`** (`nil` to reuse the
+      validated params); AshPhoenix warns when it is left out.
+
+  ## Keys the builder reserves
+
+  Three keys mean something to the page engine, whatever component
+  holds them: a page opens with one `:hero`, which stays first and can't
+  be removed; a `:columns` section holds two sections as its children; and
+  a `:shared` section draws the library section its `key` attribute
+  names. A site without a `:hero` component has no opener rule.
   """
 
   @doc false
@@ -169,5 +193,33 @@ defmodule Billboard.Component do
             )
           )
     end
+  end
+
+  @doc """
+  Builds the component `type` from `attrs`, applying its defaults and
+  running its validations, as a save would. Raises `Ash.Error.Invalid`
+  when they fail, and `KeyError` for a type the site doesn't list.
+  `Ash.create!/1` works on an embedded resource, so no casting by hand is
+  needed, and a section can be created with the result
+  (`%Ash.Union{type: type, value: Billboard.Component.build!(type, attrs)}`).
+  """
+  @spec build!(atom(), map()) :: struct()
+  def build!(type, attrs) do
+    type
+    |> Billboard.Catalogue.module!()
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.create!()
+  end
+
+  @doc """
+  Like `build!/2`, but returns `{:ok, component}`, or `{:error, error}`
+  when the defaults and validations fail.
+  """
+  @spec build(atom(), map()) :: {:ok, struct()} | {:error, term()}
+  def build(type, attrs) do
+    type
+    |> Billboard.Catalogue.module!()
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.create()
   end
 end

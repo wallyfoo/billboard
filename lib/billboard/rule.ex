@@ -12,9 +12,11 @@ defmodule Billboard.Rule do
 
   It takes the page, its top-level sections in order, and `shared`, the
   shared library's sections by key, so a rule can see what a shared
-  section draws. Until step 5 the pages and sections are the site's own
-  structs, so they're typed loosely here; a section needs only a `:key`
-  for `error/2` and `warning/2`.
+  section draws. The page is the site's directory entry
+  (`Billboard.Directory.Page`), and the sections are the site's own
+  section structs; a rule reads them through `Billboard.Rules`'
+  `everything/1`, `type/1`, `effective_type/2`, and `actions_of/1`.
+  `error/2` and `warning/2` need only a section's `:key`.
 
       defmodule MySite.Rules do
         @behaviour Billboard.Rule
@@ -45,9 +47,9 @@ defmodule Billboard.Rule do
   sections, by key.
   """
   @callback check(
-              page :: struct(),
-              sections :: [struct()],
-              shared :: %{optional(String.t()) => struct()}
+              page :: Billboard.Directory.Page.t(),
+              sections :: [map()],
+              shared :: %{optional(String.t()) => map()}
             ) :: [issue()]
 
   @doc "An error about `section`, or about the whole page when it's `nil`."

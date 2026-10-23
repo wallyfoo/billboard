@@ -431,6 +431,24 @@ defmodule Billboard.ComponentTest do
     end
   end
 
+  describe "build/2 and build!/2" do
+    test "returns a component with its defaults applied" do
+      assert %Billboard.Test.Columns{variant: :even} = Billboard.Component.build!(:columns, %{})
+    end
+
+    test "raises on content that breaks the component's rules" do
+      assert_raise Ash.Error.Invalid, fn -> Billboard.Component.build!(:hero, %{}) end
+    end
+
+    test "build/2 returns the error instead" do
+      assert {:error, %Ash.Error.Invalid{}} = Billboard.Component.build(:hero, %{})
+    end
+
+    test "raises for a type the site doesn't list" do
+      assert_raise KeyError, fn -> Billboard.Component.build!(:nope, %{}) end
+    end
+  end
+
   describe "Site.component!/1" do
     test "finds a component by its key" do
       put_site!(components: [Note, Banner])
