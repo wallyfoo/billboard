@@ -38,9 +38,8 @@ defmodule Billboard.Sections.Buttons do
       assign(assigns, :classes, [
         "bb-button bb-type-button inline-flex items-center justify-center gap-2 rounded-bb-button",
         # Its height, side padding, and border width are tokens, each
-        # falling back to 44px, 24px, and 1px. The
-        # border's `length:` hint tells Tailwind the token is a width, not
-        # a colour.
+        # falling back to 44px, 24px, and 1px. The border's `length:` hint
+        # tells Tailwind the token is a width, not a colour.
         "min-h-[var(--bb-button-height,2.75rem)] px-[var(--bb-button-pad-x,1.5rem)]",
         "border-[length:var(--bb-button-border,1px)]",
         "cursor-pointer transition-colors duration-bb ease-bb",
@@ -75,8 +74,8 @@ defmodule Billboard.Sections.Buttons do
   @doc """
   A text link with a 1px underline that clears on hover. Tones: `ink` for
   ordinary links, `accent` for the page's main action, and `quiet` for
-  tertiary ones. An `ink` link also
-  takes the link-hover colour on hover, which falls back to the link's.
+  tertiary ones. An `ink` link also takes the link-hover colour on
+  hover, which falls back to the link's.
   """
   attr :tone, :string, values: ~w(ink accent quiet), default: "ink"
   attr :compact, :boolean, default: false, doc: "drop the 44px tap height inside dense rows"

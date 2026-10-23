@@ -6,9 +6,10 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   a part, and a list a list of parts, each naming its part; a choice
   names its set; several choices edit a list of strings, and there's at
   most one set of them (`:choices`), since the editor keeps one a
-  section, in the order it was ticked; and a select's options and the
+  section, in the order it was ticked; a select's options and the
   variants' layouts are given, and are among the attribute's `one_of`
-  values when it has them. Each message names the fix, and a misspelt
+  values when it has them; and a select's `only_on` names its options.
+  Each message names the fix, and a misspelt
   name is met with the attribute it most likely meant. Its errors are
   compile warnings, as every Spark verifier's are.
   """
@@ -97,6 +98,7 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
           from(entry) ++
           options(entry) ++
           one_of(entry, attribute) ++
+          only_on(entry) ++
           choices_attribute(entry, attribute)
     end
   end
@@ -251,6 +253,29 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   end
 
   defp one_of(_entry, _attribute), do: []
+
+  # `only_on` keeps some of a select's options to some page kinds, so each
+  # value it names must be one of them, or the editor would keep nothing.
+  defp only_on(%Field{as: :select, only_on: [_ | _] = only_on, name: name} = entry) do
+    case Enum.uniq(Keyword.keys(only_on) -- option_values(entry)) do
+      [] ->
+        []
+
+      [one] ->
+        [
+          "`#{inspect(name)}` keeps `#{inspect(one)}` to some page kinds in `only_on`, but " <>
+            "offers no such option. Add it to `options`, or take it out of `only_on`"
+        ]
+
+      several ->
+        [
+          "`#{inspect(name)}` keeps #{in_words(several)} to some page kinds in `only_on`, " <>
+            "but offers no such options. Add them to `options`, or take them out of `only_on`"
+        ]
+    end
+  end
+
+  defp only_on(_entry), do: []
 
   defp option_values(%Field{as: :select, options: options}) when is_list(options),
     do: for({_label, value} <- options, do: value)

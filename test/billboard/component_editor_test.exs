@@ -206,6 +206,40 @@ defmodule Billboard.ComponentEditorTest do
              ]
     end
 
+    test "refuse only_on for an option the select doesn't offer" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.ComponentEditorTest.OnlyOnElsewhere do
+            use Billboard.Component
+
+            component do
+              key :only_on_elsewhere
+              label "Only on elsewhere"
+              hint "x"
+              category :content
+            end
+
+            editor do
+              field :size,
+                as: :select,
+                options: [{"Small", :small}, {"Large", :large}],
+                only_on: [large: [:item], huge: [:item], tiny: [:free]]
+            end
+
+            attributes do
+              attribute :size, :atom, public?: true, constraints: [one_of: [:small, :large]]
+            end
+          end
+        end
+
+      assert [{_, errors}] = errors
+
+      assert Enum.map(errors, & &1.message) == [
+               "`:size` keeps `:huge` and `:tiny` to some page kinds in `only_on`, but offers " <>
+                 "no such options. Add them to `options`, or take them out of `only_on`"
+             ]
+    end
+
     test "refuse a name twice, a hide_when on no attribute, a part that isn't one, " <>
            "and choices that aren't strings" do
       errors =
