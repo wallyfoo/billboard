@@ -14,7 +14,11 @@ defmodule Billboard.Pages do
   and `commit` makes the draft live.
 
   They reach the site's resources through its domain's code interfaces
-  (`Billboard.Site.domain!/0`), which `use Billboard.Domain` defines.
+  (`Billboard.Site.domain!/0`), which `use Billboard.Domain` defines,
+  such as the domain's `edit_page/2` and `arrange_sections/3`.
+  `page_for/1`, `shared_sections/0`, and `shared_section/1` read
+  `Billboard.Cache`, not the database, and the subscribe functions use
+  the site's PubSub (`Billboard.Site.pubsub!/0`).
   """
 
   require Ash.Query
@@ -24,7 +28,8 @@ defmodule Billboard.Pages do
 
   @doc """
   The page's draft, with its sections and their children, or nil when
-  nobody is editing it. Unlike `edit_page/2`, this never creates anything.
+  nobody is editing it. Unlike the domain's `edit_page/2`, this never
+  creates anything.
 
   Inside a transaction, `lock: :for_update` holds the draft's row until it
   ends, so no section of it changes meanwhile (see
@@ -137,7 +142,7 @@ defmodule Billboard.Pages do
   @doc """
   Swaps a Two columns section's columns: the right one goes left, and the
   left one right. `columns` must have its `children` loaded. Like every
-  move, it only works on a draft's section, and, as with
+  move, it only works on a draft's section, and, as with the domain's
   `arrange_sections/3`, not on a fixed page.
   """
   @spec swap_columns(struct(), keyword()) :: :ok | {:error, term()}

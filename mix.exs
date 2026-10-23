@@ -25,6 +25,8 @@ defmodule Billboard.MixProject do
       {:ash_postgres, "~> 2.13"},
       {:spark, "~> 2.7"},
       {:phoenix_pubsub, "~> 2.1"},
+      # `Billboard.Errors.Refused` is a Splode error; Ash requires the same.
+      {:splode, "~> 0.3"},
       # Ash's policies need a SAT solver; this one is plain Elixir.
       {:simple_sat, "~> 0.1"},
       {:sourceror, "~> 1.8", only: [:dev, :test]}

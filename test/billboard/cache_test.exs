@@ -16,7 +16,7 @@ defmodule Billboard.CacheTest do
     {:ok, page} = Shop.Pages.ensure_page(pattern, @opts)
     live = Ash.Seed.seed!(Shop.Version, %{page_id: page.id, status: :live})
     for {type, attrs, opts} <- sections, do: seed_section_fixture(live, type, attrs, opts)
-    Billboard.Cache.refresh()
+    Cache.refresh()
     live
   end
 
@@ -37,8 +37,9 @@ defmodule Billboard.CacheTest do
       seed_section_fixture(live, :text, %{body: "Now"}, %{parent_id: columns.id, position: 1})
       Cache.refresh()
 
-      assert [_hero, columns] = Shop.Pages.page_for("/about").sections
-      assert [_here, _now] = columns.children
+      assert %{id: id, sections: [_hero, columns]} = Shop.Pages.page_for("/about")
+      assert id == live.id
+      assert Enum.map(columns.children, & &1.content.value.body) == ["Here", "Now"]
     end
 
     test "raises for a page the builder doesn't know" do

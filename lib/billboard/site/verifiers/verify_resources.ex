@@ -38,7 +38,7 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
   defp resource(site, kind, module) do
     Code.ensure_compiled(module)
 
-    unless kind(module) == kind do
+    unless Billboard.Resource.Kind.of(module) == kind do
       error(
         site,
         [:resources, kind],
@@ -72,14 +72,6 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
           "Give it `@behaviour Billboard.Starter` and its callbacks."
       )
     end
-  end
-
-  # `Billboard.Resource.kind/1`, read here so that this verifier, which
-  # every site module compiles against, doesn't depend on
-  # `Billboard.Resource`, which reads the site's answers.
-  defp kind(module) do
-    if Code.ensure_loaded?(module) and Spark.Dsl.is?(module, Ash.Resource),
-      do: Spark.Dsl.Extension.get_persisted(module, :billboard_resource)
   end
 
   defp exports?(module, name, arity) do

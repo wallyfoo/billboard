@@ -14,9 +14,10 @@ defmodule Billboard.Content do
   some fields updates the stored value instead of replacing it
   (`Billboard.Component`, "Every component is tagged").
 
-  It's built as the module compiles, from the site's answers and every
-  component, so it compiles against the site module and each component,
-  and recompiles when any of them does.
+  It's built as the module compiles, from the site's answers and each
+  component's key. It recompiles when the site module changes, or when a
+  component's key or fields do, but not for every change to a component,
+  such as its label or hint.
   """
 
   @doc false

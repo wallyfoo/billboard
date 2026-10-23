@@ -9,10 +9,7 @@ defmodule Billboard.Resource do
 
   @doc "`:page`, `:version`, or `:section` for a billboard resource, and `nil` for any other module."
   @spec kind(module()) :: :page | :version | :section | nil
-  def kind(module) when is_atom(module) do
-    if Code.ensure_loaded?(module) and Spark.Dsl.is?(module, Ash.Resource),
-      do: Spark.Dsl.Extension.get_persisted(module, :billboard_resource)
-  end
+  defdelegate kind(module), to: Billboard.Resource.Kind, as: :of
 
   @typedoc "What a resource, the content union, or the domain reads from its site as it compiles."
   @type site :: %{
@@ -74,14 +71,14 @@ defmodule Billboard.Resource do
       components: answers[:components]
     }
 
-    is_self!(site, caller.module, kind)
+    named_self!(site, caller.module, kind)
     Enum.each(@needs[kind], &need!(site, &1, user))
     site
   end
 
   # The site must name this module as the resource it writes, or the
   # engine would look for it elsewhere.
-  defp is_self!(site, module, kind) when kind in [:page, :version, :section, :content] do
+  defp named_self!(site, module, kind) when kind in [:page, :version, :section, :content] do
     case Keyword.get(site.resources, kind) do
       ^module ->
         :ok
@@ -94,9 +91,9 @@ defmodule Billboard.Resource do
     end
   end
 
-  defp is_self!(%{domain: module}, module, :domain), do: :ok
+  defp named_self!(%{domain: module}, module, :domain), do: :ok
 
-  defp is_self!(site, module, :domain) do
+  defp named_self!(site, module, :domain) do
     raise ArgumentError,
           "#{inspect(site.module)} names #{inspect(site.domain)} as its domain, not " <>
             "#{inspect(module)}. Add `domain: #{inspect(module)}` to its `use Billboard.Site`"

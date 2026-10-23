@@ -18,6 +18,10 @@ defmodule Billboard.Cache do
   A site starts it in its supervision tree, after its repo and PubSub:
 
       children = [MySite.Repo, {Phoenix.PubSub, name: MySite.PubSub}, Billboard.Cache, …]
+
+  It needs the site configured (`config :billboard, site: MySite.Billboard`)
+  and the site's `pubsub:` answer, which it broadcasts on. Without
+  either, its start fails, naming the fix.
   """
   use GenServer
 
