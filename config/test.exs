@@ -2,6 +2,9 @@ import Config
 
 config :billboard, site: Billboard.Test.Shop
 
+# Photographs the tests store, out of the way of a real site's.
+config :billboard, uploads_dir: Path.expand("../tmp/test-uploads", __DIR__)
+
 # The test site's repo and its domains. Only the library's own tests have
 # a database; a site's config is its own.
 config :billboard, ecto_repos: [Billboard.Test.Repo], ash_domains: [Billboard.Test.Shop.Pages]
