@@ -1,8 +1,12 @@
 defmodule Billboard.Component.Verifiers.VerifyPlaceholder do
   @moduledoc """
-  Checks that every key of the placeholder names one of the component's
-  attributes, so a new section never starts with a field it can't hold.
-  Its error is a compile warning, as `VerifyTag`'s is.
+  Checks that every key of the placeholder is one the component's primary
+  create accepts, so a new section, which is built through create, never
+  starts with a field it can't hold. A key that isn't an attribute at all
+  gets its own message. Its error is a compile warning, as `VerifyTag`'s
+  is.
+
+  A component with no primary create is left to `VerifyActions`.
   """
   use Spark.Dsl.Verifier
 
@@ -13,20 +17,37 @@ defmodule Billboard.Component.Verifiers.VerifyPlaceholder do
     module = Verifier.get_persisted(dsl_state, :module)
     placeholder = Verifier.get_option(dsl_state, [:component], :placeholder) || %{}
 
-    case Enum.find(Map.keys(placeholder), &is_nil(Ash.Resource.Info.attribute(dsl_state, &1))) do
+    case Ash.Resource.Info.primary_action(dsl_state, :create) do
       nil ->
         :ok
 
-      field ->
-        {:error,
-         Spark.Error.DslError.exception(
-           module: module,
-           path: [:component, :placeholder],
-           location: Spark.Dsl.Extension.get_opt_anno(dsl_state, [:component], :placeholder),
-           message:
-             "`#{inspect(field)}` is in the placeholder but isn't an attribute of " <>
-               "#{inspect(module)}. Add the attribute, or take it out of the placeholder."
-         )}
+      create ->
+        accepted = create.accept ++ Enum.map(create.arguments, & &1.name)
+
+        case Enum.find(Map.keys(placeholder), &(&1 not in accepted)) do
+          nil -> :ok
+          field -> {:error, error(dsl_state, module, message(dsl_state, module, field))}
+        end
     end
+  end
+
+  defp message(dsl_state, module, field) do
+    if Ash.Resource.Info.attribute(dsl_state, field) do
+      "`#{inspect(field)}` is in the placeholder, but #{inspect(module)}'s create doesn't " <>
+        "accept it, and a new section is built through create. Make the attribute " <>
+        "`public?: true`, or take it out of the placeholder."
+    else
+      "`#{inspect(field)}` is in the placeholder but isn't an attribute of " <>
+        "#{inspect(module)}. Add the attribute, or take it out of the placeholder."
+    end
+  end
+
+  defp error(dsl_state, module, message) do
+    Spark.Error.DslError.exception(
+      module: module,
+      path: [:component, :placeholder],
+      location: Spark.Dsl.Extension.get_opt_anno(dsl_state, [:component], :placeholder),
+      message: message
+    )
   end
 end

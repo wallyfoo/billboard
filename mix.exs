@@ -20,8 +20,8 @@ defmodule Billboard.MixProject do
 
   defp deps do
     [
-      {:ash, "~> 3.0"},
-      {:spark, "~> 2.2"},
+      {:ash, "~> 3.33"},
+      {:spark, "~> 2.7"},
       {:sourceror, "~> 1.8", only: [:dev, :test]}
     ]
   end

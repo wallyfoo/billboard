@@ -23,9 +23,12 @@ defmodule Billboard.Component do
         end
       end
 
-  `use Billboard.Component` takes `use Ash.Resource`'s options. It sets
-  `data_layer: :embedded`, and adds `Billboard.Component.Dsl` to any
-  `extensions:` given.
+  `use Billboard.Component` takes `use Ash.Resource`'s options, but not
+  `data_layer:`: it sets `data_layer: :embedded` itself, and raises when
+  given another. It adds `Billboard.Component.Dsl` to any `extensions:`
+  given, which must be a literal list, such as
+  `extensions: [MyApp.Extension]`, since it's joined to billboard's as the
+  module is compiled.
 
   ## Options
 
@@ -91,8 +94,8 @@ defmodule Billboard.Component do
 
     * **The tag**, the `component` attribute:
       `attribute :component, :atom, allow_nil?: false, default: key, public?: true, constraints: [one_of: [key]]`.
-      Leave it out; a component that writes its own must make it
-      `one_of: [key]`.
+      Leave it out; a component that writes its own must write it
+      exactly so.
     * **The actions**, `defaults [:read, :destroy, create: :*, update: :*]`,
       unless the component writes its own `defaults`. An action the
       component writes by one of those names replaces that default, and
@@ -109,13 +112,19 @@ defmodule Billboard.Component do
 
   A module with no `component` section doesn't compile.
 
+  A part named like an attribute, or `:component`, doesn't compile, nor
+  does a `parts` whose `min` is above its `max`.
+
   The rest run once the module has compiled. As with every Spark verifier,
   a failure is printed as a compile warning naming the fix, not raised,
   so `mix compile --warnings-as-errors` stops on it.
 
-    * A `component` attribute the component writes must be
+    * A `component` attribute the component writes must be exactly what
+      billboard adds: its type, `allow_nil?`, `default`, `public?`, and
       `one_of: [key]`.
-    * Every placeholder key must name an attribute.
+    * It must have a primary read, create, update, and destroy action,
+      which matters only when it writes its own `defaults`.
+    * Every placeholder key must be one the primary create accepts.
     * Every part must be an Ash resource with a primary destroy action,
       and one in a `parts` list must have an `:id` primary key (see
       Parts).
@@ -136,6 +145,12 @@ defmodule Billboard.Component do
 
   @doc false
   defmacro __using__(opts) do
+    if Keyword.has_key?(opts, :data_layer) do
+      raise ArgumentError,
+            "a billboard component is an embedded resource, so `use Billboard.Component` " <>
+              "sets `data_layer: :embedded` itself. Take `data_layer:` out."
+    end
+
     {extensions, opts} = Keyword.pop(opts, :extensions, [])
 
     quote do

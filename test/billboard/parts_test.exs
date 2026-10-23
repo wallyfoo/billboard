@@ -166,40 +166,82 @@ defmodule Billboard.PartsTest do
     end
   end
 
-  test "a part named like an attribute doesn't compile" do
-    assert_raise Spark.Error.DslError, ~r/head/, fn ->
-      defmodule Elixir.Billboard.PartsTest.Clash do
-        use Billboard.Component
+  describe "a part that can't be added" do
+    test "is named like an attribute" do
+      assert_raise Spark.Error.DslError,
+                   ~r/`:head` is both a part and an attribute of Billboard.PartsTest.Clash. Rename the part, or take the attribute out./,
+                   fn ->
+                     defmodule Elixir.Billboard.PartsTest.Clash do
+                       use Billboard.Component
 
-        component do
-          key :x
-          label "X"
-          hint "x"
-          category :paper
-          part :head, Billboard.Test.Title
-        end
+                       component do
+                         key :x
+                         label "X"
+                         hint "x"
+                         category :paper
+                         part :head, Billboard.Test.Title
+                       end
 
-        attributes do
-          attribute :head, :string, public?: true
-        end
-      end
+                       attributes do
+                         attribute :head, :string, public?: true
+                       end
+                     end
+                   end
     end
-  end
 
-  test "two parts of one name don't compile" do
-    assert_raise Spark.Error.DslError, ~r/things/, fn ->
-      defmodule Elixir.Billboard.PartsTest.Twice do
-        use Billboard.Component
+    test "is named like the tag" do
+      assert_raise Spark.Error.DslError,
+                   ~r/`:component` is the tag billboard adds to every component, so a part can't take its name. Rename the part./,
+                   fn ->
+                     defmodule Elixir.Billboard.PartsTest.TagClash do
+                       use Billboard.Component
 
-        component do
-          key :x
-          label "X"
-          hint "x"
-          category :paper
-          part :things, Billboard.Test.Title
-          parts :things, Billboard.Test.Item
-        end
-      end
+                       component do
+                         key :x
+                         label "X"
+                         hint "x"
+                         category :paper
+                         part :component, Billboard.Test.Title
+                       end
+                     end
+                   end
+    end
+
+    test "is named like another part" do
+      assert_raise Spark.Error.DslError,
+                   ~r/has two parts named `:things`. Rename one of them./,
+                   fn ->
+                     defmodule Elixir.Billboard.PartsTest.Twice do
+                       use Billboard.Component
+
+                       component do
+                         key :x
+                         label "X"
+                         hint "x"
+                         category :paper
+                         part :things, Billboard.Test.Title
+                         parts :things, Billboard.Test.Item
+                       end
+                     end
+                   end
+    end
+
+    test "has a min above its max" do
+      assert_raise Spark.Error.DslError,
+                   ~r/`parts :items` has `min: 3` above `max: 2`, so no list could hold it. Make `min` at most `max`./,
+                   fn ->
+                     defmodule Elixir.Billboard.PartsTest.MinAboveMax do
+                       use Billboard.Component
+
+                       component do
+                         key :x
+                         label "X"
+                         hint "x"
+                         category :paper
+                         parts :items, Billboard.Test.Item, min: 3, max: 2
+                       end
+                     end
+                   end
     end
   end
 

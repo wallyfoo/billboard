@@ -108,6 +108,7 @@ defmodule Billboard.Component.Dsl do
     ],
     verifiers: [
       Billboard.Component.Verifiers.VerifyTag,
+      Billboard.Component.Verifiers.VerifyActions,
       Billboard.Component.Verifiers.VerifyPlaceholder,
       Billboard.Component.Verifiers.VerifyParts
     ]

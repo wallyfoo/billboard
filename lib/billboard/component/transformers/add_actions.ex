@@ -17,8 +17,11 @@ defmodule Billboard.Component.Transformers.AddActions do
 
   It runs after `AddTag` and `AddParts`, and before every Ash resource
   transformer, so Ash's `SetPrimaryActions` builds the actions, and
-  `DefaultAccept`, which Spark sorts after it, expands `:*` to every
-  public attribute, the tag and the parts included.
+  `DefaultAccept`, which runs after it, expands `:*` to every public
+  attribute, the tag and the parts included.
+
+  A component that writes its own `defaults` may leave a type out;
+  `Billboard.Component.Verifiers.VerifyActions` says so.
   """
   use Spark.Dsl.Transformer
 
