@@ -67,3 +67,7 @@ end
 
 Billboard adds the `component` tag, the default actions, and the site's
 options to it. `Billboard.Component` documents every option, and parts.
+
+## Licence
+
+MIT. See `LICENSE`.
