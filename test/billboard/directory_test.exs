@@ -8,7 +8,7 @@ defmodule Billboard.DirectoryTest do
   alias Billboard.Directory
 
   setup do
-    put_env_for_test(:billboard, :site, Billboard.SiteDslTest.Plain)
+    put_env_for_test(:billboard, :site, Billboard.Test.PlainSite)
   end
 
   test "lists the site's pages, the library last" do

@@ -4,6 +4,8 @@ defmodule Billboard.Site.Answers do
   # module compiles, and the rules by which a test's env overrides them.
   # `Billboard.Site` documents both.
 
+  @no_reserved_ids [ids: [], prefixes: [], suffixes: [], owned: %{}]
+
   @schema [
     repo: [type: :atom],
     pubsub: [type: :atom],
@@ -26,7 +28,7 @@ defmodule Billboard.Site.Answers do
     starter: [type: :atom],
     reserved_ids: [
       type: :keyword_list,
-      default: [],
+      default: @no_reserved_ids,
       keys: [
         ids: [type: {:list, :string}, default: []],
         prefixes: [type: {:list, :string}, default: []],
@@ -47,6 +49,9 @@ defmodule Billboard.Site.Answers do
               "#{inspect(module)}'s `use Billboard.Site`: #{Exception.message(error)}"
     end
   end
+
+  @doc false
+  def no_reserved_ids, do: @no_reserved_ids
 
   @doc false
   def check_surface(%{name: name, label: label} = surface)

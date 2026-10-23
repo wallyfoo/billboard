@@ -57,7 +57,8 @@ defmodule Billboard.Site do
     * `rules` is its own page rules, each a `Billboard.Rule`, which run
       after the stock ones (`Billboard.Rules`).
     * `starter` names its `Billboard.Starter`, which says what a page
-      shows before its first commit. Without one, pages start empty.
+      shows before its first commit. Without one, each page starts as an
+      empty version of its `version` resource.
     * `reserved_ids` lists the DOM ids its own markup uses, which no
       section's anchor may take: whole `ids`, `prefixes`, `suffixes`,
       and `owned`, an id a component may take for itself, as
@@ -170,7 +171,10 @@ defmodule Billboard.Site do
   @doc "The site's `Phoenix.PubSub` server."
   @callback pubsub() :: atom() | nil
 
-  @doc "What the page at `pattern` shows before its first commit. Never raises. See `Billboard.Starter`."
+  @doc """
+  What the page at `pattern` shows before its first commit. It doesn't
+  raise when what the starter reads can't be read. See `Billboard.Starter`.
+  """
   @callback starter(pattern()) :: struct()
 
   @doc "Like `starter/1`, but raises when what the starter reads can't be read."
@@ -190,12 +194,28 @@ defmodule Billboard.Site do
 
   @doc false
   defmacro __using__(opts) do
+    unless Keyword.keyword?(opts) do
+      raise ArgumentError,
+            "`use Billboard.Site` takes its answers as a keyword list written in place, " <>
+              "such as `use Billboard.Site, otp_app: :my_site, components: [...]`, " <>
+              "not #{Macro.to_string(opts)}"
+    end
+
     {otp_app, answers} = Keyword.pop(opts, :otp_app)
 
-    unless is_atom(otp_app) and not is_nil(otp_app) do
-      raise ArgumentError,
-            "`use Billboard.Site` needs `otp_app:`, the site's application, such as " <>
-              "`otp_app: :my_site`. A test overrides the site's answers under it."
+    cond do
+      is_nil(otp_app) ->
+        raise ArgumentError,
+              "`use Billboard.Site` needs `otp_app:`, the site's application, such as " <>
+                "`otp_app: :my_site`. A test overrides the site's answers under it."
+
+      not is_atom(otp_app) ->
+        raise ArgumentError,
+              "`use Billboard.Site` needs `otp_app:` as an atom, such as `otp_app: :my_site`, " <>
+                "not #{Macro.to_string(otp_app)}"
+
+      true ->
+        :ok
     end
 
     # Spark's own `use` drops every option when one isn't a literal, such
@@ -205,10 +225,13 @@ defmodule Billboard.Site do
     answers = Spark.Dsl.Extension.expand_alias_no_require(answers, __CALLER__)
 
     quote do
+      # Before Spark's `use`, which sets attributes of its own, such as
+      # `@opts`, that an answer naming the site's attribute would read.
+      @billboard_answers Billboard.Site.Answers.validate!(unquote(answers), __MODULE__)
+
       use Billboard.Site.Base, otp_app: unquote(otp_app)
 
       @behaviour Billboard.Site
-      @billboard_answers Billboard.Site.Answers.validate!(unquote(answers), __MODULE__)
       @persist {:billboard_answers, @billboard_answers}
 
       @impl Billboard.Site
@@ -242,10 +265,12 @@ defmodule Billboard.Site do
       def pubsub, do: @billboard_answers[:pubsub]
 
       @impl Billboard.Site
-      def starter(pattern), do: Billboard.Starter.version(@billboard_answers[:starter], pattern)
+      def starter(pattern),
+        do: Billboard.Starter.version(@billboard_answers[:starter], pattern, __MODULE__)
 
       @impl Billboard.Site
-      def starter!(pattern), do: Billboard.Starter.version!(@billboard_answers[:starter], pattern)
+      def starter!(pattern),
+        do: Billboard.Starter.version!(@billboard_answers[:starter], pattern, __MODULE__)
 
       @impl Billboard.Site
       def reserved_ids, do: @billboard_answers[:reserved_ids]
@@ -327,15 +352,15 @@ defmodule Billboard.Site do
   @doc "The site's domain for its pages. Raises, naming the fix, when it names none."
   @spec domain!() :: module()
   def domain!,
-    do: answer!(:domain, "`domain: MySite.Pages`, a module that does `use Billboard.Domain`")
+    do: answer!(:domain, "`domain: MySite.Pages`", "a module that does `use Billboard.Domain`")
 
   @doc "The site's repo. Raises, naming the fix, when it names none."
   @spec repo!() :: module()
-  def repo!, do: answer!(:repo, "`repo: MySite.Repo`, its AshPostgres repo")
+  def repo!, do: answer!(:repo, "`repo: MySite.Repo`", "its AshPostgres repo")
 
   @doc "The site's PubSub server. Raises, naming the fix, when it names none."
   @spec pubsub!() :: atom()
-  def pubsub!, do: answer!(:pubsub, "`pubsub: MySite.PubSub`, its Phoenix.PubSub server")
+  def pubsub!, do: answer!(:pubsub, "`pubsub: MySite.PubSub`", "its Phoenix.PubSub server")
 
   @doc "What the page at `pattern` shows before its first commit (`Billboard.Starter`)."
   @spec starter(pattern()) :: struct()
@@ -345,17 +370,21 @@ defmodule Billboard.Site do
   @spec starter!(pattern()) :: struct()
   def starter!(pattern), do: call!(:starter!, [pattern], "Give it `use Billboard.Site`.")
 
-  @doc "The DOM ids the site's own markup uses, or none for a site that doesn't say."
-  @spec reserved_ids() :: reserved_ids() | []
+  @doc "The DOM ids the site's own markup uses, each list empty for a site that doesn't say."
+  @spec reserved_ids() :: reserved_ids()
   def reserved_ids do
     site = get!()
-    if exports?(site, :reserved_ids, 0), do: site.reserved_ids(), else: []
+
+    if exports?(site, :reserved_ids, 0),
+      do: site.reserved_ids(),
+      else: Billboard.Site.Answers.no_reserved_ids()
   end
 
-  defp answer!(name, example) do
-    call!(name, [], "Give it `use Billboard.Site`, with #{example}.") ||
+  defp answer!(name, example, naming) do
+    call!(name, [], "Give it `use Billboard.Site`, with #{example}, naming #{naming}.") ||
       raise ArgumentError,
-            "#{inspect(get!())} names no #{name}. Add #{example} to its `use Billboard.Site`"
+            "#{inspect(get!())} names no #{name}. Add #{example} to its " <>
+              "`use Billboard.Site`, naming #{naming}"
   end
 
   defp call!(name, args, fix) do

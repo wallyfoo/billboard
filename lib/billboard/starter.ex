@@ -40,7 +40,8 @@ defmodule Billboard.Starter do
   it, so a starter built from defaults that stand in for unread data
   never outlives the failure. Without it, the cache uses `version/1`.
 
-  A site that names no starter starts every page empty.
+  A site that names no starter starts every page as an empty version of
+  its own version resource, which it names in `resources:`.
   """
 
   @doc "The starter of the page at `pattern`. Never raises."
@@ -51,18 +52,31 @@ defmodule Billboard.Starter do
 
   @optional_callbacks version!: 1
 
-  @doc false
-  def version(nil, _pattern), do: empty()
-  def version(starter, pattern), do: starter.version(pattern)
+  # `use Billboard.Site` calls these with the site's `starter:` and the
+  # site itself, whose version resource an empty starter is, whichever
+  # site is configured.
 
   @doc false
-  def version!(nil, _pattern), do: empty()
+  def version(nil, _pattern, site), do: empty(site)
+  def version(starter, pattern, _site), do: starter.version(pattern)
 
-  def version!(starter, pattern) do
+  @doc false
+  def version!(nil, _pattern, site), do: empty(site)
+
+  def version!(starter, pattern, _site) do
     if Code.ensure_loaded?(starter) and function_exported?(starter, :version!, 1),
       do: starter.version!(pattern),
       else: starter.version(pattern)
   end
 
-  defp empty, do: struct!(Billboard.Site.resource!(:version), status: :starter, sections: [])
+  defp empty(site) do
+    version =
+      site.resources()[:version] ||
+        raise ArgumentError,
+              "#{inspect(site)} names no version resource. Add `version: MySite.Pages.Version` " <>
+                "to the `resources:` of its `use Billboard.Site`, naming a module that does " <>
+                "`use Billboard.Version`, or give it a `starter:`"
+
+    struct!(version, status: :starter, sections: [])
+  end
 end
