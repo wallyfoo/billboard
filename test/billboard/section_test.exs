@@ -1,5 +1,7 @@
 defmodule Billboard.SectionTest do
-  use Billboard.Test.DataCase, async: true
+  # Not async: a few tests commit, which refreshes the pages cache, and
+  # one changes the shop's offers.
+  use Billboard.Test.DataCase, async: false
 
   alias Billboard.Test.Shop
 
@@ -7,6 +9,8 @@ defmodule Billboard.SectionTest do
   @text %{body: "Words"}
   @band %{heading: "Visit"}
   @cards %{items: [%{title: "A basket"}]}
+
+  setup :preserve_cache
 
   test "sections keep their order, and a new one goes last" do
     version = version_fixture(path: "/about")
@@ -210,6 +214,67 @@ defmodule Billboard.SectionTest do
       assert Exception.message(error) =~ "“loud” isn't a surface this section can take"
     end
 
+    test "survives an edit and a publish" do
+      {:ok, draft} = Shop.Pages.edit_page("/", @opts)
+      section = section_fixture(draft, :text, @text, surface: "plain")
+
+      {:ok, live} = Shop.Pages.commit_page("/", @opts)
+      assert by_key(live, section.key).surface == "plain"
+
+      {:ok, next} = Shop.Pages.edit_page("/", @opts)
+      assert by_key(next, section.key).surface == "plain"
+    end
+
+    test "a Two columns section's surface survives an edit, and its columns copy too" do
+      {:ok, draft} = Shop.Pages.edit_page("/about", @opts)
+      [_hero, columns] = load(draft).sections
+      Shop.Pages.update_section!(columns, %{surface: "plain"}, @opts)
+
+      {:ok, _live} = Shop.Pages.commit_page("/about", @opts)
+      {:ok, next} = Shop.Pages.edit_page("/about", @opts)
+
+      assert [_hero, %{key: key, surface: "plain"} = columns] = load(next).sections
+      assert [%{surface: nil}, %{surface: nil}] = columns.children
+      assert key == by_key(draft, key).key
+    end
+
+    test "a live surface the site no longer offers still makes a draft" do
+      {:ok, page} = Shop.Pages.ensure_page("/about", @opts)
+      live = Ash.Seed.seed!(Shop.Version, %{page_id: page.id, status: :live})
+      hero = seed_section_fixture(live, :hero, %{heading: "About"}, position: 0)
+      text = seed_section_fixture(live, :text, @text, surface: "lilac", position: 1)
+
+      assert {:ok, draft} = Shop.Pages.edit_page("/about", @opts)
+      assert by_key(draft, hero.key).surface == nil
+      assert by_key(draft, text.key).surface == "lilac"
+    end
+
+    test "a live section holding settings the site no longer offers still makes a draft, keeping them" do
+      {:ok, page} = Shop.Pages.ensure_page("/about", @opts)
+      live = Ash.Seed.seed!(Shop.Version, %{page_id: page.id, status: :live})
+      seed_section_fixture(live, :hero, %{heading: "About"}, position: 0)
+
+      # Saved while the shop offered cards, four items, and card surfaces,
+      # then narrowed.
+      put_shop!(options: [cards: [look: [:cards, :rows]]], offered: [card: ["plain", "loud"]])
+
+      four = [
+        %{title: "Assess", surface: "loud"},
+        %{title: "Treat", surface: "plain"},
+        %{title: "Review", surface: "loud"},
+        %{title: "Rest"}
+      ]
+
+      cards = seed_section_fixture(live, :cards, %{look: :cards, items: four}, position: 1)
+      put_shop!(options: [cards: [look: [:rows], items: 1..3]], offered: [card: []])
+
+      assert {:ok, draft} = Shop.Pages.edit_page("/about", @opts)
+      copy = by_key(draft, cards.key).content.value
+
+      assert %{look: :cards} = copy
+      assert Enum.map(copy.items, & &1.surface) == ["loud", "plain", "loud", nil]
+    end
+
     test "is checked again when the content's type changes" do
       version = version_fixture(path: "/about")
       section = section_fixture(version, :text, @text, surface: "plain")
@@ -334,6 +399,9 @@ defmodule Billboard.SectionTest do
       assert Exception.message(error) =~ "edit the page's draft, not its live layout"
     end
   end
+
+  defp load(v), do: Shop.Pages.get_version!(v.id, @opts ++ [load: [sections: :children]])
+  defp by_key(v, key), do: Enum.find(load(v).sections, &(&1.key == key))
 
   defp types(version) do
     Shop.Pages.get_version!(version.id, @opts ++ [load: [:sections]]).sections

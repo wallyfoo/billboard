@@ -97,6 +97,18 @@ defmodule Billboard.Section do
           validate Billboard.Section.Validations.DraftOnly, before_action?: true
         end
 
+        action :arrange do
+          description """
+          Puts a version's top-level sections in the given order. `order` lists
+          every top-level section's id exactly once.
+          """
+
+          transaction? true
+          argument :version_id, :uuid, allow_nil?: false
+          argument :order, {:array, :uuid}, allow_nil?: false
+          run Billboard.Section.Arrange
+        end
+
         destroy :destroy do
           primary? true
           description "Removes a section from a draft, with its columns' sections."

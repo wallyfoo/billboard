@@ -86,6 +86,29 @@ defmodule Billboard.Version do
           change set_attribute(:status, :live)
           change set_attribute(:committed_at, &DateTime.utc_now/0)
         end
+
+        action :edit, :struct do
+          description "The page's draft, made from its live version (or its starter) if it has none yet."
+          constraints instance_of: __MODULE__
+          transaction? true
+          argument :pattern, :string, allow_nil?: true
+          run Billboard.Version.Edit
+        end
+
+        action :commit, :struct do
+          description "Checks the page's draft against the rules, deletes the live version, and makes the draft live."
+          constraints instance_of: __MODULE__
+          transaction? true
+          argument :pattern, :string, allow_nil?: true
+          run Billboard.Version.Commit
+        end
+
+        action :discard do
+          description "Deletes the page's draft, if it has one."
+          transaction? true
+          argument :pattern, :string, allow_nil?: true
+          run Billboard.Version.Discard
+        end
       end
 
       policies do

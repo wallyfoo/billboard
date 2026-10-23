@@ -10,8 +10,8 @@ defmodule Billboard.CacheTest do
 
   setup :preserve_cache
 
-  # Committing is the engine's, so these seed the live version straight
-  # into the database and refresh the cache, as a commit would.
+  # These seed a live version straight into the database and refresh the
+  # cache, as a commit would, for a page the rules wouldn't let commit.
   defp make_live(pattern, sections) do
     {:ok, page} = Shop.Pages.ensure_page(pattern, @opts)
     live = Ash.Seed.seed!(Shop.Version, %{page_id: page.id, status: :live})
@@ -43,6 +43,83 @@ defmodule Billboard.CacheTest do
 
     test "raises for a page the builder doesn't know" do
       assert_raise ArgumentError, ~r/no builder page/, fn -> Shop.Pages.page_for("/nowhere") end
+    end
+  end
+
+  defp hero_of(draft),
+    do: hd(Shop.Pages.get_version!(draft.id, @opts ++ [load: [:sections]]).sections)
+
+  defp change_heading(draft, heading) do
+    Shop.Pages.update_section!(
+      hero_of(draft),
+      %{content: %Ash.Union{type: :hero, value: %{heading: heading}}},
+      @opts
+    )
+  end
+
+  describe "committing" do
+    test "puts the version in the snapshot and broadcasts it" do
+      Shop.Pages.subscribe()
+      {:ok, draft} = Shop.Pages.edit_page("/about", @opts)
+      {:ok, _} = Shop.Pages.commit_page("/about", @opts)
+
+      assert_receive {:pages_updated, _, %Snapshot{} = snapshot}
+      assert snapshot.pages["/about"].id == draft.id
+      assert Shop.Pages.page_for("/about").id == draft.id
+    end
+
+    test "replacing a live version refreshes the cache once" do
+      {:ok, _first} = Shop.Pages.edit_page("/about", @opts)
+      {:ok, _} = Shop.Pages.commit_page("/about", @opts)
+      {:ok, second} = Shop.Pages.edit_page("/about", @opts)
+      Shop.Pages.subscribe()
+
+      {:ok, _} = Shop.Pages.commit_page("/about", @opts)
+
+      # The notifications are sent, and so the broadcasts received, before
+      # the commit returns. Other tests' refreshes can't hold this draft.
+      assert refreshes_with("/about", second.id) == 1
+    end
+
+    test "tells the page's editors" do
+      {:ok, _draft} = Shop.Pages.edit_page("/about", @opts)
+      Shop.Pages.subscribe_page("/about")
+
+      {:ok, _} = Shop.Pages.commit_page("/about", @opts)
+
+      assert_receive {:page_draft_changed, "/about"}
+    end
+  end
+
+  describe "drafts" do
+    test "editing one tells the page's editors, and leaves the cache alone" do
+      {:ok, draft} = Shop.Pages.edit_page("/about", @opts)
+      Shop.Pages.subscribe()
+      Shop.Pages.subscribe_page("/about")
+
+      change_heading(draft, "Find us")
+
+      assert_receive {:page_draft_changed, "/about"}
+      refute_receive {:pages_updated, _, _}
+      assert Shop.Pages.page_for("/about").status == :starter
+    end
+
+    test "making one tells the page's editors" do
+      Shop.Pages.subscribe_page("/")
+      {:ok, _draft} = Shop.Pages.edit_page("/", @opts)
+
+      assert_receive {:page_draft_changed, "/"}
+    end
+
+    test "discarding one tells the page's editors, and leaves the cache alone" do
+      {:ok, _draft} = Shop.Pages.edit_page("/about", @opts)
+      Shop.Pages.subscribe()
+      Shop.Pages.subscribe_page("/about")
+
+      :ok = Shop.Pages.discard_page("/about", @opts)
+
+      assert_receive {:page_draft_changed, "/about"}
+      refute_receive {:pages_updated, _, _}
     end
   end
 
@@ -85,6 +162,26 @@ defmodule Billboard.CacheTest do
 
       assert Shop.Pages.shared_sections() |> Map.keys() |> Enum.sort() == ["promo", "quiet"]
       assert %{content: %{type: :text}} = Shop.Pages.shared_section("quiet")
+    end
+
+    test "can't be committed taking an anchor a page that places them already uses" do
+      place_promo_beside_its_anchor()
+      {:ok, _draft} = Shop.Pages.edit_page(nil, @opts)
+
+      assert {:error, error} = Shop.Pages.commit_page(nil, @opts)
+      assert Exception.message(error) =~ "Home"
+      assert Exception.message(error) =~ "promo"
+      assert Shop.Pages.page_for(nil).status == :starter
+    end
+
+    test "can be committed with an anchor no page that places them uses" do
+      place_promo_beside_its_anchor()
+      {:ok, draft} = Shop.Pages.edit_page(nil, @opts)
+      band = Shop.Pages.get_section_by_key!(draft.id, "promo", @opts)
+      Shop.Pages.update_section!(band, %{anchor: "visit-us"}, @opts)
+
+      assert {:ok, _live} = Shop.Pages.commit_page(nil, @opts)
+      assert Shop.Pages.shared_section("promo").anchor == "visit-us"
     end
   end
 
@@ -151,6 +248,28 @@ defmodule Billboard.CacheTest do
       assert :ets.lookup(Cache, :snapshot) == []
       assert log =~ "Pages cache refresh failed"
       assert log =~ "billboard_versions"
+    end
+  end
+
+  # The home page places the library's promo band beside a Text section of
+  # its own anchored "promo", the band's anchor in the library's starter.
+  # The home page's own commit would refuse that, so it is seeded.
+  defp place_promo_beside_its_anchor do
+    make_live("/", [
+      {:hero, %{heading: "Everything for the shop"}, %{position: 0}},
+      {:text, %{body: "Come in."}, %{anchor: "promo", position: 1}},
+      {:shared, %{key: "promo"}, %{position: 2}}
+    ])
+  end
+
+  # The refresh broadcasts waiting in the mailbox whose snapshot shows
+  # version `id` live at `pattern`.
+  defp refreshes_with(pattern, id, count \\ 0) do
+    receive do
+      {:pages_updated, _node, %Snapshot{pages: %{^pattern => %{id: ^id}}}} ->
+        refreshes_with(pattern, id, count + 1)
+    after
+      0 -> count
     end
   end
 end

@@ -14,15 +14,18 @@ defmodule Billboard.Domain do
 
   On the page record, `fetch_page/2`, `fetch_library_page/1`, and
   `create_page/2`. On versions, `create_version/2`, `get_version/2`,
-  `list_live_versions/1`, `list_drafts/1`, and `get_draft/2`. On
-  sections, `create_section/2`, `get_section/2`, `get_section_by_key/3`,
-  `update_section/3`, `destroy_section/2`, and `place_section/3`. Each
+  `list_live_versions/1`, `list_drafts/1`, `get_draft/2`, `edit_page/2`,
+  `commit_page/2`, and `discard_page/2`. On sections, `create_section/2`,
+  `get_section/2`, `get_section_by_key/3`, `update_section/3`,
+  `destroy_section/2`, `arrange_sections/3`, and `place_section/3`. Each
   has its `!` form.
 
-  And, from `Billboard.Pages`, `ensure_page(pattern, opts)`,
-  `page_for(pattern)`, `shared_sections()`, `shared_section(key)`,
-  `subscribe()`, `subscribe_page(pattern)`, `unsubscribe_page(pattern)`,
-  `page_topic(pattern)`, and `drain_page_changes(pattern)`.
+  And, from `Billboard.Pages`, `draft_for(pattern, opts)`,
+  `ensure_page(pattern, opts)`, `change_draft(pattern, fun, opts)`,
+  `swap_columns(columns, opts)`, `page_for(pattern)`, `shared_sections()`,
+  `shared_section(key)`, `subscribe()`, `subscribe_page(pattern)`,
+  `unsubscribe_page(pattern)`, `page_topic(pattern)`, and
+  `drain_page_changes(pattern)`.
   """
 
   @doc false
@@ -48,6 +51,9 @@ defmodule Billboard.Domain do
           define :list_live_versions, action: :live
           define :list_drafts, action: :drafts
           define :get_draft, action: :draft, args: [:page_id], not_found_error?: false
+          define :edit_page, action: :edit, args: [:pattern]
+          define :commit_page, action: :commit, args: [:pattern]
+          define :discard_page, action: :discard, args: [:pattern]
         end
 
         resource unquote(resources[:section]) do
@@ -56,12 +62,22 @@ defmodule Billboard.Domain do
           define :get_section_by_key, action: :read, get_by: [:version_id, :key]
           define :update_section, action: :update
           define :destroy_section, action: :destroy
+          define :arrange_sections, action: :arrange, args: [:version_id, :order]
           define :place_section, action: :place, args: [:position]
         end
       end
 
+      @doc "See `Billboard.Pages.draft_for/2`."
+      defdelegate draft_for(pattern, opts \\ []), to: Billboard.Pages
+
       @doc "See `Billboard.Pages.ensure_page/2`."
       defdelegate ensure_page(pattern, opts \\ []), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.change_draft/3`."
+      defdelegate change_draft(pattern, fun, opts \\ []), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.swap_columns/2`."
+      defdelegate swap_columns(columns, opts \\ []), to: Billboard.Pages
 
       @doc "See `Billboard.Pages.page_for/1`."
       defdelegate page_for(pattern), to: Billboard.Pages
