@@ -9,11 +9,13 @@ defmodule Billboard.Parts.ActionTest do
 
   alias Billboard.Parts.Action
 
-  setup do: put_site!(actions: Billboard.Test.Actions)
+  setup do: put_site!(components: [Billboard.Components.Hero], actions: Billboard.Test.Actions)
 
   defp create(attrs), do: Action |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
 
   defp create!(attrs), do: Action |> Ash.Changeset.for_create(:create, attrs) |> Ash.create!()
+
+  defp hero(attrs), do: Billboard.Component.build!(:hero, Map.put(attrs, :heading, "Hi"))
 
   defp update(action, attrs),
     do: action |> Ash.Changeset.for_update(:update, attrs) |> Ash.update()
@@ -49,12 +51,17 @@ defmodule Billboard.Parts.ActionTest do
     assert %Action{kind: :call} = create!(%{kind: :call})
   end
 
-  test "each action has its own id" do
-    first = create!(%{kind: :visit})
-    second = create!(%{kind: :call})
+  test "each action in a list has its own id" do
+    %{actions: [first, second]} = hero(%{actions: [%{kind: :visit}, %{kind: :call}]})
 
     assert is_binary(first.id)
     refute first.id == second.id
+  end
+
+  test "a hero takes three actions at most" do
+    assert_raise Ash.Error.Invalid, fn ->
+      hero(%{actions: List.duplicate(%{kind: :visit}, 4)})
+    end
   end
 
   test "takes only the kinds the site offers, checked when the kind changes" do

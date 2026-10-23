@@ -28,7 +28,8 @@ defmodule Billboard.ThemeCheckTest do
   # they're drawn from. The check reads their prose too, so their
   # comments and docs name the role, not a site's class.
   @web Path.expand("../../lib/billboard/sections", __DIR__)
-  @stock ~w(buttons.ex voronoi.ex glyph.ex icons.ex blocks.ex words.ex parts.ex editor_fields.ex)
+  @stock ~w(buttons.ex voronoi.ex glyph.ex icons.ex blocks.ex words.ex parts.ex editor_fields.ex
+            hero.ex band.ex points.ex text_media.ex details.ex reviews.ex news.ex)
 
   # Tailwind's own type utilities, which set a size, weight, case,
   # tracking, leading, or style the theme's type roles should set.

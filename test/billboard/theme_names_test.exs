@@ -23,6 +23,13 @@ defmodule Billboard.ThemeNamesTest do
                    lib/billboard/sections/words.ex
                    lib/billboard/sections/parts.ex
                    lib/billboard/sections/editor_fields.ex
+                   lib/billboard/sections/hero.ex
+                   lib/billboard/sections/band.ex
+                   lib/billboard/sections/points.ex
+                   lib/billboard/sections/text_media.ex
+                   lib/billboard/sections/details.ex
+                   lib/billboard/sections/reviews.ex
+                   lib/billboard/sections/news.ex
                    assets/css/theme.css) do
       assert file in files
     end
