@@ -23,19 +23,20 @@ defmodule Billboard.Version.Edit do
   def run(input, _opts, context) do
     opts = Ash.Context.to_opts(context)
     pattern = input.arguments[:pattern]
-    version = input.resource
+    version_resource = input.resource
+    section_resource = Billboard.Resource.related(version_resource, :sections)
 
     with {:ok, _known} <- known(pattern),
          {:ok, page} <- Pages.ensure_page(pattern, opts),
          {:ok, nil} <- Site.domain!().get_draft(page.id, opts),
-         {:ok, sections} <- source_sections(version, page, pattern, opts),
-         {:ok, draft} <- Ash.create(version, %{page_id: page.id}, opts),
-         :ok <- Copier.copy(sections, draft.id, opts) do
+         {:ok, sections} <- source_sections(version_resource, page, pattern, opts),
+         {:ok, draft} <- Ash.create(version_resource, %{page_id: page.id}, opts),
+         :ok <- Copier.copy(sections, draft.id, section_resource, opts) do
       # Read back through `:draft`, so a new draft comes with its sections
       # and their children, as an existing one does.
       Site.domain!().get_draft(page.id, opts)
     else
-      {:ok, %{__struct__: struct} = draft} when struct == version -> {:ok, draft}
+      {:ok, %^version_resource{} = draft} -> {:ok, draft}
       error -> error
     end
   end
@@ -55,8 +56,8 @@ defmodule Billboard.Version.Edit do
   end
 
   # The live version's sections, else the starter's.
-  defp source_sections(version, page, pattern, opts) do
-    version
+  defp source_sections(version_resource, page, pattern, opts) do
+    version_resource
     |> Ash.Query.for_read(:live, %{}, opts)
     |> Ash.Query.filter(page_id == ^page.id)
     |> Ash.read_one(opts)

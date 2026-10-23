@@ -15,7 +15,11 @@ defmodule Billboard.Pages do
 
   They reach the site's resources through its domain's code interfaces
   (`Billboard.Site.domain!/0`), which `use Billboard.Domain` defines,
-  such as the domain's `edit_page/2` and `arrange_sections/3`.
+  such as the domain's `edit_page/2` and `arrange_sections/3`. The
+  actions behind those (`Billboard.Version.Edit`, `Billboard.Version.Commit`,
+  and `Billboard.Version.Discard`) write to the resource they run on, but
+  find the page and its draft through the configured site, so an app has
+  one site.
   `page_for/1`, `shared_sections/0`, and `shared_section/1` read
   `Billboard.Cache`, not the database, and the subscribe functions use
   the site's PubSub (`Billboard.Site.pubsub!/0`).
@@ -79,14 +83,22 @@ defmodule Billboard.Pages do
         ) ::
           {:ok, term()} | {:error, term()}
   def change_draft(pattern, fun, opts \\ []) do
-    case change_draft_once(pattern, fun, opts) do
-      {:error, error} ->
-        if first_edit_clash?(error),
-          do: change_draft_once(pattern, fun, opts),
-          else: {:error, error}
+    # The clash is looked for before `fun`'s own reason is unwrapped, so
+    # a change `fun` turns down is never tried again, whatever its reason.
+    result =
+      case change_draft_once(pattern, fun, opts) do
+        {:error, error} ->
+          if first_edit_clash?(error),
+            do: change_draft_once(pattern, fun, opts),
+            else: {:error, error}
 
-      result ->
-        result
+        result ->
+          result
+      end
+
+    case result do
+      {:error, %Refused{reason: reason}} -> {:error, reason}
+      result -> result
     end
   end
 
@@ -94,8 +106,7 @@ defmodule Billboard.Pages do
   # and makes any error an Ash error, so `fun`'s own reason travels out in
   # a `Refused`.
   defp change_draft_once(pattern, fun, opts) do
-    [Site.resource!(:version), Site.resource!(:section)]
-    |> Ash.transact(fn ->
+    Ash.transact([Site.resource!(:version), Site.resource!(:section)], fn ->
       with {:ok, draft} <- domain().edit_page(pattern, opts) do
         case fun.(draft, sections_by_key(draft.sections)) do
           :ok -> nil
@@ -104,15 +115,13 @@ defmodule Billboard.Pages do
         end
       end
     end)
-    |> case do
-      {:error, %Refused{reason: reason}} -> {:error, reason}
-      result -> result
-    end
   end
 
   @doc false
   # Public for its test: a real race of two first edits can't be staged
-  # inside one sandbox.
+  # inside one sandbox. A change `fun` turned down is never a clash.
+  def first_edit_clash?(%Refused{}), do: false
+
   def first_edit_clash?(%{errors: errors}) when is_list(errors),
     do: Enum.any?(errors, &first_edit_clash?/1)
 

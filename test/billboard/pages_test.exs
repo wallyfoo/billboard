@@ -30,6 +30,25 @@ defmodule Billboard.PagesTest do
 
       assert {:ok, nil} = Shop.Pages.draft_for("/", @opts)
     end
+
+    test "a change turned down is never tried again, even for a reason that looks like a clash" do
+      clash = %Ash.Error.Invalid{
+        errors: [%{private_vars: [constraint: "billboard_versions_one_draft_per_page_index"]}]
+      }
+
+      assert {:error, ^clash} =
+               Shop.Pages.change_draft(
+                 "/",
+                 fn _draft, _sections ->
+                   send(self(), :tried)
+                   {:error, clash}
+                 end,
+                 actor: admin()
+               )
+
+      assert_received :tried
+      refute_received :tried
+    end
   end
 
   describe "a first edit's clash" do
@@ -101,17 +120,31 @@ defmodule Billboard.PagesTest do
       assert now.key == before.key
       assert now.id != before.id
       assert item_ids(now) == item_ids(before)
+      # The shop has no single part with an id; its head part still survives.
+      assert now.content.value.head.title == "Ask"
+    end
+
+    test "a starter's section that isn't the site's section struct is refused, naming the fix" do
+      draft = version_fixture(path: "/about")
+      text = %Ash.Union{type: :text, value: Billboard.Component.build!(:text, @text)}
+      section = %{key: "loose", anchor: nil, content: text, surface: nil, position: 0}
+
+      assert_raise ArgumentError,
+                   ~r/gave section "loose" as a plain map, not a %Billboard.Test.Shop.Section\{\}. Build each/,
+                   fn ->
+                     Billboard.Version.Copier.copy([section], draft.id, Shop.Section, @opts)
+                   end
     end
 
     test "the first edit keeps the ids of the starter's parts" do
       starter = Shop.Starter.version("/")
       {:ok, draft} = Shop.Pages.edit_page("/", @opts)
 
-      for {from, to} <- Enum.zip(starter.sections, load(draft).sections),
-          from.content.type == :hero do
-        assert action_ids(to) == action_ids(from)
-        assert action_ids(to) == [Shop.Starter.shop_now()]
-      end
+      [%{content: %{type: :hero}} = from | _] = starter.sections
+      [%{content: %{type: :hero}} = to | _] = load(draft).sections
+
+      assert action_ids(to) == action_ids(from)
+      assert action_ids(to) == [Shop.Starter.shop_now()]
     end
 
     test "returns the same draft until it is committed or discarded" do

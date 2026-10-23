@@ -9,7 +9,7 @@ defmodule Billboard.Version.Commit do
   A draft that breaks a rule stays a draft, and the error lists every rule
   it breaks. A library draft is also checked against every page that
   places its sections: none may give a section of its own the anchor of a
-  shared section it places (`Rules.anchor_clashes/2`). Those pages are
+  shared section it places (`Billboard.Rules.anchor_clashes/2`). Those pages are
   read as visitors see them, from `Billboard.Cache`, before the commit
   writes anything.
   """
@@ -72,8 +72,8 @@ defmodule Billboard.Version.Commit do
 
   defp placed_clashes(_draft, _pattern), do: []
 
-  defp destroy_live(version, page_id, opts) do
-    version
+  defp destroy_live(version_resource, page_id, opts) do
+    version_resource
     |> Ash.Query.filter(status == :live and page_id == ^page_id)
     |> Ash.read_one(opts)
     |> case do

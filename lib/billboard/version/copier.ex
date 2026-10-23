@@ -9,21 +9,25 @@ defmodule Billboard.Version.Copier do
   would lose them silently.
   """
 
-  @doc "Copies `sections`, with their children, into version `version_id`."
-  @spec copy([struct()], Ecto.UUID.t(), Keyword.t()) :: :ok | {:error, term()}
-  def copy(sections, version_id, opts) do
+  @doc """
+  Copies `sections`, with their children, into version `version_id`, as
+  records of `resource`, the version's section resource. Raises for a
+  section that isn't one of `resource`'s structs.
+  """
+  @spec copy([struct()], Ecto.UUID.t(), module(), Keyword.t()) :: :ok | {:error, term()}
+  def copy(sections, version_id, resource, opts) do
     each(sections, fn section ->
-      with {:ok, copy} <- copy_one(section, version_id, nil, opts) do
-        each(children!(section), &copy_one(&1, version_id, copy.id, opts))
+      with {:ok, copy} <- copy_one(section, version_id, nil, resource, opts) do
+        each(children!(section), &copy_one(&1, version_id, copy.id, resource, opts))
       end
     end)
   end
 
-  # The sections are the site's own section structs, from a live version
-  # or a starter, so each is copied into its own resource.
-  defp copy_one(section, version_id, parent_id, opts) do
+  defp copy_one(section, version_id, parent_id, resource, opts) do
+    section!(section, resource)
+
     Ash.create(
-      section.__struct__,
+      resource,
       %{
         version_id: version_id,
         parent_id: parent_id,
@@ -45,6 +49,25 @@ defmodule Billboard.Version.Copier do
         error -> {:halt, error}
       end
     end)
+  end
+
+  # Live sections are always the resource's own. A starter's must be too,
+  # and one that isn't is the site's mistake, so this names it.
+  defp section!(%resource{}, resource), do: :ok
+
+  defp section!(section, resource) do
+    given =
+      case section do
+        %struct{} -> "a %#{inspect(struct)}{}"
+        %{} -> "a plain map"
+        other -> inspect(other)
+      end
+
+    key = if is_map(section), do: " #{inspect(Map.get(section, :key))}", else: ""
+
+    raise ArgumentError,
+          "a starter gave section#{key} as #{given}, not a %#{inspect(resource)}{}. " <>
+            "Build each of a starter's sections, and their children, as %#{inspect(resource)}{}"
   end
 
   defp children!(%{children: children}) when is_list(children), do: children
