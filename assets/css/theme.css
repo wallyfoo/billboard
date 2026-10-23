@@ -1,0 +1,271 @@
+/* Billboard's theme: the site's --bb-* tokens as Tailwind utilities.
+   Stock sections draw only through these, so they look right on any
+   site and on any surface. A token the site doesn't set falls back
+   where it's read, never on :root: a custom property that names another
+   is fixed where it's declared, so a surface that changes --bb-ink
+   wouldn't reach a default declared above it. Every utility here carries
+   the bb- prefix, as in text-bb-ink and bb-type-body, so none can clash
+   with a name the site already has, such as daisyUI's card. */
+
+/* A site imports this after its own tokens, and lets Tailwind read the
+   stock sections' classes, through the link `mix billboard.assets`
+   makes:
+
+     @import "../vendor/billboard/assets/css/theme.css";
+     @source "../vendor/billboard/lib";
+
+   A site that clears Tailwind's colours (--color-*: initial) does so
+   before this file, or it clears the theme's too. */
+
+@theme inline {
+  --color-bb-ink: var(--bb-ink);
+  --color-bb-ink-soft: var(--bb-ink-soft, var(--bb-ink));
+  --color-bb-title: var(--bb-title, var(--bb-heading, var(--bb-ink)));
+  --color-bb-heading: var(--bb-heading, var(--bb-ink));
+  --color-bb-subheading: var(--bb-subheading, var(--bb-heading, var(--bb-ink)));
+  --color-bb-eyebrow: var(--bb-eyebrow, var(--bb-accent));
+  --color-bb-link: var(--bb-link, var(--bb-ink));
+  --color-bb-link-hover: var(--bb-link-hover, var(--bb-link, var(--bb-ink)));
+  --color-bb-accent: var(--bb-accent);
+  --color-bb-rule: var(--bb-rule);
+  --color-bb-edge: var(--bb-edge, var(--bb-rule));
+  --color-bb-card: var(--bb-card);
+  --color-bb-placeholder: var(--bb-placeholder);
+  --color-bb-placeholder-ink: var(--bb-placeholder-ink, var(--bb-ink));
+  --color-bb-placeholder-chip: var(--bb-placeholder-chip, var(--bb-card));
+  --color-bb-focus: var(--bb-focus, var(--bb-ink));
+  --color-bb-action: var(--bb-action);
+  --color-bb-on-action: var(--bb-on-action);
+  --color-bb-action-hover: var(--bb-action-hover, var(--bb-action));
+  --color-bb-on-action-hover: var(--bb-on-action-hover, var(--bb-on-action));
+  --color-bb-action-active: var(--bb-action-active, var(--bb-action-hover, var(--bb-action)));
+  --color-bb-on-action-active: var(
+    --bb-on-action-active,
+    var(--bb-on-action-hover, var(--bb-on-action))
+  );
+  --color-bb-action-2: var(--bb-action-2);
+  --color-bb-on-action-2: var(--bb-on-action-2);
+
+  --radius-bb-card: var(--bb-radius-card, 0);
+  --radius-bb-button: var(--bb-radius-button, 0);
+  --radius-bb-photo: var(--bb-radius-photo, 0);
+  --radius-bb-field: var(--bb-radius-field, 0);
+
+  --ease-bb: var(--bb-ease, ease);
+}
+
+/* The type roles. Each reads its own set of tokens (-weight, -size,
+   -size-md, -leading, -tracking, and -case) and one of the four
+   families, so a site can set its labels in capitals or not, and its
+   headings in any face. A site with one typeface sets only
+   --bb-font-body: the label and heading faces fall back to it, and the
+   display face to the heading's. They're longhands, not the font
+   shorthand, since one unset token in a shorthand with var() voids the
+   whole declaration; font-style: normal keeps the shorthand's reset of
+   an inherited italic. */
+@utility bb-type-display {
+  font-family: var(--bb-font-display, var(--bb-font-heading, var(--bb-font-body)));
+  font-size: var(--bb-display-size);
+  font-style: normal;
+  line-height: var(--bb-display-leading, 1.1);
+  font-weight: var(--bb-display-weight, 400);
+  letter-spacing: var(--bb-display-tracking, normal);
+  text-transform: var(--bb-display-case, none);
+  @variant md {
+    font-size: var(--bb-display-size-md, var(--bb-display-size));
+  }
+}
+@utility bb-type-title {
+  font-family: var(--bb-font-heading, var(--bb-font-body));
+  font-size: var(--bb-title-size);
+  font-style: normal;
+  line-height: var(--bb-title-leading, 1.15);
+  font-weight: var(--bb-title-weight, 400);
+  letter-spacing: var(--bb-title-tracking, normal);
+  text-transform: var(--bb-title-case, none);
+  @variant md {
+    font-size: var(--bb-title-size-md, var(--bb-title-size));
+  }
+}
+@utility bb-type-heading {
+  font-family: var(--bb-font-heading, var(--bb-font-body));
+  font-size: var(--bb-heading-size);
+  font-style: normal;
+  line-height: var(--bb-heading-leading, 1.2);
+  font-weight: var(--bb-heading-weight, 400);
+  letter-spacing: var(--bb-heading-tracking, normal);
+  text-transform: var(--bb-heading-case, none);
+  @variant md {
+    font-size: var(--bb-heading-size-md, var(--bb-heading-size));
+  }
+}
+@utility bb-type-subheading {
+  font-family: var(--bb-font-heading, var(--bb-font-body));
+  font-size: var(--bb-subheading-size);
+  font-style: normal;
+  line-height: var(--bb-subheading-leading, 1.3);
+  font-weight: var(--bb-subheading-weight, 400);
+  letter-spacing: var(--bb-subheading-tracking, normal);
+  text-transform: var(--bb-subheading-case, none);
+  @variant md {
+    font-size: var(--bb-subheading-size-md, var(--bb-subheading-size));
+  }
+}
+@utility bb-type-quote {
+  font-family: var(--bb-font-heading, var(--bb-font-body));
+  font-size: var(--bb-quote-size);
+  font-style: normal;
+  line-height: var(--bb-quote-leading, 1.3);
+  font-weight: var(--bb-quote-weight, 400);
+  letter-spacing: var(--bb-quote-tracking, normal);
+  text-transform: var(--bb-quote-case, none);
+  @variant md {
+    font-size: var(--bb-quote-size-md, var(--bb-quote-size));
+  }
+}
+@utility bb-type-lead {
+  font-family: var(--bb-font-body);
+  font-size: var(--bb-lead-size);
+  font-style: normal;
+  line-height: var(--bb-lead-leading, 1.5);
+  font-weight: var(--bb-lead-weight, 400);
+  letter-spacing: var(--bb-lead-tracking, normal);
+  text-transform: var(--bb-lead-case, none);
+  @variant md {
+    font-size: var(--bb-lead-size-md, var(--bb-lead-size));
+  }
+}
+@utility bb-type-body {
+  font-family: var(--bb-font-body);
+  font-size: var(--bb-body-size);
+  font-style: normal;
+  line-height: var(--bb-body-leading, 1.6);
+  font-weight: var(--bb-body-weight, 400);
+  letter-spacing: var(--bb-body-tracking, normal);
+  text-transform: var(--bb-body-case, none);
+  @variant md {
+    font-size: var(--bb-body-size-md, var(--bb-body-size));
+  }
+}
+@utility bb-type-small {
+  font-family: var(--bb-font-body);
+  font-size: var(--bb-small-size);
+  font-style: normal;
+  line-height: var(--bb-small-leading, 1.5);
+  font-weight: var(--bb-small-weight, 400);
+  letter-spacing: var(--bb-small-tracking, normal);
+  text-transform: var(--bb-small-case, none);
+  @variant md {
+    font-size: var(--bb-small-size-md, var(--bb-small-size));
+  }
+}
+@utility bb-type-label {
+  font-family: var(--bb-font-label, var(--bb-font-body));
+  font-size: var(--bb-label-size);
+  font-style: normal;
+  line-height: var(--bb-label-leading, 1.2);
+  font-weight: var(--bb-label-weight, 600);
+  letter-spacing: var(--bb-label-tracking, normal);
+  text-transform: var(--bb-label-case, none);
+  @variant md {
+    font-size: var(--bb-label-size-md, var(--bb-label-size));
+  }
+}
+/* The eyebrow is the one role with a colour of its own, so a surface
+   that changes the accent changes its eyebrows. */
+@utility bb-type-eyebrow {
+  font-family: var(--bb-font-label, var(--bb-font-body));
+  font-size: var(--bb-eyebrow-size);
+  font-style: normal;
+  line-height: var(--bb-eyebrow-leading, 1.2);
+  font-weight: var(--bb-eyebrow-weight, 600);
+  letter-spacing: var(--bb-eyebrow-tracking, normal);
+  text-transform: var(--bb-eyebrow-case, none);
+  color: var(--bb-eyebrow, var(--bb-accent));
+  @variant md {
+    font-size: var(--bb-eyebrow-size-md, var(--bb-eyebrow-size));
+  }
+}
+@utility bb-type-button {
+  font-family: var(--bb-font-label, var(--bb-font-body));
+  font-size: var(--bb-button-size);
+  font-style: normal;
+  line-height: var(--bb-button-leading, 1);
+  font-weight: var(--bb-button-weight, 600);
+  letter-spacing: var(--bb-button-tracking, normal);
+  text-transform: var(--bb-button-case, none);
+  @variant md {
+    font-size: var(--bb-button-size-md, var(--bb-button-size));
+  }
+}
+
+/* The page gutter, centred at the content width. */
+@utility bb-wrap {
+  width: 100%;
+  max-width: calc(var(--bb-content-max) + 2 * var(--bb-gutter-md, var(--bb-gutter)));
+  margin-inline: auto;
+  padding-inline: var(--bb-gutter);
+  @variant md {
+    padding-inline: var(--bb-gutter-md, var(--bb-gutter));
+  }
+}
+@utility bb-section-pad {
+  padding-block: var(--bb-section-pad);
+  @variant md {
+    padding-block: var(--bb-section-pad-md, var(--bb-section-pad));
+  }
+}
+@utility bb-measure {
+  max-width: var(--bb-measure, 65ch);
+}
+@utility bb-measure-title {
+  max-width: var(--bb-measure-title, var(--bb-measure, 24ch));
+}
+/* The site's hover and press timing, with a fallback for a site that
+   doesn't set it. Tailwind sorts it after the transition-* utilities,
+   so it overrides the duration they set. */
+@utility duration-bb {
+  transition-duration: var(--bb-duration, 150ms);
+}
+/* A bounded option among several: a fill, an edge, and the site's
+   corner, which this owns, so a card needs no rounded-* class of its
+   own. The room inside is its user's, from --bb-card-pad, as Points'
+   cards look has it. A card on a surface of its own, which Points also
+   draws, takes that surface's ground in place of the fill. Tailwind
+   orders utilities by the properties they set, with an edge before a
+   background, so a surface's utility, which sets no edge, comes after
+   this one, and its background wins. */
+@utility bb-card {
+  background-color: var(--bb-card);
+  border: 1px solid var(--bb-edge, var(--bb-rule));
+  border-radius: var(--bb-radius-card, 0);
+}
+/* The hairline above a head, a point, or a detail. A site sets
+   --bb-rule-width to 0 to draw none. It's one utility, so the three
+   places that draw it agree. Only the top side has a width, so only it
+   needs the colour. The space below the rule is the element's own: a
+   head and a point read --bb-rule-gap, and a detail keeps its even
+   padding. */
+@utility bb-rule-top {
+  border-top: var(--bb-rule-width, 1px) solid var(--bb-rule);
+}
+
+@layer base {
+  /* One focus ring everywhere, in the colour the surface sets. It falls
+     back to the ink, not the element's own colour, since it's drawn on
+     the ground beside the element. */
+  :focus-visible {
+    outline: 2px solid var(--bb-focus, var(--bb-ink));
+    outline-offset: 2px;
+  }
+}
+
+/* A section on the same surface as the one before it sits one section's
+   padding from it, not two. Sections on different surfaces keep theirs,
+   since the change of ground already parts them. The page marks it,
+   since CSS can't compare two sections' surfaces, and the mark is on
+   the section itself, so this serves the page editor's canvas too,
+   whatever wraps the sections there. */
+.page-section.bb-joined {
+  padding-top: 0;
+}
