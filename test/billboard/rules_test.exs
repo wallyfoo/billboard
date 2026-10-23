@@ -171,6 +171,19 @@ defmodule Billboard.RulesTest do
       assert messages("/", [hero(), cards]) == []
     end
 
+    test "a head's action and a single action count with the rest" do
+      # No shop component has either, so the hero's value is built by hand.
+      hero = %{
+        hero()
+        | content: %Ash.Union{
+            type: :hero,
+            value: %{head: %{action: %{style: :primary}}, action: %{style: :primary}}
+          }
+      }
+
+      assert {:warning, "use one primary action per section; Hero has 2"} in messages("/", [hero])
+    end
+
     test "each issue names the section it is about" do
       [issue] = Rules.check(Directory.fetch!("/"), [hero(), band(), band(), last = band()], %{})
 
@@ -281,5 +294,20 @@ defmodule Billboard.RulesTest do
     page = %Billboard.Directory.Page{pattern: "/", label: "Home", kind: :free}
 
     assert Rules.check(page, [s(:text, %{body: "Words"})], %{}) == []
+  end
+
+  describe "actions_of/1" do
+    # Built by hand, since no shop component has every kind of action.
+    test "gives a section's list, then its single action, then its head's action" do
+      value = %{actions: [%{label: "A"}], action: %{label: "B"}, head: %{action: %{label: "C"}}}
+
+      assert Rules.actions_of(%{content: %Ash.Union{type: :hero, value: value}}) ==
+               [%{label: "A"}, %{label: "B"}, %{label: "C"}]
+    end
+
+    test "gives none for a section with no actions, or a head without one" do
+      value = %{heading: "Hi", head: %{title: "Ours"}}
+      assert Rules.actions_of(%{content: %Ash.Union{type: :hero, value: value}}) == []
+    end
   end
 end

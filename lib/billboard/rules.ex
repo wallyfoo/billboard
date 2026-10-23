@@ -216,8 +216,8 @@ defmodule Billboard.Rules do
   @doc """
   Every action `section` shows: its own list (`actions`) or single
   action (`action`), and its head's action (`head.action`). A link inside
-  any other part, such as a list item's, is left out, so a site draws it
-  as a text link.
+  any other part, such as a list item's, is left out, since a site draws
+  it as a text link.
   """
   @spec actions_of(map()) :: [map()]
   def actions_of(%{content: %Ash.Union{value: value}}) do
