@@ -60,6 +60,22 @@ defmodule Billboard.NotifierTest do
     refute_receive _
   end
 
+  test "on a site's own resource, it logs that the cache notifier belongs there instead" do
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert :ok =
+                 Billboard.Notifier.notify(%Ash.Notifier.Notification{
+                   resource: Billboard.Test.Cards,
+                   action: Ash.Resource.Info.action(Billboard.Test.Cards, :create),
+                   data: %Billboard.Test.Cards{}
+                 })
+      end)
+
+    assert log =~ "Billboard.Notifier is on Billboard.Test.Cards"
+    assert log =~ "use `simple_notifiers: [Billboard.CacheNotifier]` on it instead"
+    assert :ets.lookup(Billboard.Cache, :snapshot) == []
+  end
+
   test "page_topic/1 gives the library and each page a topic" do
     assert Shop.Pages.page_topic(nil) == "pages:shared"
     assert Shop.Pages.page_topic("/about") == "pages:page:/about"

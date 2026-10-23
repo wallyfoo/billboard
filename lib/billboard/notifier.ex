@@ -10,6 +10,10 @@ defmodule Billboard.Notifier do
 
   If telling them fails, the cache is emptied instead, so the next read
   rebuilds it rather than serving an old page.
+
+  It belongs only on the version and section resources billboard writes,
+  which carry it already. On a site's own resource it fails, and logs
+  that the site wants `Billboard.CacheNotifier` there instead.
   """
   use Ash.Notifier
 
@@ -54,6 +58,13 @@ defmodule Billboard.Notifier do
         authorize?: false,
         not_found_error?: false
       )
+
+  defp page(nil, resource, _data) do
+    raise ArgumentError,
+          "Billboard.Notifier is on #{inspect(resource)}, which isn't a page, version, or " <>
+            "section billboard writes. To refresh the cache when a site's own resource " <>
+            "changes, use `simple_notifiers: [Billboard.CacheNotifier]` on it instead"
+  end
 
   defp page(:section, resource, section) do
     case Ash.get(Billboard.Resource.related(resource, :version), section.version_id,
