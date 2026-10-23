@@ -9,6 +9,7 @@ defmodule Billboard.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :test,
+      aliases: aliases(),
       deps: deps()
     ]
   end
@@ -21,8 +22,16 @@ defmodule Billboard.MixProject do
   defp deps do
     [
       {:ash, "~> 3.33"},
+      {:ash_postgres, "~> 2.13"},
       {:spark, "~> 2.7"},
+      {:phoenix_pubsub, "~> 2.1"},
+      # Ash's policies need a SAT solver; this one is plain Elixir.
+      {:simple_sat, "~> 0.1"},
       {:sourceror, "~> 1.8", only: [:dev, :test]}
     ]
   end
+
+  # The test site's tables live in the test database, which `mix test`
+  # creates and migrates first, as a Phoenix app's alias does.
+  defp aliases, do: [test: ["ash.setup --quiet", "test"]]
 end
