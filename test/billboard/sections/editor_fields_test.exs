@@ -61,6 +61,54 @@ defmodule Billboard.Sections.EditorFieldsTest do
     end
   end
 
+  describe "the stock components' fields" do
+    setup do
+      put_site!(
+        components: [
+          Billboard.Components.Hero,
+          Billboard.Components.Band,
+          Billboard.Components.Points,
+          Billboard.Components.TextMedia,
+          Billboard.Components.News
+        ],
+        actions: Billboard.Test.Actions,
+        context: Billboard.Test.Context
+      )
+    end
+
+    test "resolve their words at the top, through a part, through a list item, and in a quote" do
+      assert {:ok, [:heading], spec} = EditorFields.words(specs(:hero), "heading")
+      assert spec[:limit] == 42
+
+      assert {:ok, [:head, :heading], spec} =
+               EditorFields.words(specs(:text_media), "head.heading")
+
+      assert spec[:limit] == 60
+
+      assert {:ok, [:points, 1, :body], spec} =
+               EditorFields.words(specs(:points), "points.1.body")
+
+      assert spec[:as] == :markdown
+      assert {:ok, [:quote, :name], _spec} = EditorFields.words(specs(:band), "quote.name")
+    end
+
+    test "refuse settings, a binding and its note, a part, a link in an item, and bad indexes" do
+      assert :error = EditorFields.words(specs(:hero), "variant")
+      assert :error = EditorFields.words(specs(:hero), "bound")
+      assert :error = EditorFields.words(specs(:hero), "bind")
+      assert :error = EditorFields.words(specs(:text_media), "head")
+      assert :error = EditorFields.words(specs(:points), "points.1")
+      assert :error = EditorFields.words(specs(:points), "points.x.body")
+      assert :error = EditorFields.words(specs(:points), "points.1.link")
+      assert :error = EditorFields.words(specs(:hero), "")
+    end
+
+    test "offer news's words for no news under More, and a hero's heading in place" do
+      assert EditorFields.more?(specs(:news)[:empty])
+      refute EditorFields.more?(specs(:hero)[:heading])
+    end
+  end
+
   describe "narrowed/1" do
     test "keeps a select to the options the site offers" do
       put_site!(options: [cards: [look: [:rows], columns: [2, 3]]])
