@@ -3,10 +3,11 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
   Checks the modules the site's answers name for billboard to use: its
   page, version, and section resources must each do the `use` that
   writes that resource, its content must do `use Billboard.Content`, its
-  starter must define `version/1`, its actions `kinds/0` and `action/1`
-  (`Billboard.Actions`), and its context must be a module that, if it
-  gives choices, says which (`Billboard.Context`). It checks only what
-  the site gives, so a site that names none of them passes.
+  starter must define `version/1`, its actions must be a module that
+  defines `kinds/0` and `action/1` (`Billboard.Actions`), and its
+  context must be a module that, if it gives choices, says which
+  (`Billboard.Context`). It checks only what the site gives, so a site
+  that names none of them passes.
 
   Like every Spark verifier, it runs once the module has compiled, and
   its errors are printed as compile warnings rather than raised, so
@@ -81,13 +82,25 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
   defp actions(_site, nil), do: nil
 
   defp actions(site, module) do
-    unless exports?(module, :kinds, 0) and exports?(module, :action, 1) do
-      error(
-        site,
-        [:actions],
-        "#{inspect(site)}'s `actions:` is #{inspect(module)}, which doesn't define kinds/0 " <>
-          "and action/1. Give it `@behaviour Billboard.Actions` and its callbacks."
-      )
+    cond do
+      not match?({:module, _}, Code.ensure_compiled(module)) ->
+        error(
+          site,
+          [:actions],
+          "#{inspect(site)}'s `actions:` is #{inspect(module)}, which isn't a module. " <>
+            "Name its `Billboard.Actions` module."
+        )
+
+      not (exports?(module, :kinds, 0) and exports?(module, :action, 1)) ->
+        error(
+          site,
+          [:actions],
+          "#{inspect(site)}'s `actions:` is #{inspect(module)}, which doesn't define kinds/0 " <>
+            "and action/1. Give it `@behaviour Billboard.Actions` and its callbacks."
+        )
+
+      true ->
+        nil
     end
   end
 

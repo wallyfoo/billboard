@@ -363,7 +363,66 @@ defmodule Billboard.SiteDslTest do
       assert error.message =~ "narrows the kinds of :cards, but lists no component with that key"
     end
 
-    test "refuse an actions module without its callbacks" do
+    test "refuse a component narrowed twice, and a page kind no page has" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.WrongKinds do
+            use Billboard.Site,
+              otp_app: :billboard,
+              components: [Billboard.Test.Note],
+              kinds: [note: [:servce], note: [:free]]
+
+            pages do
+              page "/", "Home", kind: :free
+              page "/services", "Services", kind: :service
+            end
+          end
+        end
+
+      assert [{_, errors}] = errors
+
+      assert Enum.map(errors, & &1.message) == [
+               "Billboard.SiteDslTest.WrongKinds narrows :note twice in `kinds:`. Take one out.",
+               "Billboard.SiteDslTest.WrongKinds keeps :note to the page kind :servce in " <>
+                 "`kinds:`, but no page in `pages` has that kind. Use one of :free, :service, " <>
+                 "and :library, or add a page of that kind."
+             ]
+    end
+
+    test "leave the page kinds alone on a site that writes no pages" do
+      refute_dsl_errors do
+        defmodule Elixir.Billboard.SiteDslTest.NoPagesYet do
+          use Billboard.Site,
+            otp_app: :billboard,
+            components: [Billboard.Test.Note],
+            kinds: [note: [:anything]]
+        end
+      end
+    end
+
+    test "refuse a hint for a component the site doesn't list, and a hint given twice" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.StrayHints do
+            use Billboard.Site,
+              otp_app: :billboard,
+              components: [Billboard.Test.Note],
+              palette: [hints: [cardz: "Cards.", note: "A few words.", note: "Some words."]]
+          end
+        end
+
+      assert [{_, errors}] = errors
+
+      assert Enum.map(errors, & &1.message) == [
+               "Billboard.SiteDslTest.StrayHints gives :cardz a hint in `palette: [hints: …]`, " <>
+                 "but lists no component with that key. Add the component to `components:`, " <>
+                 "or take :cardz out of `hints:`.",
+               "Billboard.SiteDslTest.StrayHints gives :note two hints in " <>
+                 "`palette: [hints: …]`. Take one out."
+             ]
+    end
+
+    test "refuse actions that aren't a module, or a module without their callbacks" do
       errors =
         dsl_errors do
           defmodule Elixir.Billboard.SiteDslTest.NoKinds do
@@ -377,6 +436,22 @@ defmodule Billboard.SiteDslTest do
       assert [{_, [error]}] = errors
 
       assert error.message =~ "doesn't define kinds/0 and action/1"
+
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoActions do
+            use Billboard.Site,
+              otp_app: :billboard,
+              components: [],
+              actions: Billboard.SiteDslTest.Nowhere
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message =~
+               "`actions:` is Billboard.SiteDslTest.Nowhere, which isn't a module. " <>
+                 "Name its `Billboard.Actions` module."
     end
 
     test "refuse a context that isn't a module, or gives choices without naming them" do
