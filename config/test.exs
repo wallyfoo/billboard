@@ -4,7 +4,7 @@ config :billboard, site: Billboard.Test.Shop
 
 # The test site's repo and its domains. Only the library's own tests have
 # a database; a site's config is its own.
-config :billboard, ecto_repos: [Billboard.Test.Repo], ash_domains: []
+config :billboard, ecto_repos: [Billboard.Test.Repo], ash_domains: [Billboard.Test.Shop.Pages]
 
 config :billboard, Billboard.Test.Repo,
   username: "postgres",

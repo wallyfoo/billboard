@@ -11,6 +11,7 @@ defmodule Billboard.Test.DataCase do
     quote do
       import Billboard.Test.DataCase
       import Billboard.Test.Env
+      import Billboard.Test.Fixtures
     end
   end
 
