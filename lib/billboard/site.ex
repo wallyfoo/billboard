@@ -35,4 +35,16 @@ defmodule Billboard.Site do
             "billboard doesn't know the site's module. Add " <>
               "`config :billboard, site: MySite.Billboard` to config/config.exs"
   end
+
+  @doc "The site's components."
+  @spec components() :: [module()]
+  def components, do: get!().components()
+
+  @doc "The component whose key is `type`. Raises for one the site doesn't list."
+  @spec component!(atom()) :: module()
+  def component!(type) when is_atom(type) do
+    Enum.find(components(), &(Billboard.Component.Info.component_key!(&1) == type)) ||
+      raise ArgumentError,
+            "the site has no component #{inspect(type)}. Add its module to the site's components/0"
+  end
 end
