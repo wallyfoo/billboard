@@ -6,6 +6,38 @@ defmodule Billboard.Component.Dsl do
   documents the options.
   """
 
+  @part %Spark.Dsl.Entity{
+    name: :part,
+    describe: "One part, such as a heading or a photograph, held in an attribute of its own.",
+    examples: ["part :head, MySite.Parts.Head"],
+    target: Billboard.Component.Part,
+    args: [:name, :type],
+    identifier: :name,
+    schema: [
+      name: [type: :atom, required: true, doc: "The attribute's name."],
+      type: [type: :module, required: true, doc: "The part's embedded resource."],
+      allow_nil?: [type: :boolean, default: true, doc: "Whether the part may be left out."],
+      description: [type: :string, doc: "The attribute's description."]
+    ]
+  }
+
+  @parts %Spark.Dsl.Entity{
+    name: :parts,
+    describe: "A list of parts, such as a row of points, held in one attribute.",
+    examples: ["parts :points, MySite.Parts.Point, min: 1, max: 3"],
+    target: Billboard.Component.Parts,
+    args: [:name, :type],
+    identifier: :name,
+    schema: [
+      name: [type: :atom, required: true, doc: "The attribute's name."],
+      type: [type: :module, required: true, doc: "Each item's embedded resource."],
+      min: [type: :non_neg_integer, doc: "The fewest items the list may hold."],
+      max: [type: :pos_integer, doc: "The most items the list may hold."],
+      allow_nil?: [type: :boolean, default: false, doc: "Whether the list may be `nil`."],
+      description: [type: :string, doc: "The attribute's description."]
+    ]
+  }
+
   @component %Spark.Dsl.Section{
     name: :component,
     describe: "What the page builder knows about this section type.",
@@ -24,6 +56,7 @@ defmodule Billboard.Component.Dsl do
       end
       """
     ],
+    entities: [@part, @parts],
     schema: [
       key: [
         type: :atom,
@@ -69,10 +102,12 @@ defmodule Billboard.Component.Dsl do
     sections: [@component],
     transformers: [
       Billboard.Component.Transformers.AddTag,
+      Billboard.Component.Transformers.AddParts,
       Billboard.Component.Transformers.AddActions
     ],
     verifiers: [
       Billboard.Component.Verifiers.VerifyTag,
-      Billboard.Component.Verifiers.VerifyPlaceholder
+      Billboard.Component.Verifiers.VerifyPlaceholder,
+      Billboard.Component.Verifiers.VerifyParts
     ]
 end

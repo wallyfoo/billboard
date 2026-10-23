@@ -48,7 +48,44 @@ defmodule Billboard.Component do
     * `placeholder` is what a new section starts with in the editor, by
       attribute. The default is `%{}`.
 
-  `Billboard.Component.Info` reads them.
+  ## Parts
+
+  A part is an embedded resource held in an attribute of the component,
+  such as a heading or a row of points. Declare them in the `component`
+  section, among the options:
+
+      part :head, MySite.Parts.Head
+      parts :points, MySite.Parts.Point, min: 1, max: 3
+
+    * `part name, type` holds one part, in
+      `attribute name, type, public?: true`. Its options are `allow_nil?`
+      (default `true`) and `description`.
+    * `parts name, type` holds a list, in
+      `attribute name, {:array, type}, public?: true, allow_nil?: false, default: []`.
+      Its options are `min` and `max`, which become the `min_length` and
+      `max_length` constraints when given, `allow_nil?` (default `false`),
+      and `description`.
+
+  A part named like an attribute the component writes doesn't compile.
+
+  Every part follows two rules, which
+  `Billboard.Component.Verifiers.VerifyParts` checks:
+
+    * **Every component and part has a destroy action**:
+      `defaults [:read, :destroy, create: :*, update: :*]`. Ash destroys
+      the old value when a list item is dropped or an optional part is
+      cleared, and raises when there is no primary destroy action.
+      Billboard adds a component's; a part writes its own.
+
+    * **A part that sits in a list has `uuid_primary_key :id`.** A list item
+      without a key is rebuilt from its params alone, so a list change made
+      on the server (`AshPhoenix.Form.add_form/3` or `remove_form/3`, then
+      submit) resets every untouched item to its defaults. With a key,
+      the item's id rides in its hidden fields, Ash matches it to the stored
+      item, and updates it; reordering is sending the ids in the new order.
+      A part used only singly, such as a photo, needs no key.
+
+  `Billboard.Component.Info` reads the options and the parts.
 
   ## What the extension adds
 
@@ -60,7 +97,8 @@ defmodule Billboard.Component do
       unless the component writes its own `defaults`. An action the
       component writes by one of those names replaces that default, and
       the others are still added. Create and update accept every public
-      attribute, the tag included.
+      attribute, the tag and the parts included.
+    * **An attribute for each part**, see Parts.
 
   ## Checks
 
@@ -73,6 +111,9 @@ defmodule Billboard.Component do
     * A `component` attribute the component writes must be
       `one_of: [key]`.
     * Every placeholder key must name an attribute.
+    * Every part must be an Ash resource with a primary destroy action,
+      and one in a `parts` list must have an `:id` primary key (see
+      Parts).
 
   ## Every component is tagged
 

@@ -15,10 +15,10 @@ defmodule Billboard.Component.Transformers.AddActions do
   `defaults`, but it doesn't document it. This makes the rule billboard's
   own, so it holds whatever Ash does.
 
-  It runs after `AddTag` and before every Ash resource transformer, so
-  Ash's `SetPrimaryActions` builds the actions, and `DefaultAccept`, which
-  Spark sorts after it, expands `:*` to every public attribute, the tag
-  included.
+  It runs after `AddTag` and `AddParts`, and before every Ash resource
+  transformer, so Ash's `SetPrimaryActions` builds the actions, and
+  `DefaultAccept`, which Spark sorts after it, expands `:*` to every
+  public attribute, the tag and the parts included.
   """
   use Spark.Dsl.Transformer
 
@@ -28,6 +28,7 @@ defmodule Billboard.Component.Transformers.AddActions do
 
   @impl true
   def after?(Billboard.Component.Transformers.AddTag), do: true
+  def after?(Billboard.Component.Transformers.AddParts), do: true
   def after?(_), do: false
 
   @impl true
