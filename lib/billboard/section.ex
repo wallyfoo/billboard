@@ -38,7 +38,8 @@ defmodule Billboard.Section do
         otp_app: unquote(site.otp_app),
         domain: unquote(site.domain),
         data_layer: AshPostgres.DataLayer,
-        authorizers: [Ash.Policy.Authorizer]
+        authorizers: [Ash.Policy.Authorizer],
+        simple_notifiers: [Billboard.Notifier]
 
       @persist {:billboard_resource, :section}
 

@@ -20,4 +20,34 @@ defmodule Billboard.Test.DataCase do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     :ok
   end
+
+  @doc """
+  Puts back the pages cache as it was when the test started. The cache is
+  shared by every test, so a test that refreshes it runs `async: false`
+  and uses this.
+  """
+  def preserve_cache(_context) do
+    snapshot = Billboard.Cache.snapshot()
+    on_exit(fn -> Billboard.Cache.put(snapshot) end)
+    :ok
+  end
+
+  @doc """
+  Runs `fun` while the database can't read `table`, and returns its result.
+
+  The table is renamed, then renamed back. The sandbox runs each query in
+  a savepoint, so the failed reads don't abort the test's transaction,
+  and that transaction's rollback undoes the renames anyway. The rename
+  locks the table until the test ends, so only `async: false` tests may
+  use this.
+  """
+  def without_table(table, fun) do
+    Billboard.Test.Repo.query!(~s(ALTER TABLE "#{table}" RENAME TO "#{table}_away"))
+
+    try do
+      fun.()
+    after
+      Billboard.Test.Repo.query!(~s(ALTER TABLE "#{table}_away" RENAME TO "#{table}"))
+    end
+  end
 end

@@ -17,7 +17,12 @@ defmodule Billboard.Domain do
   `list_live_versions/1`, `list_drafts/1`, and `get_draft/2`. On
   sections, `create_section/2`, `get_section/2`, `get_section_by_key/3`,
   `update_section/3`, `destroy_section/2`, and `place_section/3`. Each
-  has its `!` form. And `ensure_page/2`, from `Billboard.Pages`.
+  has its `!` form.
+
+  And, from `Billboard.Pages`, `ensure_page(pattern, opts)`,
+  `page_for(pattern)`, `shared_sections()`, `shared_section(key)`,
+  `subscribe()`, `subscribe_page(pattern)`, `unsubscribe_page(pattern)`,
+  `page_topic(pattern)`, and `drain_page_changes(pattern)`.
   """
 
   @doc false
@@ -57,6 +62,30 @@ defmodule Billboard.Domain do
 
       @doc "See `Billboard.Pages.ensure_page/2`."
       defdelegate ensure_page(pattern, opts \\ []), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.page_for/1`."
+      defdelegate page_for(pattern), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.shared_sections/0`."
+      defdelegate shared_sections(), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.shared_section/1`."
+      defdelegate shared_section(key), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.subscribe/0`."
+      defdelegate subscribe(), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.subscribe_page/1`."
+      defdelegate subscribe_page(pattern), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.unsubscribe_page/1`."
+      defdelegate unsubscribe_page(pattern), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.page_topic/1`."
+      defdelegate page_topic(pattern), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.drain_page_changes/1`."
+      defdelegate drain_page_changes(pattern), to: Billboard.Pages
     end
   end
 end
