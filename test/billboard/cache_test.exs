@@ -42,12 +42,19 @@ defmodule Billboard.CacheTest do
         context: Billboard.Test.Context
       )
 
+      :code.delete(Billboard.Test.Context)
+      :code.purge(Billboard.Test.Context)
+
       log = capture_log(fn -> Cache.load_site_modules() end)
 
       assert log =~ "Reading kinds/0 of the site's `actions:` module failed"
       assert log =~ "Make kinds/0 return without raising"
       assert log =~ "the kinds are elsewhere"
       refute log =~ "bindings/0"
+
+      # The context still loaded, so a stored binding's atom exists.
+      assert {:file, _} = :code.is_loaded(Billboard.Test.Context)
+      assert String.to_existing_atom("visit") in Keyword.keys(Billboard.Test.Context.bindings())
     end
   end
 

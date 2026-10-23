@@ -2,16 +2,15 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   @moduledoc """
   Checks the `editor` section: each entry edits one of the component's
   attributes, but a note, which edits nothing, and no two edit the same
-  one; `hide_when` names attributes; words edit a string; a part edits
-  a part, and a list a list of parts, each naming its part; a choice
-  names its set; several choices edit a list of strings, and there's at
-  most one set of them (`:choices`), since the editor keeps one a
-  section, in the order it was ticked; a select's options and the
-  variants' layouts are given, and are among the attribute's `one_of`
-  values when it has them; and a select's `only_on` names its options.
-  Each message names the fix, and a misspelt name is met with the
-  attribute it most likely meant. Its errors are compile warnings, as
-  every Spark verifier's are.
+  one; `hide_when` names attributes; words edit a string; a part edits a
+  part, and a list a list of parts, each naming its part; a choice names
+  its set; several choices edit a list of strings, and there's at most
+  one set of them (`:choices`), since the editor keeps one a section, in
+  the order it was ticked; a select's options and the variants' layouts
+  are given, and are among the attribute's `one_of` values when it has
+  them; and a select's `only_on` names its options. Each message names
+  the fix, and a misspelt name is met with the attribute it most likely
+  meant. Its errors are compile warnings, as every Spark verifier's are.
   """
   use Spark.Dsl.Verifier
 

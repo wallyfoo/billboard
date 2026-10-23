@@ -3,14 +3,14 @@ defmodule Billboard.Sections.Points do
   Short points side by side, in two, three, or four columns. Four
   columns are two on a middling screen and four on a wide one. In the
   rows look, each sits under a hairline. In the cards look, each is a
-  bounded card (`bb-card`), with the site's corner and no hairline, since
-  its edge already bounds it, and a card may sit on a surface of its own
-  (`Surfaces.card/1`). A look or a number of columns the site doesn't
-  offer arrives as the site's default
-  (`Billboard.SiteOptions.resolved/2`). Under a section head the points'
-  titles are `h3`s; with no head they are the section's `h2`s, set at
-  the same size. A point's link is always a text link. In two columns,
-  the points' words keep to a reading measure.
+  bounded card (`bb-card`), with the site's corner and no hairline,
+  since its edge already bounds it, and a card may sit on a surface of
+  its own (`Surfaces.card/1`). A look or a number of columns the site
+  doesn't offer arrives, by `Billboard.SiteOptions.resolved/2`, as the
+  site's default. Under a section head the points' titles are `h3`s;
+  with no head they are the section's `h2`s, set at the same size. A
+  point's link is always a text link. In two columns, the points' words
+  keep to a reading measure.
 
   In the open section, each point has its tools (`Parts.item_tools/1`),
   its link is the editor's to change, and a point without one offers to

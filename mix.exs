@@ -5,7 +5,7 @@ defmodule Billboard.MixProject do
     [
       app: :billboard,
       version: "0.3.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Colocated hooks reach a site's bundle only if billboard runs
       # LiveView's compiler itself.

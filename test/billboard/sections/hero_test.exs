@@ -30,6 +30,9 @@ defmodule Billboard.Sections.HeroTest do
 
   defp hero(attrs), do: Render.section(:hero, attrs)
 
+  defp update(component, attrs),
+    do: component |> Ash.Changeset.for_update(:update, attrs) |> Ash.update()
+
   defp product(binding \\ %{}),
     do: %{context: %{bindings: %{product: Map.merge(@product, binding)}}}
 
@@ -155,7 +158,15 @@ defmodule Billboard.Sections.HeroTest do
                Billboard.Component.build(:hero, %{heading: "Hi", bind: :elsewhere})
 
       assert Exception.message(error) =~ "this site doesn't offer “elsewhere” here"
-      assert {:ok, %{bind: :product}} = Billboard.Component.build(:hero, %{bind: :product})
+
+      assert {:ok, %{bind: :product} = stored} =
+               Billboard.Component.build(:hero, %{heading: "Hi", bind: :product})
+
+      put_site!(context: nil)
+
+      assert {:ok, %{bind: :product, heading: "Hello"}} = update(stored, %{heading: "Hello"})
+      assert {:error, error} = update(stored, %{bind: :visit})
+      assert Exception.message(error) =~ "this site doesn't offer “visit” here"
     end
   end
 

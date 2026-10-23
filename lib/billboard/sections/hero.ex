@@ -234,11 +234,11 @@ defmodule Billboard.Sections.Hero do
     end
   end
 
-  # The content's own words at `path`: in the open section, words to type
-  # into, even when empty; elsewhere, as visitors see them, which
-  # `Billboard.Sections.Words` marks with their path in the editor. A hero whose
-  # binding replaces its words hides them from the editor, so they're
-  # never typed into or marked.
+  # The content's own words at `path`: in the open section, words to
+  # type into, even when empty; elsewhere, as visitors see them, which
+  # `Billboard.Sections.Words` marks with their path in the editor. A
+  # hero whose binding replaces its words hides them from the editor, so
+  # they're never typed into or marked.
   defp own_words(hero, ctx, path, text, opts \\ []) do
     cond do
       Context.replaces_words?(hero.bind) -> markdown(text, Keyword.take(opts, [:limit]))

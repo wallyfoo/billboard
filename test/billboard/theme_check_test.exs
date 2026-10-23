@@ -63,13 +63,20 @@ defmodule Billboard.ThemeCheckTest do
       assert arbitrary_colours(class) != [], class
     end
 
+    # And an arbitrary property by its value, with or without a variant.
+    for class <- ~w|[color:white] [background-color:Crimson] [fill:rgb(0_0_0)]
+                    [--glow:oklch(0.5_0.1_20)] [border:1px_solid_red] md:hover:[color:navy]| do
+      assert arbitrary_colours(class) != [], class
+    end
+
     theme =
       ~s|text-bb-ink bg-transparent border-t-2 border-t border-dashed text-[13px] text-center
          outline-offset-2 decoration-1 stroke-none fill-current rounded-bb-card rounded-none
          font-bb-glyph bb-type-body bb-measure stroke-width="1.5" --bb-ink shadow-sm
          drop-shadow-none inset-shadow-xs text-shadow-lg from-10% via-50% to-90%
          caret-bb-ink ring-2 inset-ring-1 border-[length:var(--bb-button-border,1px)]
-         transition-[color,text-decoration-color] aspect-[4/3] text-[20px]|
+         transition-[color,text-decoration-color] aspect-[4/3] text-[20px]
+         [color:var(--bb-ink)] [text-wrap:balance] [mask-type:luminance] [--bb-gap:2px]|
 
     assert theme |> ClassWords.words() |> Enum.filter(&stock_offence?/1) == []
     assert arbitrary_colours(theme) == []
@@ -142,6 +149,9 @@ defmodule Billboard.ThemeCheckTest do
   # `stroke-width="1.5"`, not a class.
   # The longer utilities come first, so `text-shadow-white` reads as a
   # shadow's colour, not as `text-` and `shadow-white`.
+  # `from`, `via`, and `to` can match prose as well, as in "to-do" or
+  # "from-scratch", which reads as a gradient stop's colour. That fails
+  # safe: the check flags the word, and the prose is reworded.
   defp foreign_colour?(class) do
     case Regex.run(
            ~r/^(text-shadow|inset-shadow|drop-shadow|inset-ring|shadow|text|bg|border|outline|ring|decoration|accent|divide|fill|stroke|caret|placeholder|from|via|to)-(.+)$/,
@@ -241,13 +251,30 @@ defmodule Billboard.ThemeCheckTest do
   # type hint, or, after a colour utility, a named colour. The splitter
   # breaks a value at its brackets and parentheses, so these are read
   # from the text whole. A hex is the splitter's (`stock_offence?/1`).
-  defp arbitrary_colours(text) do
+  defp arbitrary_colours(text), do: arbitrary_values(text) ++ arbitrary_properties(text)
+
+  defp arbitrary_values(text) do
     for [class, utility, value] <- Regex.scan(~r/([a-z][a-z-]*)-\[([^\]\s"'`]+)\]/, text),
-        Regex.match?(~r/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix|color)\(/i, value) or
-          String.starts_with?(value, "color:") or
+        colour_function?(value) or String.starts_with?(value, "color:") or
           (Regex.match?(@colour_utility, utility) and String.downcase(value) in @named_colours),
         do: class
   end
+
+  # An arbitrary property, as in `[color:white]` or `hover:[fill:rgb(0_0_0)]`,
+  # holds a colour of its own when its value has a colour function or, as
+  # one of its words (`[border:1px_solid_red]`), a named colour, whatever
+  # the property. It starts a word, or follows a variant's colon, so a
+  # utility's arbitrary value (`text-[color:…]`) isn't read twice.
+  defp arbitrary_properties(text) do
+    for [class, _property, value] <-
+          Regex.scan(~r/(?:^|[\s"'{:])(\[([a-z-]+):([^\]]+)\])/, text, capture: :all_but_first),
+        colour_function?(value) or
+          Enum.any?(String.split(value, "_"), &(String.downcase(&1) in @named_colours)),
+        do: class
+  end
+
+  defp colour_function?(value),
+    do: Regex.match?(~r/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix|color)\(/i, value)
 
   defp foreign_vars(path, allowed) do
     ~r/var\(\s*--([\w-]+)/
