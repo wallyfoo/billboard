@@ -21,6 +21,7 @@ defmodule Billboard.Validations.SurfaceOffered do
   """
   use Ash.Resource.Validation
 
+  alias Ash.Error.Changes.InvalidAttribute
   alias Billboard.Surfaces
 
   @impl true
@@ -39,6 +40,9 @@ defmodule Billboard.Validations.SurfaceOffered do
     end
   end
 
+  # The error is an exception, not a keyword list: a part in a list is
+  # cast with the others through Ash's bulk create, which reports a
+  # keyword list as an unknown error rather than an invalid field.
   @impl true
   def validate(changeset, opts, _context) do
     field = opts[:field]
@@ -48,7 +52,11 @@ defmodule Billboard.Validations.SurfaceOffered do
          surface in Surfaces.offered(opts[:kind]) do
       :ok
     else
-      {:error, field: field, message: "“#{surface}” isn't a surface the site offers here"}
+      {:error,
+       InvalidAttribute.exception(
+         field: field,
+         message: "“#{surface}” isn't a surface the site offers here"
+       )}
     end
   end
 end

@@ -8,14 +8,23 @@ defmodule Billboard.Parts.Action.Validations.KindOffered do
   use Ash.Resource.Validation
 
   alias Ash.Changeset
+  alias Ash.Error.Changes.InvalidAttribute
 
+  # The error is an exception, not a keyword list: a part in a list is
+  # cast with the others through Ash's bulk create, which reports a
+  # keyword list as an unknown error rather than an invalid field.
   @impl true
   def validate(changeset, _opts, _context) do
     kind = Changeset.get_attribute(changeset, :kind)
 
     if Changeset.changing_attribute?(changeset, :kind) and not is_nil(kind) and
          not Billboard.Actions.offered?(kind),
-       do: {:error, field: :kind, message: "this site doesn't offer “#{kind}” here"},
+       do:
+         {:error,
+          InvalidAttribute.exception(
+            field: :kind,
+            message: "this site doesn't offer “#{kind}” here"
+          )},
        else: :ok
   end
 end

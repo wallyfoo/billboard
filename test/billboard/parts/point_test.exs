@@ -4,9 +4,16 @@ defmodule Billboard.Parts.PointTest do
 
   import Billboard.Test.Env
 
+  alias Ash.Error.Changes.InvalidAttribute
   alias Billboard.Parts.{Action, Point}
 
-  setup do: put_site!(actions: Billboard.Test.Actions)
+  setup do
+    put_site!(
+      components: [Billboard.Components.Points],
+      actions: Billboard.Test.Actions,
+      offered: [page: ["plain"], stand_out: ["loud"], card: ["plain"]]
+    )
+  end
 
   defp part!(attrs), do: Point |> Ash.Changeset.for_create(:create, attrs) |> Ash.create!()
 
@@ -24,5 +31,22 @@ defmodule Billboard.Parts.PointTest do
     assert_raise Ash.Error.Invalid, ~r/a point links to a page on this site/, fn ->
       part!(%{title: "Quiet", link: %{kind: :visit}})
     end
+  end
+
+  test "is refused as invalid in a section's list, as it is alone" do
+    assert %InvalidAttribute{field: :link} =
+             error_in_list([%{title: "Quiet", link: %{kind: :visit}}], "a point links")
+
+    assert %InvalidAttribute{field: :surface} =
+             error_in_list([%{title: "Quiet", surface: "loud"}], "“loud” isn't a surface")
+  end
+
+  # The error among a points section's whose message has `words`. A
+  # list's items are cast together, through Ash's bulk create.
+  defp error_in_list(points, words) do
+    assert {:error, %Ash.Error.Invalid{errors: errors}} =
+             Billboard.Component.build(:points, %{points: points})
+
+    Enum.find(errors, &(Exception.message(&1) =~ words))
   end
 end

@@ -7,6 +7,7 @@ defmodule Billboard.Parts.ActionTest do
 
   import Billboard.Test.Env
 
+  alias Ash.Error.Changes.InvalidAttribute
   alias Billboard.Parts.Action
 
   setup do: put_site!(components: [Billboard.Components.Hero], actions: Billboard.Test.Actions)
@@ -73,6 +74,19 @@ defmodule Billboard.Parts.ActionTest do
 
     assert {:ok, %{kind: :visit, label: "Visit us"}} = update(visit, %{label: "Visit us"})
     assert {:error, _} = update(visit, %{kind: :call})
+  end
+
+  test "is refused as invalid in a section's list, as it is alone" do
+    for {action, field, words} <- [
+          {%{label: "Out", path: "https://elsewhere"}, :path, "starting with /, such as /about"},
+          {%{kind: :fly}, :kind, "this site doesn't offer “fly” here"}
+        ] do
+      assert {:error, %Ash.Error.Invalid{errors: [error]}} =
+               Billboard.Component.build(:hero, %{heading: "Hi", actions: [action]})
+
+      assert %InvalidAttribute{field: ^field} = error
+      assert Exception.message(error) =~ words
+    end
   end
 
   test "names the site's example path when an address isn't on the site" do
