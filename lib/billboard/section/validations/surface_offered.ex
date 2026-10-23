@@ -1,8 +1,8 @@
 defmodule Billboard.Section.Validations.SurfaceOffered do
   @moduledoc """
   Keeps a section's surface to the ones the site offers its kind
-  (`Surfaces.offered/1`), or `nil`, which is the kind's default. A section
-  that takes its surface from elsewhere (`Surfaces.taken_from/2`), which a
+  (`Billboard.Surfaces.offered/1`), or `nil`, which is the kind's default. A section
+  that takes its surface from elsewhere (`Billboard.Surfaces.taken_from/2`), which a
   Shared section, the hero, and a column all do, may only be `nil`, since
   a surface of its own would never be drawn.
 

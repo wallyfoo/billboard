@@ -26,7 +26,7 @@ defmodule Billboard.Rules do
 
   A site adds its own rules, each a `Billboard.Rule`, through its site
   module's `rules/0`, and `check/3` runs them after these, so their issues
-  come last. SWAN's "never the same ground twice in a row" would be one.
+  come last. "Never the same ground twice in a row" would be one.
   `everything/1`, `type/1`, `effective_type/2`, and `actions_of/1` are
   public so a site's rules can read sections as these do.
   """
