@@ -15,7 +15,8 @@ defmodule Billboard.Cache do
   boot, or an invalidation, costs one database read rather than a broken
   page.
 
-  A site starts it in its supervision tree, after its repo and PubSub:
+  A site starts it in its supervision tree, after its repo and PubSub,
+  and before its endpoint or anything else that reads content:
 
       children = [MySite.Repo, {Phoenix.PubSub, name: MySite.PubSub}, Billboard.Cache, …]
 
@@ -144,13 +145,25 @@ defmodule Billboard.Cache do
   # every module at boot, but where code loads on demand, as under
   # `mix phx.server`, such an atom doesn't exist until its module loads,
   # and the first read of a section that holds it would fail. So the
-  # modules that name them load before anything reads content. Components
-  # and parts need nothing: Ash calls into each before it casts its
-  # attributes, which loads it.
+  # modules that name them load before anything reads content, and their
+  # lists are read once, so the atoms exist even when a site builds its
+  # lists rather than writing them out. Components and parts need
+  # nothing: Ash calls into each before it casts its attributes, which
+  # loads it.
   defp load_site_modules do
     for module <- [Billboard.Site.actions(), Billboard.Site.context()], module do
       Code.ensure_loaded(module)
     end
+
+    _ = Billboard.Actions.kinds()
+    _ = Billboard.Context.bindings()
+  rescue
+    error ->
+      Logger.warning(
+        "Loading the site's actions and context failed, so content that names their atoms " <>
+          "may not read. Make their `kinds/0` and `bindings/0` return without raising. " <>
+          Exception.message(error)
+      )
   end
 
   defp warm do
