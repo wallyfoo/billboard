@@ -1,7 +1,8 @@
 defmodule Billboard.Component do
   @moduledoc """
   A section type: an Ash embedded resource whose `component` section says
-  what the page builder knows about it.
+  what the page builder knows about it, and whose `editor` section says
+  how the page editor changes it.
 
       defmodule MySite.Banner do
         use Billboard.Component
@@ -53,6 +54,14 @@ defmodule Billboard.Component do
       attribute. The default is `%{}`. Build a new section from
       `Billboard.SiteOptions.placeholder/1`, which leaves out a value the
       site doesn't offer, so the site's default takes its place.
+    * `renderer` is the module that draws its sections, one that does
+      `use Billboard.Renderer`. Naming it makes no compile-time
+      dependency, so the component and its renderer each recompile
+      alone.
+    * `filler?` is whether its placeholder is filler, which the editor
+      warns about on a page until it's written over. The default is
+      `true`; `false` suits a placeholder that reads as finished words,
+      such as "What's on".
 
   ## Parts
 
@@ -95,6 +104,74 @@ defmodule Billboard.Component do
 
   `Billboard.Component.Info` reads the options and the parts.
 
+  ## How the editor changes it
+
+  The `editor` section says how the page editor changes the component,
+  one entry a line, in the order the editor draws them. `words` are
+  typed in place, where the section draws them; a `field` is a setting
+  in the section's controls, a note, or a part, list, or photograph the
+  editor changes. Each names the attribute it edits, but a note, which
+  edits nothing and takes a name of its own.
+
+      editor do
+        field :variant, as: :variants, options: [:text_only, :media_left, :media_right]
+        words :heading, label: "Heading", limit: 60, accent: true
+        words :lede, as: :markdown, label: "Opening lines", limit: 200
+        field :actions, as: :list, part: :action, max: 3, item_label: "action"
+        field :photo, as: :photo, ratio: "aspect-[4/3]", hide_when: [variant: [:text_only]]
+      end
+
+  `words` take `as`:
+
+    * `:text` (the default): words on one line. `label`, `hint`, `limit`
+      (a soft limit, counted on the words without their Markdown, that
+      warns but never blocks), and `accent` (a hint about italics).
+    * `:markdown`: words that may run to a few lines. `label`, `hint`,
+      and `limit`.
+
+  A `field` takes `as`, which it must give:
+
+    * `:select`: `options`, as `{label, value}`. `only_on` keeps an
+      option to pages of some kinds, such as `[visit: [:item]]`, unless
+      the field already holds it.
+    * `:variants`: the section's layouts, one for each of `options`, in
+      that order.
+    * `:toggle`: a checkbox.
+    * `:number`: `min` and `max`.
+    * `:note`: `text`, said in place of a field, and `link`, as
+      `{words, path}`, for where to change what it's about.
+    * `:binding_note`: the note the section's binding gives, with its
+      link, or nothing when the binding says nothing
+      (`Billboard.Context`).
+    * `:part`: one embedded part, `part`, such as `:head` or `:action`.
+      `except` leaves some of the part's fields out here, and `optional`
+      lets it be taken away; a part that isn't there can always be
+      added.
+    * `:list`: a list of parts, `part`, no more than `max` and no fewer
+      than `min`, with `except` as for one part.
+    * `:photo`: a photograph, which the editor's photograph tools
+      change, in the shape `ratio` gives, as a Tailwind aspect class.
+    * `:choices`: several of the site's choices (`from`, their set's
+      name, `Billboard.Context`), in the order they were picked. A
+      component offers one set of several choices at most.
+    * `:choice`: one of them, from `from`, or none, for every one.
+    * `:surface`: a card's surface, one the site offers cards
+      (`Billboard.Surfaces.card/1`), or none for its section's.
+    * `:shared`: one of the shared library's sections.
+
+  A part or list's `item_label` names one of it, as in "Add a point".
+
+  Every entry takes `label`, `hint`, `hide_when: [field: values]`, which
+  leaves it out while the named field holds one of `values`,
+  `bound: :hide`, which leaves it out while the section's binding
+  replaces its own words, and `more: true`, for words a visitor sees only
+  in a state the editor can't show, such as an empty list, which the
+  editor offers under More.
+
+  A component without an `editor` section offers nothing to change.
+  `Billboard.Component.Info.editor_fields/1` reads the entries in the
+  shape the editor takes them.
+
   ## What the extension adds
 
     * **The tag**, the `component` attribute:
@@ -135,6 +212,10 @@ defmodule Billboard.Component do
     * Every part must be an Ash resource with a primary destroy action,
       and one in a `parts` list must have an `:id` primary key (see
       Parts).
+    * Every `editor` entry but a note must name an attribute; `words`
+      must edit a string; a `:part` or `:list` must name its `part`; a
+      `:choice` or `:choices` must name its set, `from`; and a component
+      may offer one `:choices` at most.
 
   ## Every component is tagged
 
