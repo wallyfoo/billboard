@@ -35,6 +35,20 @@ defmodule Billboard.CacheTest do
 
       for module <- modules, do: assert({:file, _} = :code.is_loaded(module))
     end
+
+    test "says which of the site's lists it couldn't read, and reads the other" do
+      Billboard.Test.Env.put_site!(
+        actions: Billboard.Test.RaisingActions,
+        context: Billboard.Test.Context
+      )
+
+      log = capture_log(fn -> Cache.load_site_modules() end)
+
+      assert log =~ "Reading kinds/0 of the site's `actions:` module failed"
+      assert log =~ "Make kinds/0 return without raising"
+      assert log =~ "the kinds are elsewhere"
+      refute log =~ "bindings/0"
+    end
   end
 
   describe "page_for/1" do

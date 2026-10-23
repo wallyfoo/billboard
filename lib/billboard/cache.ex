@@ -149,30 +149,39 @@ defmodule Billboard.Cache do
   # lists are read once, so the atoms exist even when a site builds its
   # lists rather than writing them out. Components and parts need
   # nothing: Ash calls into each before it casts its attributes, which
-  # loads it.
-  defp load_site_modules do
+  # loads it. It's public so its tests can run it on the hand-written
+  # site.
+  @doc false
+  def load_site_modules do
     for module <- [Billboard.Site.actions(), Billboard.Site.context()], module do
       Code.ensure_loaded(module)
     end
 
-    _ = Billboard.Actions.kinds()
-    _ = Billboard.Context.bindings()
-  rescue
-    error ->
+    read_list("actions", "kinds/0", &Billboard.Actions.kinds/0)
+    read_list("context", "bindings/0", &Billboard.Context.bindings/0)
+  end
+
+  # Each list is read on its own, so one that fails still leaves the
+  # other's atoms made, and the warning names the one that failed.
+  defp read_list(answer, callback, read) do
+    _ = read.()
+    :ok
+  catch
+    kind, reason ->
       Logger.warning(
-        "Loading the site's actions and context failed, so content that names their atoms " <>
-          "may not read. Make their `kinds/0` and `bindings/0` return without raising. " <>
-          Exception.message(error)
+        "Reading #{callback} of the site's `#{answer}:` module failed, so content that " <>
+          "names its atoms may not read. Make #{callback} return without raising.\n" <>
+          Exception.format(kind, reason, __STACKTRACE__)
       )
   end
 
   defp warm do
     load(:always)
-  rescue
-    error ->
+  catch
+    kind, reason ->
       Logger.warning(
-        "Pages cache warm-up failed; the first read will fill it. " <>
-          Exception.message(error)
+        "Pages cache warm-up failed; the first read will fill it.\n" <>
+          Exception.format(kind, reason, __STACKTRACE__)
       )
   end
 end
