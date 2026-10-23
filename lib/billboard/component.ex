@@ -111,6 +111,12 @@ defmodule Billboard.Component do
       item, and updates it; reordering is sending the ids in the new order.
       A part used only singly, such as a photo, needs no key.
 
+  A part's own validations should return an exception, such as
+  `{:error, Ash.Error.Changes.InvalidAttribute.exception(field: :path, message: "...")}`,
+  not `{:error, field: :path, message: "..."}`: a part in a list is cast
+  with the others through Ash's bulk create, which turns a keyword error
+  into an unknown error without its field.
+
   `Billboard.Component.Info` reads the options and the parts.
 
   ## How the editor changes it

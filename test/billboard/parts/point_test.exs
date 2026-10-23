@@ -41,8 +41,8 @@ defmodule Billboard.Parts.PointTest do
              error_in_list([%{title: "Quiet", surface: "loud"}], "“loud” isn't a surface")
   end
 
-  # The error among a points section's whose message has `words`. A
-  # list's items are cast together, through Ash's bulk create.
+  # The error, among a points section's errors, whose message has
+  # `words`. A list's items are cast together, through Ash's bulk create.
   defp error_in_list(points, words) do
     assert {:error, %Ash.Error.Invalid{errors: errors}} =
              Billboard.Component.build(:points, %{points: points})
