@@ -6,7 +6,9 @@ defmodule Billboard.Sections.Words do
   section (`ctx[:edit].open` is the key of `ctx[:section]`), it is a
   `contenteditable` span run by the `InlineWords` hook, which sends what
   is typed to the section's editor as `edit_words`, with the field's
-  words path (`"head.heading"`, `"points.1.body"`).
+  words path (`"head.heading"`, `"points.1.body"`). The hook is the
+  editor's, so until the editor moves into billboard, the site's
+  LiveSocket registers it under that name.
 
   `phx-update="ignore"` keeps the server's redraws away from the span
   while it is typed in, so the caret never jumps. Its id is the section's

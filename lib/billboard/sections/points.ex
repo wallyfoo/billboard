@@ -6,10 +6,11 @@ defmodule Billboard.Sections.Points do
   bounded card (`bb-card`), with the site's corner and no hairline, since
   its edge already bounds it, and a card may sit on a surface of its own
   (`Surfaces.card/1`). A look or a number of columns the site doesn't
-  offer arrives as the site's default (`Billboard.SiteOptions.resolved/2`). Under a
-  section head the points' titles are `h3`s; with no head they are the
-  section's `h2`s, set at the same size. A point's link is always a text
-  link. In two columns, the points' words keep to a reading measure.
+  offer arrives as the site's default
+  (`Billboard.SiteOptions.resolved/2`). Under a section head the points'
+  titles are `h3`s; with no head they are the section's `h2`s, set at
+  the same size. A point's link is always a text link. In two columns,
+  the points' words keep to a reading measure.
 
   In the open section, each point has its tools (`Parts.item_tools/1`),
   its link is the editor's to change, and a point without one offers to

@@ -1,9 +1,9 @@
 import Config
 
 # The library's own build, for its tests. A site's Ash config is its own:
-# these match the backwards-compatibility settings Ash's installer writes,
-# and the ones Stylish Strands uses, so components behave here as they do
-# there. See https://hexdocs.pm/ash/backwards-compatibility-config.html
+# these match the backwards-compatibility settings Ash's installer writes
+# for a new site, so components behave here as they do there. See
+# https://hexdocs.pm/ash/backwards-compatibility-config.html
 config :ash,
   allow_forbidden_field_for_relationships_by_default: true,
   include_embedded_source_by_default?: false,

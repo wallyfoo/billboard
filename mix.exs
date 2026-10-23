@@ -4,7 +4,7 @@ defmodule Billboard.MixProject do
   def project do
     [
       app: :billboard,
-      version: "0.2.0",
+      version: "0.3.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Colocated hooks reach a site's bundle only if billboard runs

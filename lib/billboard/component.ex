@@ -226,9 +226,10 @@ defmodule Billboard.Component do
       string; a `:part` must edit a part and a `:list` a list of parts,
       each naming its `part`; a `:choice` or `:choices` must name its
       set, `from`; a `:choices` must edit `{:array, :string}`, and a
-      component may offer one at most; and a `:select` must give its
+      component may offer one at most; a `:select` must give its
       `options`, and `:variants` its layouts, each among the attribute's
-      `one_of` when it has one.
+      `one_of` when it has one; and a select's `only_on` must name its
+      options.
     * A `renderer`, when one is named, must be a module.
 
   ## Every component is tagged

@@ -54,9 +54,10 @@ defmodule Billboard.Site do
     * `resources` names its page record, versions, sections, and content
       union: modules that do `use Billboard.Page`, `Billboard.Version`,
       `Billboard.Section`, and `Billboard.Content`.
-    * `components` is its components, in palette order. The content
-      union holds them in this order. Until stock components ship, this
-      is the whole palette.
+    * `components` is its components, in palette order: the whole
+      palette, billboard's stock components (`Billboard.Components.Hero`
+      and the rest) among the site's own wherever it lists them. The
+      content union holds them in this order.
     * `surfaces`, `offered`, and `options`: see `Billboard.Surfaces` and
       `Billboard.SiteOptions`.
     * `rules` is its own page rules, each a `Billboard.Rule`, which run
