@@ -285,6 +285,7 @@ defmodule Billboard.Component.Dsl do
       Billboard.Component.Verifiers.VerifyPlaceholder,
       Billboard.Component.Verifiers.VerifyParts,
       Billboard.Component.Verifiers.VerifySurfaceKind,
-      Billboard.Component.Verifiers.VerifyEditor
+      Billboard.Component.Verifiers.VerifyEditor,
+      Billboard.Component.Verifiers.VerifyRenderer
     ]
 end

@@ -1,11 +1,16 @@
 defmodule Billboard.Component.Verifiers.VerifyEditor do
   @moduledoc """
   Checks the `editor` section: each entry edits one of the component's
-  attributes, but a note, which edits nothing; words edit a string; a
-  part or list names its part; a choice names its set; and there's at
-  most one set of several choices (`:choices`), since the editor keeps
-  one a section, in the order it was ticked. Each message names the fix.
-  Its errors are compile warnings, as every Spark verifier's are.
+  attributes, but a note, which edits nothing, and no two edit the same
+  one; `hide_when` names attributes; words edit a string; a part edits
+  a part, and a list a list of parts, each naming its part; a choice
+  names its set; several choices edit a list of strings, and there's at
+  most one set of them (`:choices`), since the editor keeps one a
+  section, in the order it was ticked; and a select's options and the
+  variants' layouts are given, and are among the attribute's `one_of`
+  values when it has them. Each message names the fix, and a misspelt
+  name is met with the attribute it most likely meant. Its errors are
+  compile warnings, as every Spark verifier's are.
   """
   use Spark.Dsl.Verifier
 
@@ -22,8 +27,8 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
     messages =
       for(
-        entry <- entries,
-        message <- problems(entry, attributes, module),
+        {entry, earlier} <- Enum.zip(entries, earlier_names(entries)),
+        message <- problems(entry, attributes, module) ++ twice(entry, earlier),
         do: {entry, message}
       ) ++ second_choices(entries)
 
@@ -40,6 +45,25 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
     if errors == [], do: :ok, else: {:error, errors}
   end
 
+  # The names of the entries before each one.
+  defp earlier_names(entries) do
+    entries
+    |> Enum.map(& &1.name)
+    |> Enum.scan([], &[&1 | &2])
+    |> then(&[[] | Enum.drop(&1, -1)])
+  end
+
+  # Spark keeps a name unique only among one kind of entry, so a `words`
+  # and a `field` could edit the same attribute.
+  defp twice(entry, earlier) do
+    if entry.name in earlier,
+      do: [
+        "`#{inspect(entry.name)}` is in `editor` twice. Give each entry an attribute of its " <>
+          "own, or take one out"
+      ],
+      else: []
+  end
+
   # The editor keeps one set of several choices a section, in the order
   # it was ticked, and draws it under one id, so a second is refused.
   defp second_choices(entries) do
@@ -52,7 +76,8 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
   defp choices(entries), do: Enum.filter(entries, &match?(%Field{as: :choices}, &1))
 
-  defp problems(%Field{as: as}, _attributes, _module) when as in @notes, do: []
+  defp problems(%Field{as: as} = entry, attributes, module) when as in @notes,
+    do: hide_when(entry, attributes, module)
 
   defp problems(entry, attributes, module) do
     name = entry.name
@@ -60,13 +85,74 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
     case Map.fetch(attributes, name) do
       :error ->
         [
-          "`#{inspect(name)}` is in `editor` but isn't an attribute of #{inspect(module)}. " <>
-            "Add `attribute #{inspect(name)}, :string`, or take it out of `editor`"
+          "`#{inspect(name)}` is in `editor` but isn't an attribute of #{inspect(module)}" <>
+            "#{did_you_mean(name, attributes)}. Add #{needs(entry)}, or take it out of `editor`"
         ]
 
       {:ok, attribute} ->
-        words(entry, attribute) ++ part(entry) ++ from(entry)
+        hide_when(entry, attributes, module) ++
+          words(entry, attribute) ++
+          part(entry) ++
+          part_attribute(entry, attribute) ++
+          from(entry) ++
+          options(entry) ++
+          one_of(entry, attribute) ++
+          choices_attribute(entry, attribute)
     end
+  end
+
+  # What an entry needs, by what it is, for a message that names the fix.
+  defp needs(%Field{as: :part, name: name}),
+    do: "`part #{inspect(name)}, MySite.Parts.Name` to `component`"
+
+  defp needs(%Field{as: :list, name: name}),
+    do: "`parts #{inspect(name)}, MySite.Parts.Name` to `component`"
+
+  defp needs(%Field{as: :photo, name: name}),
+    do: "`part #{inspect(name)}, MySite.Parts.Photo` to `component`"
+
+  defp needs(%Field{as: :choices, name: name}),
+    do: "`attribute #{inspect(name)}, {:array, :string}`"
+
+  defp needs(%Field{as: :toggle, name: name}), do: "`attribute #{inspect(name)}, :boolean`"
+  defp needs(%Field{as: :number, name: name}), do: "`attribute #{inspect(name)}, :integer`"
+
+  defp needs(%Field{as: as, name: name} = entry) when as in [:select, :variants] do
+    values =
+      case option_values(entry) do
+        [] -> "[…]"
+        values -> inspect(values)
+      end
+
+    "`attribute #{inspect(name)}, :atom, constraints: [one_of: #{values}]`"
+  end
+
+  defp needs(entry), do: "`attribute #{inspect(entry.name)}, :string`"
+
+  # The attribute a misspelt name most likely meant, if one is close.
+  defp did_you_mean(name, attributes) do
+    candidates = attributes |> Map.keys() |> List.delete(:component)
+
+    best =
+      Enum.max_by(
+        candidates,
+        &String.jaro_distance(to_string(&1), to_string(name)),
+        fn -> nil end
+      )
+
+    if best && String.jaro_distance(to_string(best), to_string(name)) >= 0.85,
+      do: " (did you mean `#{inspect(best)}`?)",
+      else: ""
+  end
+
+  defp hide_when(entry, attributes, module) do
+    for {field, _values} <- entry.hide_when || [],
+        not Map.has_key?(attributes, field),
+        do:
+          "`#{inspect(entry.name)}` hides when `#{inspect(field)}` holds some values, but " <>
+            "`#{inspect(field)}` isn't an attribute of #{inspect(module)}" <>
+            "#{did_you_mean(field, attributes)}. Name one of its attributes in `hide_when`, " <>
+            "or take it out"
   end
 
   defp words(%Words{name: name}, %{type: type}) when type != Ash.Type.String,
@@ -85,6 +171,36 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
   defp part(_entry), do: []
 
+  defp part_attribute(%Field{as: :part, name: name}, %{type: type}) do
+    if part?(type),
+      do: [],
+      else: [
+        "`#{inspect(name)}` is a part in `editor`, but it isn't a part. Add " <>
+          "`part #{inspect(name)}, MySite.Parts.Name` to `component` in place of its " <>
+          "attribute, or make it another kind of entry"
+      ]
+  end
+
+  defp part_attribute(%Field{as: :list, name: name}, %{type: type}) do
+    if match?({:array, item} when is_atom(item), type) and part?(elem(type, 1)),
+      do: [],
+      else: [
+        "`#{inspect(name)}` is a list in `editor`, but it isn't a list of parts. Add " <>
+          "`parts #{inspect(name)}, MySite.Parts.Name` to `component` in place of its " <>
+          "attribute, or make it another kind of entry"
+      ]
+  end
+
+  defp part_attribute(_entry, _attribute), do: []
+
+  # A part is an Ash resource; `Billboard.Component.Verifiers.VerifyParts`
+  # checks the rest of what it must be.
+  defp part?(type) when is_atom(type) do
+    match?({:module, _}, Code.ensure_compiled(type)) and Spark.Dsl.is?(type, Ash.Resource)
+  end
+
+  defp part?(_type), do: false
+
   defp from(%Field{as: as, from: nil, name: name}) when as in [:choice, :choices],
     do: [
       "`#{inspect(name)}` is a choice in `editor` but names no set. Add `from: :scope`, " <>
@@ -92,4 +208,73 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
     ]
 
   defp from(_entry), do: []
+
+  defp options(%Field{as: :select, options: options, name: name}) when options in [nil, []],
+    do: [
+      ~s|`#{inspect(name)}` is a select in `editor` but gives no options. | <>
+        ~s|Add `options: [{"Label", :value}, …]`|
+    ]
+
+  defp options(%Field{as: :variants, options: options, name: name}) when options in [nil, []],
+    do: [
+      "`#{inspect(name)}` is variants in `editor` but gives no layouts. " <>
+        "Add `options: [:text_only, :media_right, …]`, its layouts in order"
+    ]
+
+  defp options(_entry), do: []
+
+  # A select's or the variants' values must be ones the attribute takes,
+  # or choosing one would be refused when the section is saved.
+  defp one_of(%Field{as: as, name: name} = entry, %{constraints: constraints})
+       when as in [:select, :variants] do
+    allowed = constraints[:one_of]
+    outside = if allowed, do: Enum.uniq(option_values(entry) -- allowed), else: []
+
+    case outside do
+      [] ->
+        []
+
+      [one] ->
+        [
+          "`#{inspect(name)}` offers `#{inspect(one)}` in `editor`, which isn't among its " <>
+            "values (`one_of: #{inspect(allowed)}`). Add it to its `one_of`, or take it out " <>
+            "of `options`"
+        ]
+
+      several ->
+        [
+          "`#{inspect(name)}` offers #{in_words(several)} in `editor`, which aren't among " <>
+            "its values (`one_of: #{inspect(allowed)}`). Add them to its `one_of`, or take " <>
+            "them out of `options`"
+        ]
+    end
+  end
+
+  defp one_of(_entry, _attribute), do: []
+
+  defp option_values(%Field{as: :select, options: options}) when is_list(options),
+    do: for({_label, value} <- options, do: value)
+
+  defp option_values(%Field{as: :variants, options: options}) when is_list(options),
+    do: options
+
+  defp option_values(_entry), do: []
+
+  defp choices_attribute(%Field{as: :choices, name: name}, %{type: type})
+       when type != {:array, Ash.Type.String},
+       do: [
+         "`#{inspect(name)}` is several choices in `editor`, but it isn't a list of strings. " <>
+           "Make it `attribute #{inspect(name)}, {:array, :string}`"
+       ]
+
+  defp choices_attribute(_entry, _attribute), do: []
+
+  defp in_words(values) do
+    quoted = Enum.map(values, &"`#{inspect(&1)}`")
+
+    case quoted do
+      [a, b] -> "#{a} and #{b}"
+      _ -> Enum.join(Enum.drop(quoted, -1), ", ") <> ", and " <> List.last(quoted)
+    end
+  end
 end

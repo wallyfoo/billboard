@@ -221,10 +221,15 @@ defmodule Billboard.Component do
     * Every part must be an Ash resource with a primary destroy action,
       and one in a `parts` list must have an `:id` primary key (see
       Parts).
-    * Every `editor` entry but a note must name an attribute; `words`
-      must edit a string; a `:part` or `:list` must name its `part`; a
-      `:choice` or `:choices` must name its set, `from`; and a component
-      may offer one `:choices` at most.
+    * Every `editor` entry but a note must name an attribute, and no two
+      the same one; `hide_when` must name attributes; `words` must edit a
+      string; a `:part` must edit a part and a `:list` a list of parts,
+      each naming its `part`; a `:choice` or `:choices` must name its
+      set, `from`; a `:choices` must edit `{:array, :string}`, and a
+      component may offer one at most; and a `:select` must give its
+      `options`, and `:variants` its layouts, each among the attribute's
+      `one_of` when it has one.
+    * A `renderer`, when one is named, must be a module.
 
   ## Every component is tagged
 
