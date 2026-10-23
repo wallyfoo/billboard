@@ -71,6 +71,11 @@ defmodule Billboard.ThemeNamesTest do
     assert theme_names(~s|@doc "Never `:card`, the kind of a card"|) == []
     assert theme_names(~s|raise "a card inside a section, not of one"|) == []
     assert theme_names(~s|el.classList.add("card")|, :js) == ~w(card)
+
+    # A selector list, or a class list with code in it, isn't prose.
+    assert theme_names(~s|JS.hide(to: ".card, .wrap")|) == ~w(card wrap)
+    assert theme_names(~s|document.querySelectorAll(".measure, .card")|, :js) == ~w(measure card)
+    assert theme_names(~S|class={"card #{if @on, do: "ring-2", else: ""}"}|) == ~w(card)
   end
 
   test "it reads CSS by its utilities and selectors" do
@@ -176,19 +181,23 @@ defmodule Billboard.ThemeNamesTest do
     |> with_selector_parts()
   end
 
-  # Strings on one line, in double or single quotes. A single quote counts
-  # only with no letter before it, so the apostrophe in "the card's edge"
-  # opens nothing. A string that reads as prose, a doc or a message, holds
-  # no class: it has a backtick, or a comma or full stop and a space,
-  # which no class list has, so the library can say "a card inside a
-  # section". JS template literals, in backticks, can span lines: in a JS
-  # file, and in the scripts of an Elixir file's colocated hooks.
+  # Strings on one line, in double or single quotes, a double-quoted
+  # one taking its interpolations whole, quotes and all. A single quote
+  # counts only with no letter before it, so the apostrophe in "the
+  # card's edge" opens nothing. A string that reads as prose, a doc or a
+  # message, holds no class: it has a backtick, or a comma or full stop
+  # and a space, which no class list has, so the library can say "a card
+  # inside a section". Its interpolations are left out of that reading,
+  # since `do: "ring-2", else: ""` is code, and a string that holds a
+  # selector (".card, .wrap") is never prose. JS template literals, in
+  # backticks, can span lines: in a JS file, and in the scripts of an
+  # Elixir file's colocated hooks.
   defp literals(text, kind) do
     quoted =
-      ~r/"(?:[^"\\\n]|\\.)*"|(?<!\w)'(?:[^'\\\n]|\\.)*'(?!\w)/
+      ~r/"(?:[^"\\\n#]|#(?!\{)|#\{[^}\n]*\}|\\.)*"|(?<!\w)'(?:[^'\\\n]|\\.)*'(?!\w)/
       |> Regex.scan(text)
       |> List.flatten()
-      |> Enum.reject(&(&1 =~ ~r/`|[,.] /))
+      |> Enum.reject(&prose?/1)
 
     scripts =
       case kind do
@@ -202,6 +211,11 @@ defmodule Billboard.ThemeNamesTest do
       |> Enum.flat_map(&(~r/`(?:[^`\\]|\\.)*`/s |> Regex.scan(&1) |> List.flatten()))
 
     quoted ++ templates
+  end
+
+  defp prose?(literal) do
+    plain = String.replace(literal, ~r/#\{[^}\n]*\}/, " ")
+    plain =~ ~r/`|[,.] / and not (plain =~ ~r/(?:^["']|[\s,>+~(])[.#][a-z]/)
   end
 
   # A word's parts after a dot count too, as in a selector such as

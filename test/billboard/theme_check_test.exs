@@ -41,9 +41,11 @@ defmodule Billboard.ThemeCheckTest do
 
   test "refuses what a site's classes look like, and passes the theme's" do
     site =
-      ~s(text-white bg-slate-100 border-t-mulberry md:hover:text-aubergine/60 ring-offset-paper
+      ~s(text-white bg-slate-100 border-t-brand md:hover:text-primary/60 ring-offset-base
          divide-y-rule rounded-lg font-display font-sans type-h1 measure-body
-         surface-dark hairline-rule text-sm leading-tight --site-ink)
+         surface-dark hairline-rule text-sm leading-tight --site-ink from-white via-black
+         to-slate-900 shadow-white/10 drop-shadow-white text-shadow-black/50 caret-white
+         inset-ring-white placeholder-white)
 
     assert site
            |> ClassWords.words()
@@ -54,17 +56,31 @@ defmodule Billboard.ThemeCheckTest do
     # An arbitrary colour reads as its hex.
     assert Enum.any?(ClassWords.words("fill-[#fff]"), &stock_offence?/1)
 
+    # Or by what it is inside its brackets.
+    for class <- ~w|bg-[rgb(0_0_0)] text-[hsl(0_0%_100%)] fill-[oklch(0.5_0.1_20)]
+                    bg-[color-mix(in_oklab,var(--bb-ink)_50%,transparent)]
+                    text-[color:var(--bb-ink)] border-t-[white] md:hover:bg-[Crimson]| do
+      assert arbitrary_colours(class) != [], class
+    end
+
     theme =
-      ~s(text-bb-ink bg-transparent border-t-2 border-t border-dashed text-[13px] text-center
+      ~s|text-bb-ink bg-transparent border-t-2 border-t border-dashed text-[13px] text-center
          outline-offset-2 decoration-1 stroke-none fill-current rounded-bb-card rounded-none
-         font-bb-glyph bb-type-body bb-measure stroke-width="1.5" --bb-ink)
+         font-bb-glyph bb-type-body bb-measure stroke-width="1.5" --bb-ink shadow-sm
+         drop-shadow-none inset-shadow-xs text-shadow-lg from-10% via-50% to-90%
+         caret-bb-ink ring-2 inset-ring-1 border-[length:var(--bb-button-border,1px)]
+         transition-[color,text-decoration-color] aspect-[4/3] text-[20px]|
 
     assert theme |> ClassWords.words() |> Enum.filter(&stock_offence?/1) == []
+    assert arbitrary_colours(theme) == []
   end
 
   for file <- @stock do
     test "#{file} draws only through the theme" do
-      assert offences(Path.join(@web, unquote(file)), offence(unquote(file))) == []
+      path = Path.join(@web, unquote(file))
+
+      assert offences(path, offence(unquote(file))) == []
+      assert path |> File.read!() |> arbitrary_colours() == []
     end
   end
 
@@ -116,7 +132,7 @@ defmodule Billboard.ThemeCheckTest do
   end
 
   # A colour utility, as in `text-white`, `bg-slate-100`, or
-  # `border-t-mulberry`, whose colour isn't billboard's (`bb-…`),
+  # `border-t-brand`, whose colour isn't billboard's (`bb-…`),
   # `transparent`, `current`, or `inherit`. What follows the utility, and
   # a side (`border-t`, `divide-x`) or `ring-offset`, is a colour unless
   # it's one of the utility's other values: a size (`text-[13px]` reads
@@ -124,9 +140,11 @@ defmodule Billboard.ThemeCheckTest do
   # or a keyword (`text-center`, `border-dashed`, `outline-offset-2`).
   # A word that ends in `=` is an attribute, as in an SVG's
   # `stroke-width="1.5"`, not a class.
+  # The longer utilities come first, so `text-shadow-white` reads as a
+  # shadow's colour, not as `text-` and `shadow-white`.
   defp foreign_colour?(class) do
     case Regex.run(
-           ~r/^(text|bg|border|outline|ring|decoration|accent|divide|fill|stroke)-(.+)$/,
+           ~r/^(text-shadow|inset-shadow|drop-shadow|inset-ring|shadow|text|bg|border|outline|ring|decoration|accent|divide|fill|stroke|caret|placeholder|from|via|to)-(.+)$/,
            class
          ) do
       [_, utility, value] ->
@@ -147,7 +165,7 @@ defmodule Billboard.ThemeCheckTest do
   # is a CSS property, as in `transition-[color,text-decoration-color]`.
   defp not_colours("text"),
     do:
-      ~r/^(\d?xl|xs|sm|base|lg|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip|shadow(-.+)?|decoration-.+)$/
+      ~r/^(\d?xl|xs|sm|base|lg|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip|decoration-.+)$/
 
   defp not_colours("bg"),
     do:
@@ -165,6 +183,16 @@ defmodule Billboard.ThemeCheckTest do
   defp not_colours("accent"), do: ~r/^auto$/
   defp not_colours("divide"), do: ~r/^(solid|dashed|dotted|double|none|(x|y)-reverse)$/
   defp not_colours(fill_or_stroke) when fill_or_stroke in ~w(fill stroke), do: ~r/^none$/
+  defp not_colours("caret"), do: ~r/^auto$/
+
+  defp not_colours(shadow) when shadow in ~w(shadow inset-shadow drop-shadow text-shadow),
+    do: ~r/^(2xs|xs|sm|md|lg|xl|2xl|none|inner)$/
+
+  # A gradient stop's position, as in `from-10%`.
+  defp not_colours(stop) when stop in ~w(from via to), do: ~r/^\d+%$/
+
+  # Every other value of an inset ring or a placeholder is a colour.
+  defp not_colours(_utility), do: ~r/^$/
 
   # `border-t-2` is a width on a side, and `border-t-bb-rule` a colour on
   # one, so the side comes off before the value is read.
@@ -179,6 +207,46 @@ defmodule Billboard.ThemeCheckTest do
   defp foreign_face?(class) do
     String.starts_with?(class, "font-") and not String.starts_with?(class, "font-bb-") and
       class not in @type_utilities
+  end
+
+  # The utilities that take a colour, with a side where one may have one.
+  @colour_utility ~r/^(text-shadow|inset-shadow|drop-shadow|inset-ring|shadow|text|bg|border(-[tblrxyse])?|outline|ring(-offset)?|decoration|accent|divide(-[xy])?|fill|stroke|caret|placeholder|from|via|to)$/
+
+  # CSS's named colours, which an arbitrary value may hold, as in
+  # `bg-[white]`.
+  @named_colours ~w(aliceblue antiquewhite aqua aquamarine azure beige bisque black
+                    blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse
+                    chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan
+                    darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta
+                    darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen
+                    darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink
+                    deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen
+                    fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey
+                    honeydew hotpink indianred indigo ivory khaki lavender lavenderblush
+                    lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow
+                    lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen
+                    lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime
+                    limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid
+                    mediumpurple mediumseagreen mediumslateblue mediumspringgreen
+                    mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin
+                    navajowhite navy oldlace olive olivedrab orange orangered orchid
+                    palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff
+                    peru pink plum powderblue purple rebeccapurple red rosybrown royalblue
+                    saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue
+                    slateblue slategray slategrey snow springgreen steelblue tan teal thistle
+                    tomato turquoise violet wheat white whitesmoke yellow yellowgreen)
+
+  # The arbitrary values in `text` that hold a colour of their own: a
+  # colour function (`rgb(…)`, `oklch(…)`, `color-mix(…)`), a `color:`
+  # type hint, or, after a colour utility, a named colour. The splitter
+  # breaks a value at its brackets and parentheses, so these are read
+  # from the text whole. A hex is the splitter's (`stock_offence?/1`).
+  defp arbitrary_colours(text) do
+    for [class, utility, value] <- Regex.scan(~r/([a-z][a-z-]*)-\[([^\]\s"'`]+)\]/, text),
+        Regex.match?(~r/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix|color)\(/i, value) or
+          String.starts_with?(value, "color:") or
+          (Regex.match?(@colour_utility, utility) and String.downcase(value) in @named_colours),
+        do: class
   end
 
   defp foreign_vars(path, allowed) do
