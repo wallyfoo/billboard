@@ -86,7 +86,13 @@ defmodule Billboard.Component.Dsl do
         default: false,
         doc: "Whether it has image-left and image-right variants."
       ],
-      surface_kind: [type: :atom, default: :page, doc: "Its kind in `Billboard.Surfaces`."],
+      surface_kind: [
+        type: :atom,
+        default: :page,
+        doc:
+          "Its kind in `Billboard.Surfaces`. Never `:card`, which is the kind of a card " <>
+            "inside a section."
+      ],
       surface_from: [
         type: {:in, [nil, :library, :layout]},
         default: nil,
@@ -114,6 +120,7 @@ defmodule Billboard.Component.Dsl do
       Billboard.Component.Verifiers.VerifyTag,
       Billboard.Component.Verifiers.VerifyActions,
       Billboard.Component.Verifiers.VerifyPlaceholder,
-      Billboard.Component.Verifiers.VerifyParts
+      Billboard.Component.Verifiers.VerifyParts,
+      Billboard.Component.Verifiers.VerifySurfaceKind
     ]
 end

@@ -363,6 +363,29 @@ defmodule Billboard.ComponentTest do
                  "or take it out of the placeholder."
     end
 
+    test "refuse a section drawn as a card" do
+      {:error, error} =
+        dsl_error(fn ->
+          defmodule Elixir.Billboard.ComponentTest.CardKind do
+            use Billboard.Component
+
+            component do
+              key :card_kind
+              label "Card kind"
+              hint "A section that thinks it's a card."
+              category :paper
+              surface_kind :card
+            end
+          end
+        end)
+
+      assert error.message ==
+               "Billboard.ComponentTest.CardKind's `surface_kind` is `:card`, but `:card` is " <>
+                 "the kind of a card inside a section, not of a section, and a section needs " <>
+                 "a ground of its own. Use `:page`, `:stand_out`, or another kind the site " <>
+                 "offers its sections."
+    end
+
     test "pass a good component" do
       refute_dsl_errors do
         defmodule Elixir.Billboard.ComponentTest.Good do

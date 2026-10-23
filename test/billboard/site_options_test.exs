@@ -48,10 +48,34 @@ defmodule Billboard.SiteOptionsTest do
     end
   end
 
+  defmodule Starter do
+    @moduledoc "A component whose placeholder sets a field a site may narrow, as TextMedia's does."
+    use Billboard.Component
+
+    component do
+      key :starter
+      label "Starter"
+      hint "Starts in rows, with a few words."
+      category :paper
+      placeholder %{look: :rows, size: 2, words: "Your words"}
+    end
+
+    attributes do
+      attribute :look, :atom,
+        default: :rows,
+        public?: true,
+        constraints: [one_of: [:rows, :cards, :tiles]]
+
+      attribute :size, :integer, default: 2, public?: true, constraints: [min: 1, max: 3]
+      attribute :words, :string, public?: true
+      attribute :tags, {:array, :string}, default: [], public?: true
+    end
+  end
+
   @looks [{"Rows", :rows}, {"Cards", :cards}]
 
   setup do
-    put_site!(components: [Banner, Cards, Note, Preset, Shelf, Styled])
+    put_site!(components: [Banner, Cards, Note, Preset, Shelf, Starter, Styled])
   end
 
   describe "an offer" do
@@ -259,6 +283,66 @@ defmodule Billboard.SiteOptionsTest do
 
       assert SiteOptions.resolve(:cards, :items, [:a, :b, :c]) == [:a, :b, :c]
       assert SiteOptions.resolve(:cards, :look, :rows) == :rows
+    end
+  end
+
+  describe "placeholder/1" do
+    test "is the component's own while the site doesn't narrow it" do
+      assert SiteOptions.placeholder(:starter) == %{look: :rows, size: 2, words: "Your words"}
+    end
+
+    test "leaves out a value the site doesn't offer, so a new section takes the site's first" do
+      put_site!(options: [starter: [look: [:cards, :tiles]]])
+
+      placeholder = SiteOptions.placeholder(:starter)
+      assert placeholder == %{size: 2, words: "Your words"}
+
+      assert %Starter{look: :cards, size: 2, words: "Your words"} =
+               Starter |> Ash.Changeset.for_create(:create, placeholder) |> Ash.create!()
+    end
+
+    test "keeps a value the site offers, even when it isn't the site's first" do
+      put_site!(options: [starter: [look: [:cards, :rows], size: [3, 2]]])
+
+      placeholder = SiteOptions.placeholder(:starter)
+      assert placeholder == %{look: :rows, size: 2, words: "Your words"}
+
+      assert %Starter{look: :rows, size: 2} =
+               Starter |> Ash.Changeset.for_create(:create, placeholder) |> Ash.create!()
+    end
+
+    test "keeps a list whatever range the site offers, for the create to check" do
+      put_site!(options: [starter: [tags: 1..2]])
+      assert SiteOptions.placeholder(:starter) == %{look: :rows, size: 2, words: "Your words"}
+    end
+  end
+
+  describe "resolved/2" do
+    test "draws each field with a list offer as resolve/3 would" do
+      put_site!(options: [cards: [look: [:cards], columns: [2, 3]]])
+      content = %Cards{look: :rows, columns: 4, items: []}
+
+      assert %Cards{look: :cards, columns: 2} = SiteOptions.resolved(:cards, content)
+    end
+
+    test "keeps a value the site offers" do
+      put_site!(options: [cards: [look: [:cards, :rows], columns: [2, 3]]])
+      content = %Cards{look: :rows, columns: 3, items: []}
+
+      assert SiteOptions.resolved(:cards, content) == content
+    end
+
+    test "leaves a range's list, and a field the site doesn't name, as they are" do
+      put_site!(options: [cards: [look: [:cards], items: 1..1]])
+      items = [%Billboard.Test.Item{title: "1"}, %Billboard.Test.Item{title: "2"}]
+      content = %Cards{look: :rows, columns: 4, items: items}
+
+      assert SiteOptions.resolved(:cards, content) == %{content | look: :cards}
+    end
+
+    test "returns the content as it is for a type the site names no options for" do
+      content = %Cards{look: :rows, columns: 4, items: []}
+      assert SiteOptions.resolved(:cards, content) == content
     end
   end
 

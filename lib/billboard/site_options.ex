@@ -24,6 +24,20 @@ defmodule Billboard.SiteOptions do
   section takes the site's defaults, and a save that changes a field to a
   value the site doesn't offer is refused.
 
+  ## Starting and drawing a section
+
+  Two functions keep a section to what the site offers where the offers
+  alone can't:
+
+    * `placeholder/1` is what a new section starts with: the component's
+      placeholder, less any value the site doesn't offer, so the site's
+      default takes its place on create. The component's own placeholder
+      counts as given, and would be refused.
+    * `resolved/2` is what to draw for a section: its content, with each
+      field the site offers a list of values drawn as one it still
+      offers. It's for drawing only. A stored section keeps its value
+      until someone changes it, and the editor shows what's stored.
+
   ## Checks
 
   Reading an offer checks it against the component, and raises
@@ -42,6 +56,7 @@ defmodule Billboard.SiteOptions do
       `max_length`.
   """
 
+  alias Billboard.Component.Info
   alias Billboard.Site
 
   @typedoc "What a site offers for one field: everything, some values, or some lengths."
@@ -96,7 +111,8 @@ defmodule Billboard.SiteOptions do
   records: that one while the site offers it, and the site's default
   otherwise, so a section saved before the site narrowed the field is
   drawn with a value the site still has. A range, or a field the site
-  doesn't name, returns `value` as it is.
+  doesn't name, returns `value` as it is. `resolved/2` does this for every
+  field of a section's content at once.
   """
   @spec resolve(atom(), atom(), term()) :: term()
   def resolve(type, field, value) do
@@ -104,6 +120,57 @@ defmodule Billboard.SiteOptions do
       [first | _] = values -> if value in values, do: value, else: first
       _ -> value
     end
+  end
+
+  @doc """
+  What a new section of `type` starts with: the component's placeholder
+  (`Billboard.Component.Info.component_placeholder!/1`), without any
+  field the site offers a list of values that doesn't include the
+  placeholder's. Create then gives that field the site's default, as it
+  does any field it isn't given, where the placeholder's value would
+  count as given and be refused.
+
+  A field the site offers a range keeps its list, for create to check.
+  """
+  @spec placeholder(atom()) :: map()
+  def placeholder(type) when is_atom(type) do
+    placeholder = type |> Site.component!() |> Info.component_placeholder!()
+
+    Enum.reduce(narrowed(type), placeholder, fn
+      {field, [_ | _] = values}, placeholder ->
+        case Map.fetch(placeholder, field) do
+          {:ok, value} ->
+            if value in values, do: placeholder, else: Map.delete(placeholder, field)
+
+          :error ->
+            placeholder
+        end
+
+      {_field, %Range{}}, placeholder ->
+        placeholder
+    end)
+  end
+
+  @doc """
+  The component struct `content`, of `type`, as it's drawn: each field
+  the site offers a list of values set to `resolve/3`'s value, so a value
+  the site has stopped offering is drawn as its default. Fields it offers
+  a range, and fields it doesn't name, are left as they are.
+
+  It's for drawing only. A stored section keeps its value until someone
+  changes it, so don't save what this returns, or give it to the editor.
+  """
+  @spec resolved(atom(), struct()) :: struct()
+  def resolved(type, %_{} = content) when is_atom(type) do
+    Enum.reduce(narrowed(type), content, fn
+      {field, [first | _] = values}, content ->
+        if Map.fetch!(content, field) in values,
+          do: content,
+          else: Map.replace!(content, field, first)
+
+      {_field, %Range{}}, content ->
+        content
+    end)
   end
 
   @doc """
@@ -223,10 +290,15 @@ defmodule Billboard.SiteOptions do
 
   defp describe(error), do: inspect(error)
 
-  defp show(value) when is_binary(value) or is_atom(value) or is_number(value),
+  # A value as a message says it: text, atoms, and numbers plainly, and
+  # anything else inspected. `Billboard.Changes.SiteOptions` says refused
+  # values the same way.
+  @doc false
+  @spec show(term()) :: String.t()
+  def show(value) when is_binary(value) or is_atom(value) or is_number(value),
     do: to_string(value)
 
-  defp show(value), do: inspect(value)
+  def show(value), do: inspect(value)
 
   defp list?(attribute), do: match?({:array, _}, attribute.type)
 

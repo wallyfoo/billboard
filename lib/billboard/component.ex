@@ -44,12 +44,15 @@ defmodule Billboard.Component do
     * `mirror?` is whether it has image-left and image-right variants.
       The default is `false`.
     * `surface_kind` is its kind in `Billboard.Surfaces`, which says the
-      surfaces it may take. The default is `:page`.
+      surfaces it may take. The default is `:page`. It can't be `:card`,
+      which is the kind of a card inside a section, not of a section.
     * `surface_from` is where it takes its surface from when it doesn't
       choose one: `nil` (the default) for its own or its parent's,
       `:library` for a library section's, or `:layout` for the layout's.
     * `placeholder` is what a new section starts with in the editor, by
-      attribute. The default is `%{}`.
+      attribute. The default is `%{}`. Build a new section from
+      `Billboard.SiteOptions.placeholder/1`, which leaves out a value the
+      site doesn't offer, so the site's default takes its place.
 
   ## Parts
 
@@ -127,6 +130,8 @@ defmodule Billboard.Component do
     * It must have a primary read, create, update, and destroy action,
       which matters only when it writes its own `defaults`.
     * Every placeholder key must be one the primary create accepts.
+    * `surface_kind` can't be `:card`, since a section can't be drawn on
+      a card's kind.
     * Every part must be an Ash resource with a primary destroy action,
       and one in a `parts` list must have an `:id` primary key (see
       Parts).

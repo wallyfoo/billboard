@@ -36,7 +36,9 @@ defmodule Billboard.Changes.SiteOptions do
   checked only when it changes. A section keeps a value the site has
   stopped offering, so editing its words never fails over a choice
   nobody made just now; its renderer draws what the site still offers in
-  its place (`Billboard.SiteOptions.resolve/3`). For the same reason a
+  its place (`Billboard.SiteOptions.resolved/2`). A new section built
+  from `Billboard.SiteOptions.placeholder/1` is never refused for its
+  placeholder, since that leaves out what the site doesn't offer. For the same reason a
   list the site has since narrowed still saves an edit to one of its
   items, and may shrink towards the range, but never grows further from
   it.
@@ -111,15 +113,14 @@ defmodule Billboard.Changes.SiteOptions do
 
   defp refusal(values, changeset, field) do
     case Changeset.get_attribute(changeset, field) do
-      nil -> nil
-      value -> if value not in values, do: "this site doesn't offer “#{show(value)}” here"
+      nil ->
+        nil
+
+      value ->
+        if value not in values,
+          do: "this site doesn't offer “#{SiteOptions.show(value)}” here"
     end
   end
-
-  defp show(value) when is_binary(value) or is_atom(value) or is_number(value),
-    do: to_string(value)
-
-  defp show(value), do: inspect(value)
 
   defp count(nil), do: 0
   defp count(list) when is_list(list), do: length(list)
