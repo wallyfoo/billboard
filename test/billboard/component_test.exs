@@ -275,7 +275,42 @@ defmodule Billboard.ComponentTest do
       end
     end
 
-    test "refuse a placeholder key that create doesn't accept" do
+    test "refuse a public placeholder key that a hand-written create leaves out" do
+      {:error, error} =
+        dsl_error(fn ->
+          defmodule Elixir.Billboard.ComponentTest.NarrowCreate do
+            use Billboard.Component
+
+            component do
+              key :narrow
+              label "Narrow"
+              hint "Takes only its word."
+              category :paper
+              placeholder %{size: 3}
+            end
+
+            actions do
+              create :create do
+                primary? true
+                accept [:word]
+              end
+            end
+
+            attributes do
+              attribute :word, :string, public?: true
+              attribute :size, :integer, public?: true
+            end
+          end
+        end)
+
+      assert error.message ==
+               "`:size` is in the placeholder, but " <>
+                 "Billboard.ComponentTest.NarrowCreate's create doesn't accept it, and a new " <>
+                 "section is built through create. Add it to the create's `accept`, or take " <>
+                 "it out of the placeholder."
+    end
+
+    test "refuse a private placeholder key" do
       {:error, error} =
         dsl_error(fn ->
           defmodule Elixir.Billboard.ComponentTest.PrivatePlaceholder do

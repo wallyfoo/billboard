@@ -19,10 +19,20 @@ defmodule Billboard.Rule do
       defmodule MySite.Rules do
         @behaviour Billboard.Rule
 
+        # Compares the surface each section is drawn on, so `nil`, or a
+        # name the site has stopped offering, counts as its kind's default.
         @impl true
         def check(_page, sections, _shared) do
-          for [a, b] <- Enum.chunk_every(sections, 2, 1, :discard), a.surface == b.surface,
-              do: Billboard.Rule.error(b, "two sections in a row can't share a ground")
+          sections
+          |> Enum.map(&{&1, Billboard.Surfaces.resolve(&1.content.type, &1.surface)})
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.flat_map(fn
+            [{_, ground}, {section, ground}] ->
+              [Billboard.Rule.error(section, "two sections in a row can't share a ground")]
+
+            _ ->
+              []
+          end)
         end
       end
   """

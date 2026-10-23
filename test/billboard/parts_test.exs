@@ -1,4 +1,7 @@
 defmodule Billboard.PartsTest do
+  # Creates read the site's options from app env, but this module never
+  # changes it, and ExUnit runs the modules that do (async: false) only
+  # once the async ones have finished.
   use ExUnit.Case, async: true
 
   import Spark.Test

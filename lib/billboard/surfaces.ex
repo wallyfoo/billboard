@@ -137,7 +137,8 @@ defmodule Billboard.Surfaces do
   @doc """
   Where a section takes its surface from when it can't choose one, or
   `nil` when it chooses its own. `type` is its content's type, and
-  `parent_id` its parent's, which only a column has.
+  `parent_id` its parent's, which only a column has. Without a parent, it
+  raises for a type the site has no component for, as `kind/1` does.
   """
   @spec taken_from(atom(), String.t() | nil) :: source() | nil
   def taken_from(_type, parent_id) when is_binary(parent_id), do: :parent
@@ -145,7 +146,11 @@ defmodule Billboard.Surfaces do
   def taken_from(type, nil) when is_atom(type),
     do: type |> Site.component!() |> Info.component_surface_from!()
 
-  @doc "Whether a section of `type`, under `parent_id`, chooses its own surface."
+  @doc """
+  Whether a section of `type`, under `parent_id`, chooses its own surface.
+  Without a parent, it raises for a type the site has no component for,
+  as `kind/1` does.
+  """
   @spec choosable?(atom(), String.t() | nil) :: boolean()
   def choosable?(type, parent_id), do: taken_from(type, parent_id) == nil
 end

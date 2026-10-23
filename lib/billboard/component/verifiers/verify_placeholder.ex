@@ -2,8 +2,9 @@ defmodule Billboard.Component.Verifiers.VerifyPlaceholder do
   @moduledoc """
   Checks that every key of the placeholder is one the component's primary
   create accepts, so a new section, which is built through create, never
-  starts with a field it can't hold. A key that isn't an attribute at all
-  gets its own message. Its error is a compile warning, as `VerifyTag`'s
+  starts with a field it can't hold. The message names the fix: add the
+  attribute, make it public, or add it to a hand-written create's
+  `accept`. Its error is a compile warning, as `VerifyTag`'s
   is.
 
   A component with no primary create is left to `VerifyActions`.
@@ -32,13 +33,20 @@ defmodule Billboard.Component.Verifiers.VerifyPlaceholder do
   end
 
   defp message(dsl_state, module, field) do
-    if Ash.Resource.Info.attribute(dsl_state, field) do
-      "`#{inspect(field)}` is in the placeholder, but #{inspect(module)}'s create doesn't " <>
-        "accept it, and a new section is built through create. Make the attribute " <>
-        "`public?: true`, or take it out of the placeholder."
-    else
-      "`#{inspect(field)}` is in the placeholder but isn't an attribute of " <>
-        "#{inspect(module)}. Add the attribute, or take it out of the placeholder."
+    case Ash.Resource.Info.attribute(dsl_state, field) do
+      nil ->
+        "`#{inspect(field)}` is in the placeholder but isn't an attribute of " <>
+          "#{inspect(module)}. Add the attribute, or take it out of the placeholder."
+
+      %{public?: false} ->
+        "`#{inspect(field)}` is in the placeholder, but #{inspect(module)}'s create doesn't " <>
+          "accept it, and a new section is built through create. Make the attribute " <>
+          "`public?: true`, or take it out of the placeholder."
+
+      %{public?: true} ->
+        "`#{inspect(field)}` is in the placeholder, but #{inspect(module)}'s create doesn't " <>
+          "accept it, and a new section is built through create. Add it to the create's " <>
+          "`accept`, or take it out of the placeholder."
     end
   end
 
