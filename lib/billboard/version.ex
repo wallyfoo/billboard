@@ -143,7 +143,10 @@ defmodule Billboard.Version do
           public? true
         end
 
+        # Named, since Ash would otherwise derive it from this module's
+        # name, which is the site's.
         has_many :sections, unquote(site.resources[:section]) do
+          destination_attribute :version_id
           filter expr(is_nil(unquote(parent_id)))
           sort position: :asc
           public? true
