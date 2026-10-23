@@ -17,7 +17,7 @@ defmodule Billboard.Site do
             content: Pages.Content
           ],
           components: [MySite.Sections.Hero, MySite.Sections.Faq],
-          surfaces: [%{name: "paper", label: "Paper"}, %{name: "band", label: "Aubergine"}],
+          surfaces: [%{name: "paper", label: "Paper"}, %{name: "band", label: "Band"}],
           offered: [page: ["paper"], stand_out: ["band"], card: []],
           options: [points: [look: [:rows], columns: [3, 2], points: 1..3]],
           rules: [MySite.SiteRules],
@@ -141,7 +141,7 @@ defmodule Billboard.Site do
           owned: %{String.t() => atom()}
         ]
 
-  @doc "The site's components, stock and its own, in palette order."
+  @doc "The site's components, in palette order."
   @callback components() :: [module()]
 
   @doc "The site's surfaces, in order. The first is the page's own."

@@ -5,11 +5,13 @@ defmodule Billboard.Section.Validations.AnchorAvailable do
   the skip link's target), the Show all buttons' (`…-show-all`), the ids
   made from section keys (`section-…`, see `Billboard.Section.dom_id/1`),
   and the page editor's (`editor-bar`, `edit-…`, `open-…`, `words-…`,
-  and the like), which share a page with the sections it draws; and the
-  site's own, from its `reserved_ids:` (`Billboard.Site`), such as its
-  header's and its sections' rows. A component may take an id the site
-  says it owns. Two elements with one id would break in-page links, and
-  the scripts and tests that find them.
+  and the like), which share a page with the sections it draws
+  (billboard will draw the editor and the Show all buttons once the
+  editor moves into the library); and the site's own, from its
+  `reserved_ids:` (`Billboard.Site`), such as its header's and its
+  sections' rows. A component may take an id the site says it owns.
+  Two elements with one id would break in-page links, and the scripts
+  and tests that find them.
 
   It also keeps an anchor to one section of a version. The `unique_anchor`
   identity holds that in the database, but a clash found there aborts the
@@ -21,9 +23,10 @@ defmodule Billboard.Section.Validations.AnchorAvailable do
 
   require Ash.Query
 
-  # What billboard draws itself: the hero (`page-hero`, and `main`, the
-  # skip link's target), Show all buttons, the ids made from section
-  # keys (`Billboard.Section.dom_id/1`), and the page editor's own.
+  # What billboard draws, or will once the editor moves into the
+  # library: the hero (`page-hero`, and `main`, the skip link's target),
+  # Show all buttons, the ids made from section keys
+  # (`Billboard.Section.dom_id/1`), and the page editor's own.
   @taken ~w(main page-hero edit-canvas editor-bar page-issues page-picker draft-status
             commit-changes discard-changes mode-edit mode-view)
   @prefixes ~w(section- edit- open- words-)

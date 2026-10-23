@@ -1,5 +1,8 @@
 defmodule Billboard.Test.Band do
-  @moduledoc "A stand-out section, at most two to a page, which the library may hold too."
+  @moduledoc """
+  A stand-out section, at most two to a page, which the library may hold
+  too. Its one action is a single part with an id.
+  """
   use Billboard.Component
 
   component do
@@ -11,6 +14,8 @@ defmodule Billboard.Test.Band do
     max 2
     surface_kind :stand_out
     placeholder %{heading: "Your band"}
+
+    part :action, Billboard.Test.Action
   end
 
   attributes do

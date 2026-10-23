@@ -1,7 +1,7 @@
 defmodule Billboard.Test.Cards do
   @moduledoc """
   A component with a part and a list of parts, and settings a site can
-  narrow, as Points has: a `look` with `one_of`, and bounded `columns`.
+  narrow: a `look` with `one_of`, and bounded `columns`.
   """
   use Billboard.Component
 

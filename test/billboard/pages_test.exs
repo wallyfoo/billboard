@@ -111,17 +111,24 @@ defmodule Billboard.PagesTest do
         items: [%{title: "Book"}, %{title: "Visit"}]
       })
 
+      section_fixture(draft, :band, %{heading: "Come by", action: %{label: "Directions"}})
+
       {:ok, live} = Shop.Pages.commit_page("/", @opts)
       {:ok, next} = Shop.Pages.edit_page("/", @opts)
 
-      before = List.last(load(live).sections)
-      now = List.last(load(next).sections)
+      [cards_before, band_before] = Enum.take(load(live).sections, -2)
+      [cards_now, band_now] = Enum.take(load(next).sections, -2)
 
-      assert now.key == before.key
-      assert now.id != before.id
-      assert item_ids(now) == item_ids(before)
-      # The shop has no single part with an id; its head part still survives.
-      assert now.content.value.head.title == "Ask"
+      assert cards_now.key == cards_before.key
+      assert cards_now.id != cards_before.id
+      assert item_ids(cards_now) == item_ids(cards_before)
+      assert cards_now.content.value.head.title == "Ask"
+
+      # A single part keeps its id too.
+      assert band_now.key == band_before.key
+      assert %{id: id} = band_before.content.value.action
+      assert is_binary(id)
+      assert band_now.content.value.action.id == id
     end
 
     test "a starter's section that isn't the site's section struct is refused, naming the fix" do
@@ -145,6 +152,11 @@ defmodule Billboard.PagesTest do
 
       assert action_ids(to) == action_ids(from)
       assert action_ids(to) == [Shop.Starter.shop_now()]
+
+      # A single part keeps its id too: the library's band's action.
+      {:ok, library} = Shop.Pages.edit_page(nil, @opts)
+      assert [%{content: %{type: :band}} = band] = load(library).sections
+      assert band.content.value.action.id == Shop.Starter.visit()
     end
 
     test "returns the same draft until it is committed or discarded" do
