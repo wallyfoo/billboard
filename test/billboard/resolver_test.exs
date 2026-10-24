@@ -20,6 +20,15 @@ defmodule Billboard.ResolverTest do
     def fetch(_content, _context, _loaded), do: :none
   end
 
+  # A data module that answers with data but loses what the page has read.
+  defmodule LostLoaded do
+    @behaviour Billboard.Data
+
+    @impl true
+    def fetch(%Reviews{}, _context, _loaded), do: {:ok, ["a review"], nil}
+    def fetch(_content, _context, _loaded), do: :none
+  end
+
   # A data module whose reviews are the page's context.
   defmodule ContextData do
     @behaviour Billboard.Data
@@ -157,7 +166,20 @@ defmodule Billboard.ResolverTest do
       ~s(Billboard.ResolverTest.BadData.fetch/3 returned {:ok, ["a review"]} for section "r". ) <>
         "Return `{:ok, value, loaded}` (`Billboard.Data.once/3` gives one) or `:none`."
 
-    assert_raise RuntimeError, message, fn ->
+    assert_raise ArgumentError, message, fn ->
+      Resolver.resolve(version(sections))
+    end
+  end
+
+  test "raises, naming the fix, when the data module loses what the page has read" do
+    sections = [s("r", :reviews)]
+    put_site!(data: LostLoaded)
+
+    message =
+      ~s(Billboard.ResolverTest.LostLoaded.fetch/3 returned {:ok, ["a review"], nil} for section "r". ) <>
+        "Return `{:ok, value, loaded}` (`Billboard.Data.once/3` gives one) or `:none`."
+
+    assert_raise ArgumentError, message, fn ->
       Resolver.resolve(version(sections))
     end
   end

@@ -25,12 +25,12 @@ defmodule Billboard.Data do
   page's context (the map `Billboard.Context` describes), and what this
   page has read already, and returns `{:ok, value, loaded}`, the
   section's data with what it read, or `:none` for a section that draws
-  none. Anything else raises, naming the section.
+  none. Anything else raises `ArgumentError`, naming the section.
 
   `once/3` reads a thing the first time a page asks for it, and reuses
-  it after, as the section's data. `cached/3` does the same but hands
-  the thing back rather than answering, for a section whose data is
-  made from a shared read. Here news sections of any limit share one
+  it after, as the section's data: it returns `{:ok, value, loaded}`.
+  `cached/3` does the same but returns `{value, loaded}`, for a section
+  whose data is made from a shared read. Here news sections of any limit share one
   read of the six latest posts, the most a section shows, where `once/3`
   above reads once per limit:
 

@@ -44,7 +44,8 @@ defmodule Billboard.Resolver do
             {result, loaded}
 
           other ->
-            raise "#{inspect(data)}.fetch/3 returned #{inspect(other)} for section #{inspect(key)}. " <>
+            raise ArgumentError,
+                  "#{inspect(data)}.fetch/3 returned #{inspect(other)} for section #{inspect(key)}. " <>
                     "Return `{:ok, value, loaded}` (`Billboard.Data.once/3` gives one) or `:none`."
         end
       end)

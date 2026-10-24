@@ -1,10 +1,10 @@
 defmodule Billboard.Components.News do
   @moduledoc """
-  The latest `limit` news posts, under a `head` (`Billboard.Parts.Head`).
-  `empty` is shown when there are none. The posts are the site's, given
-  by section key in the page's data (`Billboard.Sections.News` lists
-  what each holds). Its placeholder, "What's on", reads as finished
-  words, so it isn't filler.
+  The latest `limit` news posts, under a `head`
+  (`Billboard.Parts.Head`). `empty` is shown when there are none. The
+  posts are the site's, given by section key in the page's data
+  (`Billboard.Sections.News` lists what each holds). Its placeholder,
+  "What's on", reads as finished words, so it isn't filler.
 
   Billboard adds `component`, the union's tag, always `:news`;
   `Billboard.Component` explains why every component has one.
