@@ -25,11 +25,14 @@ defmodule Billboard.ThemeCheckTest do
 
   # The stock files, under lib/billboard/sections: the stock renderers,
   # and the parts, blocks, words, buttons, glyphs, noise, and icons
-  # they're drawn from. The check reads their prose too, so their
-  # comments and docs name the role, not a site's class.
+  # they're drawn from, and the page, `lib/billboard/sections.ex`, which
+  # sits beside that directory, not in it (`../sections.ex`), since it's
+  # `Billboard.Sections` itself. The check reads their prose too, so
+  # their comments and docs name the role, not a site's class.
   @web Path.expand("../../lib/billboard/sections", __DIR__)
   @stock ~w(buttons.ex voronoi.ex glyph.ex icons.ex blocks.ex words.ex parts.ex
-            hero.ex band.ex points.ex text_media.ex details.ex reviews.ex news.ex)
+            hero.ex band.ex points.ex text_media.ex details.ex reviews.ex news.ex
+            columns.ex shared.ex ../sections.ex)
 
   # Tailwind's own type utilities, which set a size, weight, case,
   # tracking, leading, or style the theme's type roles should set.

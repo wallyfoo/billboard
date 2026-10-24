@@ -1,5 +1,5 @@
 defmodule Billboard.Test.Text do
-  @moduledoc "Words, the one component that fits in a column."
+  @moduledoc "Words, the one component of the shop's own that fits in a column, drawn by `Billboard.Test.TextRenderer`."
   use Billboard.Component
 
   component do
@@ -7,6 +7,7 @@ defmodule Billboard.Test.Text do
     label "Text"
     hint "A few words."
     category :paper
+    renderer Billboard.Test.TextRenderer
     column? true
     placeholder %{body: "Your words"}
   end

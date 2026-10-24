@@ -27,7 +27,10 @@ defmodule Billboard.Renderer do
   `glyph/1` draws a small sketch of it for the palette, given `section`,
   `content`, and `library`. `empty?/3`, if it has one, says whether a
   section draws nothing for a visitor, given its content, its data, and
-  `ctx`, so the editor can draw a stand-in in its place.
+  `ctx`, so the editor can draw a stand-in in its place, and
+  `nothing_to_show/2`, given its content and `ctx`, says why, after
+  "Nothing to show yet:", as in "there are no published reviews.".
+  `Billboard.Sections.page/1` asks both.
 
   A stock renderer draws only through billboard's theme (`theme.css`):
   its colours, type, corners, and measures. A site's may use any class.
@@ -42,7 +45,10 @@ defmodule Billboard.Renderer do
   @doc "Whether the section draws nothing for a visitor."
   @callback empty?(content :: struct(), data :: term(), ctx :: map()) :: boolean()
 
-  @optional_callbacks empty?: 3
+  @doc ~S|Why the section draws nothing, after "Nothing to show yet:", for the editor's stand-in.|
+  @callback nothing_to_show(content :: struct(), ctx :: map()) :: String.t()
+
+  @optional_callbacks empty?: 3, nothing_to_show: 2
 
   @doc false
   defmacro __using__(_opts) do

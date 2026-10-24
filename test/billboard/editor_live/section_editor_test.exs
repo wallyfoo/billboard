@@ -881,10 +881,13 @@ defmodule Billboard.EditorLive.SectionEditorTest do
       assert %{label: "Your link", path: "/"} = hd(content("/about", "story").points).link
     end
 
-    test "each of Two columns' columns edits on its own" do
+    test "two columns and each of its columns edit on their own" do
       about!()
       [left, _right] = section_of("/about", :columns).children
       lv = open("/about", "visit")
+
+      pick_variant(lv, "wide_left")
+      assert content("/about", "visit").variant == :wide_left
 
       render_click(lv, "open", %{"key" => left.key})
       assert has_element?(lv, "#section-editor[data-section='#{left.key}']")

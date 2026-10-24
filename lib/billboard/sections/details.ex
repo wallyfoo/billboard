@@ -139,6 +139,9 @@ defmodule Billboard.Sections.Details do
   """
   def empty?(content, _data, ctx), do: is_nil(content.head) and shown(content, ctx) == []
 
+  @doc "What the editor's stand-in says when `render/1` draws nothing."
+  def nothing_to_show(_content, _ctx), do: "none of its details show on this page."
+
   # The details this page shows, each with its place among them all:
   # every one, in the open section.
   defp shown(content, ctx) do

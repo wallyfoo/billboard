@@ -6,13 +6,14 @@ defmodule Billboard.Test.Shop do
   palette with `Billboard.Test.Env.put_shop!/1`.
 
   It's on billboard's stock components, with two of its own, Cards and
-  Text, and its own Two columns and Shared. Its `kinds:` keep the hero
-  off the library, and the band and the points to free pages and the
-  library. Its action kinds and context are the test site's
-  (`Billboard.Test.Actions` and `Billboard.Test.Context`), and its
-  reviews and news are a test's own (`Billboard.Test.Data`). Its pages: a
-  free home page and about page, an item page whose kind takes no Two
-  columns, a fixed terms page, and the library.
+  Text. Its `kinds:` keep the hero off the library, the band and the
+  points to free pages and the library, Two columns to free pages, and
+  Shared to free and item pages. Its action kinds and context are the
+  test site's (`Billboard.Test.Actions` and `Billboard.Test.Context`),
+  its reviews and news are a test's own (`Billboard.Test.Data`), and its
+  chrome is `Billboard.Test.Layout`. Its pages: a free home page and
+  about page, an item page whose kind takes no Two columns, a fixed
+  terms page, and the library.
   """
   alias Billboard.Test
 
@@ -37,8 +38,8 @@ defmodule Billboard.Test.Shop do
       Billboard.Components.Details,
       Billboard.Components.Reviews,
       Billboard.Components.News,
-      Test.Columns,
-      Test.Shared
+      Billboard.Components.Columns,
+      Billboard.Components.Shared
     ],
     surfaces: [%{name: "plain", label: "Plain"}, %{name: "loud", label: "Loud"}],
     offered: [page: ["plain"], stand_out: ["loud"], card: []],
@@ -46,7 +47,14 @@ defmodule Billboard.Test.Shop do
     actions: Test.Actions,
     context: Test.Context,
     data: Test.Data,
-    kinds: [hero: [:free, :item, :fixed], band: [:free, :library], points: [:free, :library]],
+    layout: Test.Layout,
+    kinds: [
+      hero: [:free, :item, :fixed],
+      band: [:free, :library],
+      points: [:free, :library],
+      columns: [:free],
+      shared: [:free, :item]
+    ],
     reserved_ids: [
       ids: ~w(shop-header),
       prefixes: ~w(item-),

@@ -433,7 +433,8 @@ defmodule Billboard.ComponentTest do
 
   describe "build/2 and build!/2" do
     test "returns a component with what it's given, and its defaults applied" do
-      assert %Billboard.Test.Columns{variant: :even} = Billboard.Component.build!(:columns, %{})
+      assert %Billboard.Components.Columns{variant: :even} =
+               Billboard.Component.build!(:columns, %{})
 
       assert %Billboard.Components.Hero{heading: "Hi"} =
                Billboard.Component.build!(:hero, %{heading: "Hi"})

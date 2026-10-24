@@ -6,9 +6,10 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
   starter must define `version/1`, its actions must be a module that
   defines `kinds/0` and `action/1` (`Billboard.Actions`), its context
   must be a module that, if it gives choices, says which
-  (`Billboard.Context`), and its data must be a module that defines
-  `fetch/3` (`Billboard.Data`). It checks only what the site gives, so a site
-  that names none of them passes.
+  (`Billboard.Context`), its data must be a module that defines
+  `fetch/3` (`Billboard.Data`), and its layout must be a module that
+  defines `page/1` (`Billboard.Layout`). It checks only what the site
+  gives, so a site that names none of them passes.
 
   Like every Spark verifier, it runs once the module has compiled, and
   its errors are printed as compile warnings rather than raised, so
@@ -33,7 +34,8 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
         starter(site, answers[:starter]),
         actions(site, answers[:actions]),
         context(site, answers[:context]),
-        data(site, answers[:data])
+        data(site, answers[:data]),
+        layout(site, answers[:layout])
       ]
       |> Enum.reject(&is_nil/1)
 
@@ -159,6 +161,31 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
           [:data],
           "#{inspect(site)}'s `data:` is #{inspect(module)}, which doesn't define fetch/3. " <>
             "Give it `@behaviour Billboard.Data` and its callback."
+        )
+
+      true ->
+        nil
+    end
+  end
+
+  defp layout(_site, nil), do: nil
+
+  defp layout(site, module) do
+    cond do
+      not match?({:module, _}, Code.ensure_compiled(module)) ->
+        error(
+          site,
+          [:layout],
+          "#{inspect(site)}'s `layout:` is #{inspect(module)}, which isn't a module. " <>
+            "Name its `Billboard.Layout` module."
+        )
+
+      not exports?(module, :page, 1) ->
+        error(
+          site,
+          [:layout],
+          "#{inspect(site)}'s `layout:` is #{inspect(module)}, which doesn't define page/1. " <>
+            "Give it `@behaviour Billboard.Layout` and its callbacks."
         )
 
       true ->

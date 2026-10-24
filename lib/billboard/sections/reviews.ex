@@ -48,6 +48,9 @@ defmodule Billboard.Sections.Reviews do
   @doc "Whether there are no reviews, so `render/1` draws nothing."
   def empty?(_content, reviews, _ctx), do: (reviews || []) == []
 
+  @doc "What the editor's stand-in says when `render/1` draws nothing."
+  def nothing_to_show(_content, _ctx), do: "there are no published reviews."
+
   @doc """
   The reviews' glyph: two quote blocks.
   """

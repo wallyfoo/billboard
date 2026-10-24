@@ -20,8 +20,8 @@ defmodule Billboard.ContentTest do
           details: Billboard.Components.Details,
           reviews: Billboard.Components.Reviews,
           news: Billboard.Components.News,
-          columns: Test.Columns,
-          shared: Test.Shared
+          columns: Billboard.Components.Columns,
+          shared: Billboard.Components.Shared
         ] do
       assert types[key] == [type: module, tag: :component, tag_value: key]
     end

@@ -39,6 +39,9 @@ defmodule Billboard.Sections.News do
   """
   def empty?(content, news, _ctx), do: (news || []) == [] and !content.empty
 
+  @doc "What the editor's stand-in says when `render/1` draws nothing."
+  def nothing_to_show(_content, _ctx), do: "there's no news, and no words for when there's none."
+
   @doc """
   The glyph for what's on: rows, each with an accent date.
   """

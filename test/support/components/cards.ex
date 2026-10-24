@@ -11,7 +11,8 @@ defmodule Billboard.Test.Cards do
     label "Cards"
     hint "A few cards side by side."
     category :paper
-    placeholder %{head: %{title: "Your cards"}}
+    renderer Billboard.Test.CardsRenderer
+    placeholder %{head: %{title: "Your cards"}, items: [%{title: "Your card"}]}
 
     part :head, Billboard.Test.Title
     parts :items, Billboard.Test.Item, min: 1, max: 4

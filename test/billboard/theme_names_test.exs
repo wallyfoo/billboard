@@ -30,6 +30,10 @@ defmodule Billboard.ThemeNamesTest do
                    lib/billboard/sections/details.ex
                    lib/billboard/sections/reviews.ex
                    lib/billboard/sections/news.ex
+                   lib/billboard/sections/columns.ex
+                   lib/billboard/sections/shared.ex
+                   lib/billboard/sections.ex
+                   lib/billboard/editor_live/palette.ex
                    assets/css/theme.css) do
       assert file in files
     end

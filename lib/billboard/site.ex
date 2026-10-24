@@ -26,6 +26,7 @@ defmodule Billboard.Site do
           actions: MySiteWeb.Actions,
           context: MySite.Pages.Context,
           data: MySite.Pages.Data,
+          layout: MySiteWeb.Layouts,
           kinds: [faq: [:free, :service]],
           palette: [hints: [faq: "Questions, each with its answer."], categories: [content: "Words"]],
           example_path: "/about"
@@ -80,6 +81,9 @@ defmodule Billboard.Site do
     * `data` names its `Billboard.Data`: what the sections that draw rows
       from outside the builder, such as reviews and news, read for each
       page (`Billboard.Resolver`). Without one, they draw none.
+    * `layout` names its `Billboard.Layout`: the site's chrome, its
+      header and footer, which the page (`Billboard.Sections.page/1`) and
+      the editor draw round every page, and the site's own data for it.
     * `kinds` narrows, by component key, the page kinds a component may
       go on, over the component's own `kinds`. A component it leaves out
       keeps its own. See `Billboard.Catalogue`.
@@ -151,8 +155,8 @@ defmodule Billboard.Site do
   they're enough for components, surfaces, and site options. Pages,
   resources, and the engine need the rest, which `use Billboard.Site`
   defines. A hand-written site that leaves out `actions/0`, `context/0`,
-  `data/0`, `kinds/0`, `palette/0`, or `example_path/0` reads as one
-  that gave none (`actions/0` and the rest below).
+  `data/0`, `layout/0`, `kinds/0`, `palette/0`, or `example_path/0`
+  reads as one that gave none (`actions/0` and the rest below).
   """
 
   @typedoc "A surface's name, its `bb-surface-NAME` class, and the label the editor shows."
@@ -220,6 +224,9 @@ defmodule Billboard.Site do
   @doc "What the site reads for the sections that draw rows from outside the builder (`Billboard.Data`), or nil."
   @callback data() :: module() | nil
 
+  @doc "The site's chrome round every page (`Billboard.Layout`), or nil."
+  @callback layout() :: module() | nil
+
   @doc "The page kinds each component the site narrows may go on, by key."
   @callback kinds() :: keyword([atom()])
 
@@ -240,6 +247,7 @@ defmodule Billboard.Site do
                       actions: 0,
                       context: 0,
                       data: 0,
+                      layout: 0,
                       kinds: 0,
                       palette: 0,
                       example_path: 0
@@ -337,6 +345,9 @@ defmodule Billboard.Site do
       def data, do: @billboard_answers[:data]
 
       @impl Billboard.Site
+      def layout, do: @billboard_answers[:layout]
+
+      @impl Billboard.Site
       def kinds, do: Billboard.Site.Answers.kinds(@billboard_answers, __billboard_env__())
 
       @impl Billboard.Site
@@ -364,6 +375,7 @@ defmodule Billboard.Site do
                      actions: 0,
                      context: 0,
                      data: 0,
+                     layout: 0,
                      kinds: 0,
                      palette: 0,
                      example_path: 0
@@ -461,6 +473,10 @@ defmodule Billboard.Site do
   @doc "The site's data module (`Billboard.Data`), or nil."
   @spec data() :: module() | nil
   def data, do: optional(:data, nil)
+
+  @doc "The site's layout module (`Billboard.Layout`), or nil."
+  @spec layout() :: module() | nil
+  def layout, do: optional(:layout, nil)
 
   @doc "The page kinds the site keeps each component it narrows to, by key."
   @spec kinds() :: keyword([atom()])

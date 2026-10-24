@@ -127,6 +127,7 @@ defmodule Billboard.SiteDslTest do
       assert Overriding.actions() == nil
       assert Overriding.context() == nil
       assert Overriding.data() == nil
+      assert Overriding.layout() == nil
       assert Overriding.kinds() == []
       # Spark.Options may not fill a nested default the site never wrote,
       # so read it as the catalogue does.
@@ -507,6 +508,34 @@ defmodule Billboard.SiteDslTest do
       assert error.message ==
                "Billboard.SiteDslTest.NoData's `data:` is Billboard.SiteDslTest.Nowhere, which " <>
                  "isn't a module. Name its `Billboard.Data` module."
+    end
+
+    test "refuse a layout that isn't a module, or a module without page/1" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoPage do
+            use Billboard.Site, otp_app: :billboard, layout: Billboard.Test.Context
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message ==
+               "Billboard.SiteDslTest.NoPage's `layout:` is Billboard.Test.Context, which " <>
+                 "doesn't define page/1. Give it `@behaviour Billboard.Layout` and its callbacks."
+
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoLayout do
+            use Billboard.Site, otp_app: :billboard, layout: Billboard.SiteDslTest.Nowhere
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message ==
+               "Billboard.SiteDslTest.NoLayout's `layout:` is Billboard.SiteDslTest.Nowhere, " <>
+                 "which isn't a module. Name its `Billboard.Layout` module."
     end
 
     test "pass a site that keeps every rule" do

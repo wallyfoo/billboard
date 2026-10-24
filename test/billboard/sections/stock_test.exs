@@ -146,4 +146,12 @@ defmodule Billboard.Sections.StockTest do
              Components.News => []
            }
   end
+
+  test "Two columns and Shared name their renderers, read no context, and go on every kind" do
+    for module <- [Components.Columns, Components.Shared] do
+      assert Billboard.Component.Info.component_renderer!(module)
+      assert Billboard.Component.Info.component_kinds!(module) == :all
+      assert Billboard.Component.Info.component_context!(module) == []
+    end
+  end
 end
