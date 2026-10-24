@@ -23,6 +23,14 @@ defmodule Billboard.GuidesTest do
                  "`<!-- fails -->`, or `<!-- sketch -->` on the line before each"
       end
 
+      test "fences its code with three backticks, and nothing else" do
+        assert_fences(Guides.blocks(unquote(guide)))
+      end
+
+      test "gives `from:` and `site:` a path, and the other markers none" do
+        assert_marker_args(Guides.blocks(unquote(guide)))
+      end
+
       test "copies its `from:` blocks from the library, word for word" do
         for %{marker: :from} = block <- Guides.blocks(unquote(guide)), do: assert_from(block)
       end
@@ -116,8 +124,104 @@ defmodule Billboard.GuidesTest do
       end
     end
 
+    test "refuses code fenced any other way, or indented outside a list" do
+      guide = """
+      # A guide
+
+      ~~~elixir
+      IO.puts("tildes")
+      ~~~
+
+      ````elixir
+      IO.puts("four")
+      ````
+
+      A paragraph.
+
+          IO.puts("indented")
+
+      - A list item
+
+            still the item's, not code
+
+      <!-- sketch -->
+      ```elixir
+      IO.puts("fine")
+      ```
+      """
+
+      blocks = Guides.parse(guide, "guides/a.md")
+
+      assert [
+               %{fence: "~~~", text: ~s|IO.puts("tildes")|, line: 3},
+               %{fence: "````", text: ~s|IO.puts("four")|},
+               %{fence: :indented, text: ~s|    IO.puts("indented")|, line: 13},
+               %{fence: "```", marker: :sketch}
+             ] = blocks
+
+      error = assert_raise ExUnit.AssertionError, fn -> assert_fences(blocks) end
+      assert error.message =~ "guides/a.md:3, guides/a.md:7, guides/a.md:13"
+      assert error.message =~ "three backticks"
+    end
+
+    test "refuses a `from:` or `site:` with no path, and a path on another marker" do
+      guide = """
+      <!-- site -->
+      ```elixir
+      x
+      ```
+
+      <!-- from: -->
+      ```elixir
+      x
+      ```
+
+      <!-- run: mix.exs -->
+      ```bash
+      mix test
+      ```
+
+      <!-- site: mix.exs -->
+      ```elixir
+      x
+      ```
+      """
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          assert_marker_args(Guides.parse(guide, "guides/a.md"))
+        end
+
+      assert error.message =~ "guides/a.md:2, guides/a.md:7, guides/a.md:12"
+      refute error.message =~ "guides/a.md:17"
+    end
+
+    test "quotes a region of a CSS file or a template, and a whole one without its region lines" do
+      assert Guides.source("test/support/guides/regions.css#paper") ==
+               ":root {\n  --bb-ink: #1c1c1c;\n}"
+
+      refute Guides.source("test/support/guides/regions.css") =~ "guide:"
+      assert Guides.source("test/support/guides/regions.css") =~ "--bb-ink"
+
+      assert Guides.source("test/support/guides/regions.html.heex#title") ==
+               "<h2>{@title}</h2>"
+
+      refute Guides.source("test/support/guides/regions.html.heex") =~ "guide:"
+    end
+
+    test "quotes only what the library compiles or tests" do
+      assert_raise ArgumentError,
+                   ~r/README.md, which the library neither compiles nor tests/,
+                   fn ->
+                     Guides.source("README.md")
+                   end
+
+      assert Guides.source("priv/templates/billboard.install/page.ex.eex") =~ "use Billboard.Page"
+      assert Guides.source("assets/css/theme.css") =~ "bb-"
+    end
+
     test "names a region or a file that isn't there" do
-      assert_raise ArgumentError, ~r/has no `# guide:nope` line/, fn ->
+      assert_raise ArgumentError, ~r/has no `guide:nope` line/, fn ->
         Guides.source("guides/examples/lib/my_site/sections/faq.ex#nope")
       end
 
@@ -183,6 +287,24 @@ defmodule Billboard.GuidesTest do
       end
     end
 
+    test "names a sketch's billboard function that doesn't exist, piped or not" do
+      assert_sketch(block(:sketch, "ctx |> Billboard.Sections.Words.text(\"title\", title)"))
+
+      assert_raise ExUnit.AssertionError, ~r/calls Billboard.Sections.Words.nope\/1/, fn ->
+        assert_sketch(block(:sketch, "Billboard.Sections.Words.nope(ctx)"))
+      end
+
+      assert_raise ExUnit.AssertionError, ~r/calls Billboard.Sections.Words.text\/1/, fn ->
+        assert_sketch(block(:sketch, "Billboard.Sections.Words.text(ctx)"))
+      end
+    end
+
+    test "says a sketch that doesn't parse doesn't" do
+      assert_raise ExUnit.AssertionError, ~r/guides\/a.md:1 is a sketch that isn't Elixir/, fn ->
+        assert_sketch(block(:sketch, "precommit: [1]"))
+      end
+    end
+
     test "names a link to the source at another version, or at a path that isn't there" do
       at = "https://github.com/wallyfoo/billboard/blob"
 
@@ -210,6 +332,29 @@ defmodule Billboard.GuidesTest do
     for block <- blocks, block.marker == nil and block.lang != "text" do
       "#{block.guide}:#{block.line}"
     end
+  end
+
+  defp assert_fences(blocks) do
+    others = for block <- blocks, block.fence != "```", do: "#{block.guide}:#{block.line}"
+
+    assert others == [],
+           "these blocks are drawn as code but not fenced with three backticks: " <>
+             "#{Enum.join(others, ", ")}. Fence each with ``` and give it a marker, or, for " <>
+             "an indented line that isn't code, take it out to the margin"
+  end
+
+  defp assert_marker_args(blocks) do
+    wrong =
+      for %{marker: marker, arg: arg} = block <- blocks,
+          marker != nil,
+          (marker in [:from, :site] and is_nil(arg)) or
+            (marker not in [:from, :site] and not is_nil(arg)),
+          do: "#{block.guide}:#{block.line}"
+
+    assert wrong == [],
+           "these blocks' markers are wrong: #{Enum.join(wrong, ", ")}. `from:` and `site:` " <>
+             "name a path (`<!-- site: lib/my_site/billboard.ex -->`), and `run`, `fails`, " <>
+             "and `sketch` take none"
   end
 
   defp assert_from(block) do
@@ -250,11 +395,28 @@ defmodule Billboard.GuidesTest do
   end
 
   defp assert_sketch(block) do
-    {:ok, quoted} = Code.string_to_quoted(block.text)
+    quoted =
+      case Code.string_to_quoted(block.text) do
+        {:ok, quoted} ->
+          quoted
+
+        {:error, error} ->
+          flunk(
+            "#{block.guide}:#{block.line} is a sketch that isn't Elixir (#{inspect(error)}). " <>
+              "A sketch must parse, so its modules and functions can be checked: wrap a " <>
+              "fragment in what holds it, as `defp aliases do [precommit: …] end`"
+          )
+      end
 
     for module <- billboard_modules(quoted) do
       assert Code.ensure_loaded?(module),
              "#{block.guide}:#{block.line} names #{inspect(module)}, which doesn't exist"
+    end
+
+    for {module, fun, arity} <- billboard_calls(quoted) do
+      assert function_exported?(module, fun, arity) or macro_exported?(module, fun, arity),
+             "#{block.guide}:#{block.line} calls #{inspect(module)}.#{fun}/#{arity}, which " <>
+               "doesn't exist"
     end
   end
 
@@ -288,6 +450,27 @@ defmodule Billboard.GuidesTest do
       end)
 
     Enum.uniq(modules)
+  end
+
+  # Each call to a billboard module's function, with its arity, one more
+  # when it's piped into.
+  defp billboard_calls(quoted) do
+    {_, calls} =
+      Macro.prewalk(quoted, [], fn
+        {:|>, _, [left, {{:., _, [{:__aliases__, _, [:Billboard | _] = parts}, fun]}, _, args}]},
+        acc
+        when is_atom(fun) and is_list(args) ->
+          {{:__block__, [], [left | args]}, [{Module.concat(parts), fun, length(args) + 1} | acc]}
+
+        {{:., _, [{:__aliases__, _, [:Billboard | _] = parts}, fun]}, _, args} = node, acc
+        when is_atom(fun) and is_list(args) ->
+          {node, [{Module.concat(parts), fun, length(args)} | acc]}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    Enum.uniq(calls)
   end
 
   defp purge(text) do

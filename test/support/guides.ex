@@ -1,21 +1,36 @@
 defmodule Billboard.Test.Guides do
   @moduledoc """
-  Reads the guides' fenced blocks and their markers, and the regions of
+  Reads the guides' code blocks and their markers, and the regions of
   library files they quote, for `guides_test.exs` and the integration
   check.
 
   A block's marker is the HTML comment on the line before its opening
   fence, blank lines between allowed: `<!-- from: PATH -->`,
   `<!-- from: PATH#NAME -->`, `<!-- site: PATH -->`, `<!-- run -->`,
-  `<!-- fails -->`, or `<!-- sketch -->`. ExDoc doesn't draw it. A region
-  of a file is the lines between `# guide:NAME` and `# guide:end`.
+  `<!-- fails -->`, or `<!-- sketch -->`. ExDoc doesn't draw it.
+
+  The guides fence code with three backticks, and nothing else: a block
+  fenced with tildes or more backticks, or indented four spaces outside
+  a list, is read too, with its `fence`, so the check can refuse it
+  rather than miss code ExDoc draws.
+
+  A region of a file is the lines between a start line and an end line,
+  in the file's own comments: `# guide:NAME` and `# guide:end` in Elixir,
+  `/* guide:NAME */` and `/* guide:end */` in CSS, and
+  `<%!-- guide:NAME --%>` and `<%!-- guide:end --%>` in a template.
   """
 
   alias Billboard.Test.Guides.Block
 
   @root Path.expand("../..", __DIR__)
 
-  @marker ~r/^<!-- (from|site|run|fails|sketch)(?::\s*(\S+))? -->$/
+  @marker ~r/^<!-- (from|site|run|fails|sketch)(?::\s*(\S*))? -->$/
+
+  # A region's start or end line, in any of the three comment forms.
+  @region ~r/^(?:# guide:(\S+)|\/\* guide:(\S+) \*\/|<%!-- guide:(\S+) --%>)$/
+
+  # A list item's first line, which keeps a list going.
+  @list_item ~r/^ {0,3}(?:[-*+]|\d+[.)])\s/
 
   @doc "Every guide, in the order `mix docs` lists them."
   def guides do
@@ -30,56 +45,107 @@ defmodule Billboard.Test.Guides do
     text
     |> String.split("\n")
     |> Enum.with_index(1)
-    |> collect(guide, nil, nil, [])
+    |> collect(%{guide: guide, marker: nil, blank?: true, list?: false}, [])
   end
 
   # Outside a block: a marker is held until the next fence, across blank
-  # lines, and any other line drops it.
-  defp collect([], _guide, _marker, nil, acc), do: Enum.reverse(acc)
+  # lines, and any other line drops it. Whether the line before was
+  # blank, and whether a list is open, say if an indented line is code.
+  defp collect([], _state, acc), do: Enum.reverse(acc)
 
-  defp collect([{line, n} | rest], guide, marker, nil, acc) do
+  defp collect([{line, n} | rest] = lines, state, acc) do
+    trimmed = String.trim(line)
+
     cond do
-      match = Regex.run(@marker, String.trim(line)) ->
+      match = Regex.run(@marker, trimmed) ->
         [_, kind | arg] = match
+        arg = if arg in [[], [""]], do: nil, else: hd(arg)
         # One of the five kinds the regex names, so the atom is safe.
-        collect(rest, guide, {String.to_atom(kind), List.first(arg)}, nil, acc)
+        state = %{state | marker: {String.to_atom(kind), arg}, blank?: false, list?: false}
+        collect(rest, state, acc)
 
-      String.starts_with?(String.trim_leading(line), "```") ->
-        lang = line |> String.trim() |> String.trim_leading("`") |> String.trim()
-        collect(rest, guide, nil, {lang, n, marker, []}, acc)
+      fence = opening_fence(line) ->
+        lang = trimmed |> String.trim_leading(String.first(fence)) |> String.trim()
+        {body, rest} = fenced(rest, fence)
+        acc = [block(state, n, lang, body, fence) | acc]
+        collect(rest, %{state | marker: nil, blank?: false}, acc)
 
-      String.trim(line) == "" ->
-        collect(rest, guide, marker, nil, acc)
+      trimmed == "" ->
+        collect(rest, %{state | blank?: true}, acc)
+
+      state.blank? and not state.list? and String.starts_with?(line, "    ") ->
+        {body, rest} = indented(lines)
+        acc = [block(state, n, "", body, :indented) | acc]
+        collect(rest, %{state | marker: nil, blank?: false}, acc)
 
       true ->
-        collect(rest, guide, nil, nil, acc)
+        list? = Regex.match?(@list_item, line) or (state.list? and line =~ ~r/^\s/)
+        collect(rest, %{state | marker: nil, blank?: false, list?: list?}, acc)
     end
   end
 
-  # Inside a block, until its closing fence.
-  defp collect([{line, _n} | rest], guide, _marker, {lang, start, marker, lines}, acc) do
-    if String.trim(line) == "```" do
-      {kind, arg} = marker || {nil, nil}
+  defp block(state, line, lang, body, fence) do
+    {kind, arg} = state.marker || {nil, nil}
 
-      block = %Block{
-        guide: guide,
-        line: start,
-        lang: lang,
-        text: lines |> Enum.reverse() |> Enum.join("\n"),
-        marker: kind,
-        arg: arg
-      }
+    %Block{
+      guide: state.guide,
+      line: line,
+      lang: lang,
+      text: Enum.join(body, "\n"),
+      marker: kind,
+      arg: arg,
+      fence: fence
+    }
+  end
 
-      collect(rest, guide, nil, nil, [block | acc])
-    else
-      collect(rest, guide, nil, {lang, start, marker, [line | lines]}, acc)
+  # The fence a line opens: three or more backticks, or tildes. An
+  # opening fence may be indented.
+  defp opening_fence(line) do
+    case Regex.run(~r/^\s*(`{3,}|~{3,})/, line) do
+      [_, fence] -> fence
+      nil -> nil
     end
+  end
+
+  # A fenced block's lines, until the fence that closes it: the same
+  # character, at least as many times, alone on its line.
+  defp fenced(lines, fence) do
+    char = String.first(fence)
+
+    {body, rest} =
+      Enum.split_while(lines, fn {line, _n} ->
+        not (String.trim(line)
+             |> String.match?(~r/^#{Regex.escape(char)}{#{byte_size(fence)},}$/))
+      end)
+
+    {Enum.map(body, &elem(&1, 0)), Enum.drop(rest, 1)}
+  end
+
+  # An indented block's lines: while each is blank or four spaces in,
+  # less the blank lines it ends with.
+  defp indented(lines) do
+    {body, rest} =
+      Enum.split_while(lines, fn {line, _n} ->
+        String.trim(line) == "" or String.starts_with?(line, "    ")
+      end)
+
+    {trailing, body} =
+      body |> Enum.reverse() |> Enum.split_while(&(String.trim(elem(&1, 0)) == ""))
+
+    {body |> Enum.reverse() |> Enum.map(&elem(&1, 0)), Enum.reverse(trailing) ++ rest}
   end
 
   @doc """
-  A library file, its `# guide:` lines dropped, or a region of one
+  The paths a `from:` block may quote: what the test env compiles, and
+  the templates and assets the library's tests read.
+  """
+  def quotable, do: Mix.Project.config()[:elixirc_paths] ++ ["priv/templates", "assets"]
+
+  @doc """
+  A library file, its region lines dropped, or a region of one
   (`path#name`), dedented, as a guide shows it. Raises, naming the fix,
-  when the file or the region isn't there.
+  when the file or the region isn't there, or the file is one the
+  library neither compiles nor tests.
   """
   def source(ref) do
     {path, region} =
@@ -94,27 +160,44 @@ defmodule Billboard.Test.Guides do
       raise ArgumentError, "a guide quotes #{path}, which isn't in the library"
     end
 
+    unless Enum.any?(quotable(), &String.starts_with?(path, &1 <> "/")) do
+      raise ArgumentError,
+            "a guide quotes #{path}, which the library neither compiles nor tests. Quote " <>
+              "from #{Enum.join(quotable(), ", ")}, so what's quoted is checked"
+    end
+
     lines = full |> File.read!() |> String.split("\n")
 
     lines =
       if region do
         region(lines, path, region)
       else
-        Enum.reject(lines, &String.match?(String.trim(&1), ~r/^# guide:/))
+        Enum.reject(lines, &region_line?/1)
       end
 
     lines |> Enum.join("\n") |> String.trim_trailing()
   end
 
+  defp region_line?(line), do: Regex.match?(@region, String.trim(line))
+
+  defp region_name(line) do
+    case Regex.run(@region, String.trim(line)) do
+      nil -> nil
+      captures -> captures |> tl() |> Enum.find(&(&1 != ""))
+    end
+  end
+
   defp region(lines, path, name) do
-    case Enum.drop_while(lines, &(String.trim(&1) != "# guide:#{name}")) do
+    case Enum.drop_while(lines, &(region_name(&1) != name)) do
       [] ->
         raise ArgumentError,
-              "a guide quotes #{path}##{name}, but #{path} has no `# guide:#{name}` line. " <>
-                "Mark the region with `# guide:#{name}` and `# guide:end`."
+              "a guide quotes #{path}##{name}, but #{path} has no `guide:#{name}` line. " <>
+                "Mark the region with `# guide:#{name}` and `# guide:end`, or in CSS " <>
+                "`/* guide:#{name} */` and `/* guide:end */`, or in a template " <>
+                "`<%!-- guide:#{name} --%>` and `<%!-- guide:end --%>`."
 
       [_start | rest] ->
-        rest |> Enum.take_while(&(String.trim(&1) != "# guide:end")) |> dedent()
+        rest |> Enum.take_while(&(region_name(&1) != "end")) |> dedent()
     end
   end
 

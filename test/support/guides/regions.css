@@ -1,0 +1,7 @@
+/* A fixture for the guides check: a region of CSS. */
+
+/* guide:paper */
+:root {
+  --bb-ink: #1c1c1c;
+}
+/* guide:end */
