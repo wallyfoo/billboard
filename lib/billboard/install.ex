@@ -376,7 +376,7 @@ if Code.ensure_loaded?(Igniter) do
     signed-in live_session: phx.gen.auth's, when its `on_mount` runs
     `:require_authenticated`, or the one `--live-session` names, which is
     trusted when its `on_mount` can't be read as signing in, with a
-    notice saying so. Never `:current_user`, which is for everyone.
+    warning saying so. Never `:current_user`, which is for everyone.
     """
     def mount_editor(igniter, opts) do
       {igniter, router} = Igniter.Libs.Phoenix.select_router(igniter)
@@ -443,7 +443,7 @@ if Code.ensure_loaded?(Igniter) do
             :trusted ->
               igniter
               |> write_editor_route(router, session, route)
-              |> Igniter.add_notice(
+              |> Igniter.add_warning(
                 "The editor is mounted in `live_session #{inspect(session)}`, as " <>
                   "`--live-session` asked, but the installer couldn't confirm it requires " <>
                   "signing in: its `on_mount` names no `require_…` hook. Everyone the " <>
@@ -491,7 +491,9 @@ if Code.ensure_loaded?(Igniter) do
     # mount and on every live navigation within the session too.
     # A session `--live-session` names is signed in when its `on_mount`
     # names any `require_…` hook, as `{MySiteWeb.UserAuth, :require_admin}`
-    # or `MySiteWeb.RequireAdmin`, and otherwise trusted.
+    # or `MySiteWeb.RequireAdmin`, and otherwise trusted. Only the name is
+    # read: any `require_…` atom counts, whatever it requires, so
+    # `:require_confirmed` passes as `:require_admin` does.
     defp signing_in(_live_session, :current_user, _named?), do: :refused
 
     defp signing_in(live_session, _session, named?) do

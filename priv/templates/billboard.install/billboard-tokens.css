@@ -151,9 +151,12 @@
 /* Paper in the dark theme. phx.new's layout switches between a light and
    a dark theme, with data-theme on <html>, or none to follow the system,
    and paints the page dark in the dark one: these tokens keep paper's
-   words light on it. The two blocks are the same; keep them so. The band
-   stays near-black, so it still stands out from the page. A site with one
-   theme can delete both. */
+   words light on it. The two blocks are the same; keep them so. A token
+   set in paper above must be set in both of them too, or it keeps its
+   light value on the dark page: one taken out of its comment there, such
+   as --bb-title, --bb-subheading, --bb-eyebrow, or --bb-link-hover,
+   needs a line in each. The band stays near-black, so it still stands
+   out from the page. A site with one theme can delete both. */
 [data-theme=dark],
 [data-theme=dark] .bb-surface-paper {
   --bb-ink: #e6e8eb;

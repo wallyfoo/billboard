@@ -32,7 +32,10 @@ if Code.ensure_loaded?(Igniter) do
         `:require_authenticated`, and never in `:current_user`, which is
         for everyone. A session you name is mounted in when its `on_mount`
         names a `require_…` hook (`{MySiteWeb.UserAuth, :require_admin}`),
-        and otherwise trusted, with a notice saying so. Defaults to
+        and otherwise trusted, with a warning saying so. The installer
+        reads only the hook's name, so any `require_…` hook counts,
+        whatever it requires: make sure the session admits only the
+        people who may edit. Defaults to
         `require_authenticated_user`, `mix phx.gen.auth`'s, which lets in
         every signed-in user, and `mix phx.gen.auth`'s registration lets
         anyone sign up: before you deploy, close registration, or mount

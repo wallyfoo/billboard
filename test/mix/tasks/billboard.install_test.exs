@@ -302,7 +302,7 @@ defmodule Mix.Tasks.Billboard.InstallTest do
         assert session_block(content(igniter, "lib/my_site_web/router.ex"), :admin) =~
                  "billboard_editor"
 
-        refute Enum.any?(igniter.notices, &(&1 =~ "couldn't confirm"))
+        refute Enum.any?(igniter.notices ++ igniter.warnings, &(&1 =~ "couldn't confirm"))
       end
     end
 
@@ -310,7 +310,7 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       igniter =
         project(%{"lib/my_site_web/router.ex" => with_session(:visitors, nil)})
         |> install(["--live-session", "visitors"])
-        |> assert_has_notice(
+        |> assert_has_warning(
           &(&1 =~ "`live_session :visitors`" and &1 =~ "couldn't confirm it requires signing in")
         )
 

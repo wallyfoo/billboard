@@ -126,8 +126,13 @@
     outline-color: var(--bb-edit-accent);
   }
 }
+/* Two tones, so the ring reads on any ground: the editor's blue, with
+   its paper between the ring and the words, where the blue alone is
+   faint on a dark page or a band. */
 .bb-editor .bb-inline-words:focus {
   outline: 2px solid var(--bb-edit-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--bb-edit-paper);
 }
 .bb-editor .bb-inline-words:empty::before {
   content: attr(data-placeholder);
