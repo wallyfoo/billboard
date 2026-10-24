@@ -15,10 +15,11 @@ defmodule Billboard.ComponentCase.Render do
   a hero draws the inside of its block, without the `#page-hero`
   section, its surface, or the layout. `page/2` draws the page.
 
-  Each returns HTML, as a string. It draws with
-  `Phoenix.LiveViewTest.render_component/2`, which LiveView compiles in
-  every environment, so this module needs nothing a site keeps for its
-  tests alone.
+  `visitor/2`, `open/2`, `glyph/1`, and `page/2` return HTML, as a
+  string; `section/3` returns a section, and `version/1` a version. They
+  draw with `Phoenix.LiveViewTest.render_component/2`, which LiveView
+  compiles in every environment, so this module needs nothing a site
+  keeps for its tests alone.
   """
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
@@ -77,19 +78,26 @@ defmodule Billboard.ComponentCase.Render do
   @doc """
   `sections` on a page, drawn through `Billboard.Sections.page/1` in the
   site's layout, as a visitor sees them, as HTML. A first section that's
-  a hero is drawn as the hero block, in the layout's hero slot.
+  a hero is drawn as the hero block, in the layout's hero slot. Without
+  one, the block holds an empty `<h1>`, as a page with no hero would, so
+  give a page a hero first for a test of its headings.
 
-  Options: `data`, the page's data by section key; `library`, the shared
-  library's version, for Shared sections; and `context`, the page's
-  context (`Billboard.Context`).
+  Options: `data`, the page's data by section key, which defaults to
+  what the site's `Billboard.Data` gives the sections
+  (`Billboard.Resolver.resolve/2`); `library`, the shared library's
+  version, for Shared sections; and `context`, the page's context
+  (`Billboard.Context`).
   """
   @spec page([map()], keyword()) :: String.t()
   def page(sections, opts \\ []) do
+    version = version(sections)
+    context = Keyword.get(opts, :context, %{})
+
     render_component(&Billboard.Sections.page/1,
-      version: version(sections),
-      data: Keyword.get(opts, :data, %{}),
+      version: version,
+      data: Keyword.get_lazy(opts, :data, fn -> Billboard.Resolver.resolve(version, context) end),
       library: Keyword.get(opts, :library),
-      ctx: %{context: Keyword.get(opts, :context, %{})},
+      ctx: %{context: context},
       site: Billboard.Layout.site(),
       flash: %{},
       current_path: "/"

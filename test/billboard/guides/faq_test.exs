@@ -18,6 +18,26 @@ defmodule Billboard.Guides.FaqTest do
     refute html =~ "<details"
   end
 
+  test "draws no title it hasn't got, but offers one in the open section" do
+    untitled = section(:faq, %{questions: @questions})
+
+    refute visitor(untitled) =~ "<h2"
+    assert open(untitled) =~ ~s(id="#{Words.id("s1", "title")}")
+  end
+
+  test "refuses words past their caps" do
+    long = String.duplicate("a", 161)
+
+    assert {:error, _error} =
+             Billboard.Component.build(:faq, %{title: "Asked", questions: [%{title: long}]})
+
+    assert {:error, _error} =
+             Billboard.Component.build(:faq, %{
+               title: String.duplicate("a", 121),
+               questions: @questions
+             })
+  end
+
   test "folds its answers when asked, but never in the open section" do
     folded = section(:faq, %{title: "Asked", style: :folded, questions: @questions})
 

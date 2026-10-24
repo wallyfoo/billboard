@@ -15,12 +15,16 @@ defmodule MySiteWeb.Sections.Faq do
         editing?: editing?,
         folded?: assigns.content.style == :folded and not editing?,
         count: length(assigns.content.questions),
-        spec: if(editing?, do: EditorFields.narrowed(:faq)[:questions], else: [])
+        spec:
+          if(editing?,
+            do: EditorFields.narrowed(assigns.section.content.type)[:questions],
+            else: []
+          )
       )
 
     ~H"""
     <section id={@anchor} data-surface={@ctx.surface} class={Parts.section_class(@ctx)}>
-      <h2 class="bb-heading bb-type-heading text-bb-heading">
+      <h2 :if={@content.title || @editing?} class="bb-heading bb-type-heading text-bb-heading">
         {Words.text(@ctx, "title", @content.title)}
       </h2>
       <div class="bb-measure mt-8">

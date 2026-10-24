@@ -20,8 +20,8 @@ defmodule Billboard.Part do
 
         attributes do
           uuid_primary_key :id
-          attribute :title, :string, allow_nil?: false, public?: true
-          attribute :body, :string, public?: true
+          attribute :title, :string, allow_nil?: false, public?: true, constraints: [max_length: 160]
+          attribute :body, :string, public?: true, constraints: [max_length: 800]
         end
 
         actions do

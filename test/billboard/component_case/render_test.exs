@@ -13,6 +13,16 @@ defmodule Billboard.ComponentCase.RenderTest do
     refute html =~ "contenteditable"
   end
 
+  test "draws a section with the rows the site's data gives it" do
+    Process.put(:shop_reviews, [
+      %{id: "r1", name: "Ann", reviewed_on: ~D[2026-01-05], quote: "Lovely."}
+    ])
+
+    html = Render.page([Render.section(:reviews, %{})])
+
+    assert html =~ "Lovely."
+  end
+
   test "draws the hero in the layout's hero slot" do
     html = Render.page([Render.section(:hero, %{heading: "Welcome"}, "hero")])
     document = LazyHTML.from_fragment(html)

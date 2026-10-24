@@ -48,7 +48,7 @@ defmodule Billboard.Renderer do
       def render(assigns) do
         ~H\"\"\"
         <div class="bb-wrap">
-          <h1 id="main" tabindex="-1" class="bb-title bb-type-title text-bb-title">
+          <h1 id="main" tabindex="-1" class="bb-title bb-type-title text-bb-title outline-none">
             {Words.text(@ctx, "heading", @content.heading)}
           </h1>
         </div>
@@ -62,7 +62,8 @@ defmodule Billboard.Renderer do
   the site's hero.
   If the site's layout has a skip link to `#main`, its hero keeps an
   element with `id="main"` and `tabindex="-1"` for it, as the stock one
-  does on the H1's column.
+  does on the H1's column, with `outline-none`, since the skip link
+  focuses it only to move the reader there.
 
   A stock renderer draws only through billboard's theme (`theme.css`):
   its colours, type, corners, and measures. A site's may use any class.

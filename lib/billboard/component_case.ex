@@ -50,8 +50,9 @@ defmodule Billboard.ComponentCase do
 
     * `attrs`: the content to build, for a component with no placeholder
       the palette can use, such as Shared, in place of the placeholder;
-    * `data`: the section's data, as the site's `Billboard.Data` gives
-      it, for a component that draws rows, such as Reviews;
+    * `data`: the section's data, for a component that draws rows, such
+      as Reviews, in place of what the site's `Billboard.Data` gives it
+      (`Billboard.Resolver.resolve/2`, read in the test's process);
     * `context`: the page's context (`Billboard.Context`);
     * `library`: the shared library's version, for Shared;
     * `children`: a Two columns section's two sections, which default
@@ -218,10 +219,11 @@ defmodule Billboard.ComponentCase do
     section = build!(component, key, opts)
     page = page!(component, key, opts)
     context = Keyword.get(opts, :context, %{})
-    data = page_data(opts, section)
+    sections = with_hero(section, key, page)
+    data = page_data(opts, section, sections)
 
     html =
-      Render.page(with_hero(section, key, page),
+      Render.page(sections,
         data: data,
         library: opts[:library],
         context: context
@@ -308,10 +310,12 @@ defmodule Billboard.ComponentCase do
     section = build!(component, key, opts)
     page = page!(component, key, opts)
 
+    sections = with_hero(section, key, page)
+
     session = %{
-      "version" => Render.version(with_hero(section, key, page)),
+      "version" => Render.version(sections),
       "key" => section.key,
-      "data" => page_data(opts, section),
+      "data" => page_data(opts, section, sections),
       "library" => opts[:library],
       "context" => Keyword.get(opts, :context, %{}),
       "path" => page.pattern
@@ -709,9 +713,18 @@ defmodule Billboard.ComponentCase do
   defp list_part({part, _except}), do: part
   defp list_part(part), do: part
 
-  # The page's data, by section key, as `Billboard.Resolver` gives it.
-  defp page_data(opts, section),
-    do: if(rows = opts[:data], do: %{section.key => rows}, else: %{})
+  # The page's data, by section key: `data:` for the section, or what the
+  # site's `Billboard.Data` gives the page's sections, read here, in the
+  # test's own process, as `Billboard.Resolver` reads it for a page.
+  defp page_data(opts, section, sections) do
+    case Keyword.fetch(opts, :data) do
+      {:ok, rows} ->
+        %{section.key => rows}
+
+      :error ->
+        Billboard.Resolver.resolve(%{sections: sections}, Keyword.get(opts, :context, %{}))
+    end
+  end
 
   # The error's messages, in the words a validation gives them, joined.
   defp messages(%{errors: [_ | _] = errors}),

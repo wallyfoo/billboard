@@ -18,6 +18,10 @@ defmodule Billboard.Sections.Hero do
   neither are a hero's own words while its binding replaces them
   (`Billboard.Context.replaces_words?/1`), since the editor hides them
   and takes no words there.
+
+  The slot functions below read the stock hero's fields, which each one
+  names. A site's own hero (`Billboard.Renderer`) may draw with them
+  only if its component has those fields too.
   """
   use Billboard.Renderer
 
@@ -114,7 +118,8 @@ defmodule Billboard.Sections.Hero do
 
   @doc """
   The H1's contents: the binding's heading, as plain text, or the
-  content's heading as Markdown.
+  content's heading as Markdown. It reads the hero's `heading` and
+  `bind`.
   """
   def heading(nil, _ctx), do: nil
 
@@ -147,7 +152,7 @@ defmodule Billboard.Sections.Hero do
 
   def title(_version, _ctx), do: nil
 
-  @doc "The eyebrow over the H1, or nil."
+  @doc "The eyebrow over the H1, or nil. It reads the hero's `eyebrow` and `bind`."
   def eyebrow(nil, _ctx), do: nil
 
   def eyebrow(section, ctx) do
@@ -162,7 +167,8 @@ defmodule Billboard.Sections.Hero do
   @doc """
   The opening lines, or nil. An `:auto` hero shortens its own lede past
   `Billboard.Components.Hero.lede_limit/0`, except in the open section,
-  which shows them in full.
+  which shows them in full. It reads the hero's `lede`, `size`, and
+  `bind`.
   """
   def lede(nil, _ctx), do: nil
 
@@ -179,7 +185,8 @@ defmodule Billboard.Sections.Hero do
 
   @doc """
   `"display"` or `"h1"`. `:auto` sets the heading at display size until it
-  reads longer than `Billboard.Components.Hero.heading_limit/0`.
+  reads longer than `Billboard.Components.Hero.heading_limit/0`. It
+  reads the hero's `size` and `heading`, and `bind` when it has one.
   """
   def size(nil, _ctx), do: "h1"
 
@@ -195,7 +202,8 @@ defmodule Billboard.Sections.Hero do
 
   @doc """
   Where the photograph sits: `"right"`, `"left"`, or `"none"` for a text
-  only hero, or one with no photograph to show.
+  only hero, or one with no photograph to show. It reads the hero's
+  `variant` and `photo`, and `bind` when it has one.
   """
   def media(nil, _ctx), do: "none"
 
@@ -212,7 +220,7 @@ defmodule Billboard.Sections.Hero do
 
   @doc """
   Whether the hero has actions to show: any, or, in the open hero, a way
-  to add one.
+  to add one. It reads the hero's `actions`.
   """
   def actions?(section, ctx \\ %{})
   def actions?(nil, _ctx), do: false
@@ -222,7 +230,9 @@ defmodule Billboard.Sections.Hero do
   The hero's actions. The page lays them out in a row, so they are
   drawn straight into it, on the hero's surface, with the id prefix
   `"hero"` (`Billboard.Sections.Parts.action/1`). In the open hero, they
-  are the editor's to change, and to add to (see `actions?/2`).
+  are the editor's to change, and to add to (see `actions?/2`). It reads
+  the hero's `actions`, a list of `Billboard.Parts.Action`, and their
+  `max` from the `:hero` component's `editor`, which must list them.
   """
   attr :section, :map, required: true
   attr :ctx, :map, required: true
@@ -254,7 +264,8 @@ defmodule Billboard.Sections.Hero do
   The photograph, at 4:3. A bound hero seeds the placeholder with its
   binding's seed, such as a product's slug, so each product's page has
   its own. In the open hero, it has its tools over it
-  (`Billboard.Sections.Parts.editable_photo/1`).
+  (`Billboard.Sections.Parts.editable_photo/1`). It reads the hero's
+  `photo`, a `Billboard.Parts.Photo` or nil, and `bind` when it has one.
   """
   attr :section, :map, required: true
   attr :ctx, :map, required: true

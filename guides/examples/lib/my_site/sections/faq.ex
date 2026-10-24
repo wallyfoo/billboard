@@ -38,7 +38,7 @@ defmodule MySite.Sections.Faq do
 
   # guide:attributes
   attributes do
-    attribute :title, :string, public?: true
+    attribute :title, :string, public?: true, constraints: [max_length: 120]
 
     attribute :style, :atom do
       allow_nil? false
