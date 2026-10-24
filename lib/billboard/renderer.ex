@@ -34,10 +34,32 @@ defmodule Billboard.Renderer do
 
   The hero component's renderer draws the page's hero block instead of a
   section in `<main>`: its `render/1` draws the block's inside, given
-  `section`, `content`, `anchor`, `ctx`, `heading`, and `lede`, and the
-  page keeps the `<section id="page-hero">` round it, with the editor's
+  `section`, `content`, `anchor`, and `ctx`, as any section's is. The
+  page keeps the block's outer element, `<section id="page-hero"
+  class="bb-section-pad">`, round it on every page, with the editor's
   marks, so the hero opens, shows its issues, and holds its editor as
-  any section does. A site's own `:hero` therefore draws its own block.
+  any section does. A site's own `:hero` therefore draws its own block,
+  starting inside that element: it draws no `id={@anchor}` (the page's
+  id is already there), no `Parts.section_class/1`, and no
+  `@ctx.surface`, since its `ctx` has no surface (the layout's hero slot
+  gives the block one). Start with an element of `bb-wrap` for the
+  page's width:
+
+      def render(assigns) do
+        ~H\"\"\"
+        <div class="bb-wrap">
+          <h1 id="main" tabindex="-1" class="bb-title bb-type-title text-bb-title">
+            {Words.text(@ctx, "heading", @content.heading)}
+          </h1>
+        </div>
+        \"\"\"
+      end
+
+  Its component says `surface_from :layout`, as the stock hero's does,
+  or the editor offers a Ground setting the page never draws.
+  `heading` and `lede` are the page's, for a version with no hero, such
+  as the shared library: then the stock renderer draws them, whatever
+  the site's hero.
   If the site's layout has a skip link to `#main`, its hero keeps an
   element with `id="main"` and `tabindex="-1"` for it, as the stock one
   does on the H1's column.

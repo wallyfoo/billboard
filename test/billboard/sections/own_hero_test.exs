@@ -67,6 +67,10 @@ defmodule Billboard.Sections.OwnHeroTest do
     assert has?(doc, "#page-hero #own-hero ##{Words.id("hero", "heading")}")
   end
 
+  test "the browser title reads a site's own hero's heading" do
+    assert Sections.Hero.title(%{sections: sections()}) == "Come by"
+  end
+
   test "a version with no hero draws its heading and lede in the stock block" do
     doc = render_page([], %{}, heading: "Shared sections", lede: "On every page.")
 

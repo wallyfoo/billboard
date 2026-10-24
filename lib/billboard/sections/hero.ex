@@ -130,7 +130,9 @@ defmodule Billboard.Sections.Hero do
   @doc """
   The heading of `version`'s hero as plain text, for the browser title:
   the binding's heading, or the content's heading without its Markdown.
-  Nil when the version has no hero.
+  It reads any hero's `heading`, a site's own `:hero` included, and its
+  binding only if it has a `bind`. Nil when the version has no hero, or
+  its hero has no heading.
   """
   @spec title(map(), map()) :: String.t() | nil
   def title(version, ctx \\ %{})
@@ -284,14 +286,16 @@ defmodule Billboard.Sections.Hero do
 
   # What the hero's binding gives it on this page, from
   # `ctx.context.bindings`, or nil: a hero bound to nothing, or to
-  # something this page hasn't got, draws its own words.
+  # something this page hasn't got, draws its own words. A site's own
+  # hero may have no `bind` at all, and `title/2` reads it too.
   defp bound(%{bind: :none}, _ctx), do: nil
   defp bound(%{bind: bind}, ctx), do: get_in(ctx, [:context, :bindings, bind])
+  defp bound(_hero, _ctx), do: nil
 
   defp heading_source(hero, ctx) do
     case bound(hero, ctx) do
       %{heading: text} when is_binary(text) -> {:plain, text}
-      _ -> {:markdown, hero.heading}
+      _ -> {:markdown, Map.get(hero, :heading)}
     end
   end
 
