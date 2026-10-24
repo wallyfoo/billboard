@@ -30,9 +30,9 @@ defmodule Billboard.Data do
   `once/3` reads a thing the first time a page asks for it, and reuses
   it after, as the section's data: it returns `{:ok, value, loaded}`.
   `cached/3` does the same but returns `{value, loaded}`, for a section
-  whose data is made from a shared read. Here news sections of any limit share one
-  read of the six latest posts, the most a section shows, where `once/3`
-  above reads once per limit:
+  whose data is made from a shared read. Here news sections of any
+  limit share one read of the six latest posts, the most a section
+  shows, where `once/3` above reads once per limit:
 
       def fetch(%News{limit: limit}, _context, loaded) do
         {posts, loaded} = Billboard.Data.cached(loaded, :news, fn -> MySite.latest_news!(6) end)

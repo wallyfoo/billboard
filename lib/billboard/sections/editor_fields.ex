@@ -494,12 +494,13 @@ defmodule Billboard.Sections.EditorFields do
       "what the setting shows as chosen in place of the field's value; `nil` shows the field's value"
 
   @doc """
-  One setting for the controls header, drawn small, on the editor's blue,
-  in its own ink (`--bb-edit-on-accent`): a `:select` as a row of choices when it has three or fewer, and
-  as a menu otherwise; a `:toggle`; a `:number`; a `:choice`; `:choices`
-  behind a popover named for the field, since it's a list of checkboxes; and
-  `:shared`, a menu of the library's sections (`ctx.library`). A field
-  with a problem is marked, and points at `error_id`.
+  One setting for the controls header, drawn small, on the editor's
+  blue, in its own ink (`--bb-edit-on-accent`): a `:select` as a row of
+  choices when it has three or fewer, and as a menu otherwise; a
+  `:toggle`; a `:number`; a `:choice`; `:choices` behind a popover named
+  for the field, since it's a list of checkboxes; and `:shared`, a menu
+  of the library's sections (`ctx.library`). A field with a problem is
+  marked, and points at `error_id`.
 
   It's named for `form`'s field, so a content field is sent as
   `section[content][columns]`, and a field of the section's own, on the
