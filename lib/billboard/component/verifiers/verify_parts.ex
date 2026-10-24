@@ -59,13 +59,17 @@ defmodule Billboard.Component.Verifiers.VerifyParts do
   end
 
   defp action_problem(name, attribute, {type, what, holding, entity}) do
-    if Ash.Type.get_type(attribute.type) == type,
+    if held(attribute.type) == type,
       do: nil,
       else:
         "`#{inspect(name)}` is where billboard's rules read a section's #{what}, so it must " <>
           "hold #{holding}, as `#{entity} #{inspect(name)}, Billboard.Parts.Action` does. " <>
           "Rename it, or hold `Billboard.Parts.Action`."
   end
+
+  # The type an attribute holds, through any name a site gives it of its
+  # own (`Ash.Type.NewType`), in a list or not.
+  defp held(type), do: type |> Ash.Type.get_type() |> Ash.Type.NewType.subtype_of()
 
   defp problem(part) do
     # Ash has already refused a type that isn't one, at transform time; a

@@ -219,6 +219,8 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   defp part(_entry), do: []
 
   defp part_attribute(%Field{as: :part, name: name} = entry, %{type: type}, owner) do
+    type = held(type)
+
     cond do
       not part?(type) ->
         [
@@ -235,6 +237,8 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   end
 
   defp part_attribute(%Field{as: :list, name: name} = entry, %{type: type}, owner) do
+    type = held(type)
+
     cond do
       not (match?({:array, item} when is_atom(item), type) and part?(elem(type, 1))) ->
         [
@@ -289,11 +293,11 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   defp actions(_entry, _attribute, _owner), do: []
 
   defp holds_action?(attribute),
-    do:
-      Ash.Type.get_type(attribute.type) in [
-        Billboard.Parts.Action,
-        {:array, Billboard.Parts.Action}
-      ]
+    do: held(attribute.type) in [Billboard.Parts.Action, {:array, Billboard.Parts.Action}]
+
+  # The type an attribute holds, through any name a site gives it of its
+  # own (`Ash.Type.NewType`), in a list or not, as `VerifyParts` reads it.
+  defp held(type), do: type |> Ash.Type.get_type() |> Ash.Type.NewType.subtype_of()
 
   defp actions_message(as, name, part) do
     [

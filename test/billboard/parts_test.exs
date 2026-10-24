@@ -173,6 +173,26 @@ defmodule Billboard.PartsTest do
                  "Rename it, or hold `Billboard.Parts.Action`."
     end
 
+    test "takes billboard's action under a name of the site's own (a NewType)" do
+      refute_dsl_errors do
+        defmodule Elixir.Billboard.PartsTest.WrappedActions do
+          use Billboard.Component
+
+          component do
+            key :x
+            label "X"
+            hint "x"
+            category :paper
+          end
+
+          attributes do
+            attribute :action, Billboard.Test.WrappedAction, public?: true
+            attribute :actions, {:array, Billboard.Test.WrappedAction}, public?: true, default: []
+          end
+        end
+      end
+    end
+
     test "refuses a part that isn't an Ash resource" do
       assert error_message(fn ->
                defmodule Elixir.Billboard.PartsTest.NotResourcePart do

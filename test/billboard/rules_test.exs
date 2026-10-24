@@ -343,10 +343,15 @@ defmodule Billboard.RulesTest do
   describe "actions_of/1" do
     # Built by hand, since no shop component has every kind of action.
     test "gives a section's list, then its single action, then its head's action" do
-      value = %{actions: [%{label: "A"}], action: %{label: "B"}, head: %{action: %{label: "C"}}}
+      [a, b, c] = for label <- ~w(A B C), do: %{label: label, style: :secondary}
+      value = %{actions: [a], action: b, head: %{action: c}}
 
-      assert Rules.actions_of(%{content: %Ash.Union{type: :hero, value: value}}) ==
-               [%{label: "A"}, %{label: "B"}, %{label: "C"}]
+      assert Rules.actions_of(%{content: %Ash.Union{type: :hero, value: value}}) == [a, b, c]
+    end
+
+    test "leaves out what a site's own head holds as its `action`, which isn't a button" do
+      value = %{head: %{action: %{title: "Ours"}}}
+      assert Rules.actions_of(%{content: %Ash.Union{type: :hero, value: value}}) == []
     end
 
     test "gives none for a section with no actions, or a head without one" do

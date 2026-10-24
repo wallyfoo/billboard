@@ -233,7 +233,8 @@ defmodule Billboard.Rules do
   Every action `section` shows: its own list (`actions`) or single
   action (`action`), and its head's action (`head.action`). A link inside
   any other part, such as a list item's, is left out, since a site draws
-  it as a text link.
+  it as a text link, and so is anything with no `style`, such as what a
+  site's own head part holds as its `action`, which isn't a button.
   """
   @spec actions_of(map()) :: [map()]
   def actions_of(%{content: %Ash.Union{value: value}}) do
@@ -245,7 +246,7 @@ defmodule Billboard.Rules do
 
     [Map.get(value, :actions) || [], [Map.get(value, :action)], head_action]
     |> Enum.concat()
-    |> Enum.reject(&is_nil/1)
+    |> Enum.filter(&match?(%{style: _}, &1))
   end
 
   @doc """

@@ -394,6 +394,39 @@ defmodule Billboard.PartTest do
              ]
     end
 
+    test "refuse a section's actions held under a name of the site's own, edited as points" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.PartTest.WrappedAsPoints do
+            use Billboard.Component
+
+            component do
+              key :wrapped_as_points
+              label "Asks"
+              hint "x"
+              category :content
+            end
+
+            editor do
+              field :actions, as: :list, part: :point
+            end
+
+            attributes do
+              attribute :actions, {:array, Billboard.Test.WrappedAction},
+                public?: true,
+                default: []
+            end
+          end
+        end
+
+      assert messages(errors) == [
+               "`:actions` is a list of :point in `editor`, but " <>
+                 "billboard reads a section's `:actions` as its actions " <>
+                 "(`Billboard.Parts.Action`). Make it `part: :action`, or give the attribute " <>
+                 "another name"
+             ]
+    end
+
     test "refuse a section's actions edited as anything but billboard's actions" do
       errors =
         dsl_errors do
