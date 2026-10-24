@@ -38,7 +38,7 @@ defmodule Billboard.CatalogueTest do
 
   test "lists the site's components in its order, the palette's" do
     assert Catalogue.keys() ==
-             ~w(hero band cards text notes points text_media details faq reviews news columns shared unwritten)a
+             ~w(hero band cards text notes points text_media details faq reviews news columns shared unwritten misdrawn)a
 
     assert Enum.map(Catalogue.entries(), & &1.key) == Catalogue.keys()
   end
@@ -69,8 +69,8 @@ defmodule Billboard.CatalogueTest do
   end
 
   test "an entry's placeholder is the component's own, less what the site doesn't offer" do
-    assert Catalogue.placeholder(:hero) == %{heading: "Your heading"}
-    assert Catalogue.fetch!(:hero).placeholder == %{heading: "Your heading"}
+    assert Catalogue.placeholder(:hero) == %{variant: :text_only, heading: "Your heading"}
+    assert Catalogue.fetch!(:hero).placeholder == %{variant: :text_only, heading: "Your heading"}
 
     put_site!(components: [Boxed])
     assert Catalogue.placeholder(:boxed) == %{look: :cards, words: "Your words"}

@@ -427,6 +427,31 @@ defmodule Billboard.PartTest do
              ]
     end
 
+    test "take a section's actions held under a name of the site's own, edited as actions" do
+      refute_dsl_errors do
+        defmodule Elixir.Billboard.PartTest.WrappedAsActions do
+          use Billboard.Component
+
+          component do
+            key :wrapped_as_actions
+            label "Asks"
+            hint "x"
+            category :content
+          end
+
+          editor do
+            field :actions, as: :list, part: :action
+          end
+
+          attributes do
+            attribute :actions, {:array, Billboard.Test.WrappedAction},
+              public?: true,
+              default: []
+          end
+        end
+      end
+    end
+
     test "refuse a section's actions edited as anything but billboard's actions" do
       errors =
         dsl_errors do

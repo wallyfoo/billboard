@@ -85,6 +85,13 @@ defmodule Billboard.Sections.HeroTest do
       refute Hero.actions?(nil)
     end
 
+    test "a new hero starts text only, as it has no photograph to show yet" do
+      new = hero(Billboard.Catalogue.placeholder(:hero))
+
+      assert new.content.value.variant == :text_only
+      assert Hero.media(new, %{}) == "none"
+    end
+
     test "automatic size drops to h1 when the heading runs long" do
       long = String.duplicate("word ", 12)
 
