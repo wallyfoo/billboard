@@ -102,7 +102,13 @@ if Code.ensure_loaded?(Igniter) do
       |> EEx.eval_file(assigns: Map.to_list(assigns))
     end
 
-    @doc "Writes `module` from `contents`, unless the site has it already, wherever it lives."
+    @doc """
+    Writes `module` from `contents`, unless the site has it already,
+    wherever it lives. It goes where Igniter puts a module of `kind` (and
+    Igniter moves a new file there when it writes, whatever path it's
+    given): a LiveView in `lib/MY_SITE_WEB/live/` with Igniter's Phoenix
+    extension in `.igniter.exs`, and in `lib/MY_SITE_WEB/` without it.
+    """
     def create_module(igniter, module, contents, kind \\ :source_folder) do
       case Igniter.Project.Module.module_exists(igniter, module) do
         {true, igniter} ->
@@ -335,8 +341,9 @@ if Code.ensure_loaded?(Igniter) do
           |> Igniter.Project.Module.find_and_update_module!(router, &replace_home(&1, line))
           |> Igniter.add_notice(
             "`/` is drawn by #{inspect(names.page_live)} now, in place of " <>
-              "PageController's home. Remove PageController and its test once nothing " <>
-              "else uses them."
+              "PageController's home, so phx.new's test of that page, " <>
+              "test/#{Macro.underscore(names.web)}/controllers/page_controller_test.exs, " <>
+              "fails. Remove the test, and PageController once nothing else uses it."
           )
       end
     end

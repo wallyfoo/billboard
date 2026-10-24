@@ -187,10 +187,10 @@ if Code.ensure_loaded?(Igniter) do
 
     defp notices(igniter, %{installed?: true} = names) do
       Igniter.add_notice(igniter, """
-      Billboard is installed already, as #{inspect(names.site)}, so this run adds
-      only what's missing, and leaves the rest as it is. If it proposes no changes,
-      the site has everything the installer writes. Billboard's getting started
-      guide says what's next.
+      Billboard is installed already, as #{inspect(names.site)}. This run adds only
+      what's missing, and leaves the rest as it is: if it proposes no changes, the
+      site has everything the installer writes. Billboard's getting started guide
+      says what's next.
       """)
     end
 

@@ -215,6 +215,11 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       # the root layout its @current_scope.
       assert router =~ ~r/live_session[ (]:current_user.*live[ (]"\/", BillboardPageLive/s
       refute router =~ "PageController, :home"
+
+      assert_has_notice(
+        igniter,
+        &(&1 =~ "test/my_site_web/controllers/page_controller_test.exs" and &1 =~ "fails")
+      )
     end
 
     test "with --home, takes `/` for itself, not another scope's" do
