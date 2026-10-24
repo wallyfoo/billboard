@@ -369,10 +369,36 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       refute session_block(router, :require_authenticated_user) =~ "BillboardPageLive"
       refute router =~ "PageController, :home"
 
+      # phx.new's scope held only the home route and its pipe_through, so
+      # it goes with the route; the others stay.
+      refute router =~ ~r/scope "\/", MySiteWeb do\s+pipe_through :browser\s+end/
+
+      assert router =~
+               ~r/scope "\/", MySiteWeb do\s+pipe_through \[:browser, :require_authenticated_user\]/
+
       assert_has_notice(
         igniter,
-        &(&1 =~ "test/my_site_web/controllers/page_controller_test.exs" and &1 =~ "fails")
+        &(&1 =~ "test/my_site_web/controllers/page_controller_test.exs" and &1 =~ "fails" and
+            &1 =~ "page_html/home.html.heex")
       )
+    end
+
+    test "with --home, keeps the scope the home route was in when it holds more" do
+      router =
+        project()
+        |> content("lib/my_site_web/router.ex")
+        |> String.replace(
+          ~s|get "/", PageController, :home|,
+          ~s|get "/", PageController, :home\n    get "/prices", PageController, :prices|
+        )
+
+      router =
+        project(%{"lib/my_site_web/router.ex" => router})
+        |> install(["--home"])
+        |> content("lib/my_site_web/router.ex")
+
+      refute router =~ "PageController, :home"
+      assert router =~ ~r/pipe_through :browser\s+get[ (]"\/prices"/
     end
 
     test "with --home, takes `/` for itself, not another scope's" do

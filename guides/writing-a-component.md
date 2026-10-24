@@ -314,8 +314,8 @@ end
 
 The entries are drawn in the order they're written. `words` are typed
 in place, where the section draws them. `limit` is a soft limit: the
-editor counts the words, without their Markdown, against it, and warns
-past it, but never blocks. `accent` gives the words a hint about
+editor counts their characters, without their Markdown, against it, and
+warns past it, but never blocks. `accent` gives the words a hint about
 italics. A `field` is a setting in the controls header, such as
 `style`, a note, a part, or a list, such as `questions`, whose items the
 open section draws with their tools.
@@ -430,17 +430,21 @@ end
 - The outer element takes `id={@anchor}`, `data-surface={@ctx.surface}`,
   and `Parts.section_class(@ctx)`, which gives it the classes of its
   surface, the page's margin, and its padding.
-- `Words.text/4` draws words: as a visitor reads them, and, in the open
+- `Billboard.Sections.Words.text/4` (`Words.text/4` here, through the
+  alias `use Billboard.Renderer` gives) draws words: as a visitor reads
+  them, and, in the open
   section, as words typed into in place. Its path is the field's,
   through parts and list items: `"title"`, and `"questions.0.title"` for
   the first question's.
 - `Words.editing?/1` is true only in the open section. The FAQ shows
   every answer there, folded or not, and an empty answer too, so each
   can be typed into.
-- `Parts.item_tools/1` gives each item its buttons, to move it up or
-  down and to remove it, unless the list is at its fewest. It reads the
-  list's spec, which `EditorFields.narrowed/1` gives by the component's
-  key, as the site narrows it.
+- `Billboard.Sections.Parts.item_tools/1` gives each item its buttons,
+  to move it up or down and to remove it, unless the list is at its
+  fewest. It reads the list's spec, the options its `editor` entry
+  gives (`min`, `max`, and `item_label`), as
+  `Billboard.Sections.EditorFields.narrowed/1` gives them by the
+  component's key, narrowed as the site narrows the list.
 - A site's renderer may use any class, Tailwind's or the site's own; a
   stock renderer draws only with the theme's, so any site's tokens
   restyle it. The FAQ keeps to the theme's, so it looks like its page.
@@ -491,9 +495,10 @@ from the palette: a title and one question, since the FAQ needs one at
 least. It must pass the component's validations, and no rule may find
 an error in it, or a new section would arrive broken. A new section is
 built from `Billboard.SiteOptions.placeholder/1`, which leaves out a
-value the site doesn't offer, so the site's default takes its place. Its words are filler, which the editor
-warns about on a page until they're written over, unless the component
-says `filler? false`, for a placeholder that reads as finished words.
+value the site doesn't offer, so the site's default takes its place.
+Its words are filler, which the editor warns about on a page until
+they're written over, unless the component says `filler? false`, for a
+placeholder that reads as finished words.
 
 ## The glyph
 
@@ -552,6 +557,13 @@ place of the placeholder; `Billboard.ComponentCase` lists the rest.
 `endpoint:` is the site's endpoint, which the open checks mount the
 editor on, and `repo:` checks out the database's sandbox for each test.
 
+A test of the site's own that publishes a page needs one more thing.
+Billboard's cache holds what visitors see in memory, outside the
+database's sandbox, so a publish leaves its page in the cache for the
+tests after it. Such a test runs `async: false`, takes
+`Billboard.Cache.snapshot/0` in its setup, and hands it back to
+`Billboard.Cache.put/1` in an `on_exit`.
+
 ## Finish it
 
 Put the finished code in place of the skeleton's: the `component`,
@@ -559,7 +571,10 @@ Put the finished code in place of the skeleton's: the `component`,
 part in `lib/my_site/sections/faq/question.ex`; `render/1`, `question/1`,
 and `glyph/1` in `lib/my_site_web/sections/faq.ex`; and the rule in a
 new file, `lib/my_site/sections/faq/unanswered_questions.ex`. Run
-`mix test`, which passes.
+`mix format`, since pasted code keeps the indent it was copied with, and
+`mix test`, which passes. A new component needs no migration: a
+section's content is stored tagged with its component's key, in the
+`content` column `billboard_sections` already has.
 
 Then open the editor at `/admin/pages`, choose "+ Add a section" below
 the hero, and pick Questions, under "On the page". The FAQ arrives

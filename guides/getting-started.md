@@ -50,33 +50,17 @@ Add billboard and Ash to `mix.exs` together, at the top of the list in
 
 <!-- site: mix.exs -->
 ```elixir
-      billboard(),
+      {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.0"},
       {:ash, "~> 3.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.0"},
       {:igniter, "~> 0.8", only: [:dev, :test]},
 ```
 
-and, after `deps/0`, the function that names billboard:
-
-<!-- site: mix.exs -->
-```elixir
-  # Billboard is pinned to a tag, so what's deployed is always a tag.
-  # BILLBOARD_PATH points it at a local checkout while working on both.
-  defp billboard do
-    case System.get_env("BILLBOARD_PATH") do
-      nil -> {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.0"}
-      path -> {:billboard, path: path}
-    end
-  end
-```
-
-The switch has a function of its own because Igniter, which Ash's
-installers run on, adds to `deps/0` only when the function is its list
-alone. The requirements are the ones Ash's installer writes, so it
-leaves them as they are; billboard's own ask for Ash 3.33, AshPostgres
-2.13, and AshPhoenix 2.3 or later. Then fetch them, compile, and install
-Ash:
+Billboard is pinned to a tag, so what's deployed is always a tag. The
+requirements for Ash are the ones Ash's installer writes, so it leaves
+them as they are; billboard's own ask for Ash 3.33, AshPostgres 2.13,
+and AshPhoenix 2.3 or later. Then fetch them, compile, and install Ash:
 
 <!-- run -->
 ```bash
@@ -88,12 +72,6 @@ mix igniter.install ash ash_postgres ash_phoenix --yes
 Compile before Ash's installers run, so they don't compile new
 dependencies as they go: when they do, they can stop part way with a
 `Protocol.UndefinedError`, and running the command again finishes.
-
-`BILLBOARD_PATH` builds the site against a local checkout of billboard
-instead of the tag. A build made with it set mustn't be deployed, since
-`mix.lock` still names the tag, so what was built isn't what the lock
-says. [Working on billboard too](#working-on-billboard-too) makes
-`mix precommit` refuse it.
 
 ## Install billboard
 
@@ -392,14 +370,6 @@ warning that the installer couldn't confirm it requires signing in. The
 installer reads only the hook's name, so make sure the session admits
 only the people who may edit.
 
-### Before you deploy
-
-The editor checks no permission of its own: every signed-in user can
-edit and publish every page. phx.gen.auth's `/users/register` lets
-anyone sign up, so anyone could. Before the site goes live, close
-registration, or mount the editor in a `live_session` only your admins
-can join (`--live-session`), as the install notice says.
-
 ### The cache
 
 <!-- site: lib/my_site/application.ex -->
@@ -584,14 +554,33 @@ them. A site that writes no `library` line gets
 `library "Shared sections"` after its pages: the shared library, which
 holds the sections several pages show.
 
+## Before you deploy
+
+The editor checks no permission of its own: every signed-in user can
+edit and publish every page. phx.gen.auth's `/users/register` lets
+anyone sign up, so anyone could. Before the site goes live, close
+registration, or mount the editor in a `live_session` only your admins
+can join (`--live-session`), as the install notice says.
+
 ## Working on billboard too
 
-`BILLBOARD_PATH=../billboard` builds the site against a checkout of
-billboard beside it, for working on both at once. Since a build made so
-mustn't be deployed, make `mix precommit` refuse it:
+To build the site against a checkout of billboard beside it, for
+working on both at once, give billboard a function of its own in
+`mix.exs`, named in `deps/0` as `billboard()` in place of its tuple.
+A build made with `BILLBOARD_PATH` set mustn't be deployed, since
+`mix.lock` still names the tag, so what was built isn't what the lock
+says; so make `mix precommit` refuse it too:
 
 <!-- sketch -->
 ```elixir
+# BILLBOARD_PATH points billboard at a local checkout while working on both.
+defp billboard do
+  case System.get_env("BILLBOARD_PATH") do
+    nil -> {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.0"}
+    path -> {:billboard, path: path}
+  end
+end
+
 defp aliases do
   [
     # The site's other aliases, and then:
@@ -606,8 +595,9 @@ defp aliases do
 end
 ```
 
-where `refuse_billboard_path/1` is a private function of `mix.exs` that
-calls `Mix.raise/1`, saying to unset `BILLBOARD_PATH`, when it's set.
+Then `BILLBOARD_PATH=../billboard mix test` runs against the checkout.
+`refuse_billboard_path/1` is a private function of `mix.exs` that calls
+`Mix.raise/1`, saying to unset `BILLBOARD_PATH`, when it's set.
 Billboard's checks of a component or a site report through compile
 warnings, so `precommit` compiles with `--warnings-as-errors`, as
 phx.new's does.

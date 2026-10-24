@@ -555,7 +555,9 @@ if Code.ensure_loaded?(Igniter) do
     Writes the site's `BillboardPageLive` and routes `/` to it, in place
     of phx.new's `get "/", PageController, :home`, inside phx.gen.auth's
     `live_session :current_user`: its root layout reads `@current_scope`,
-    which only a LiveView in a session that mounts it has. A router that
+    which only a LiveView in a session that mounts it has. The scope the
+    `get` was in goes too, when nothing but its `pipe_through` is left in
+    it. A router that
     has a `live "/"` already is left alone, and gets no page: one routed
     to another LiveView is noticed, so the site knows `--home` did
     nothing.
@@ -646,7 +648,8 @@ if Code.ensure_loaded?(Igniter) do
             "`/` is drawn by #{inspect(names.page_live)} now, in place of " <>
               "PageController's home, so phx.new's test of that page, " <>
               "test/#{Macro.underscore(names.web)}/controllers/page_controller_test.exs, " <>
-              "fails. Remove the test, and PageController once nothing else uses it."
+              "fails. Remove the test, and PageController, PageHTML, and " <>
+              "page_html/home.html.heex, which nothing uses now."
           )
       end
     end
@@ -655,7 +658,35 @@ if Code.ensure_loaded?(Igniter) do
       {:ok, block} = move_to_session(zipper, :current_user)
       added = Common.add_code(block, line)
       {:ok, get} = added |> Zipper.topmost() |> Common.move_to(&home_get?/1)
-      {:ok, Zipper.remove(get)}
+      {:ok, Zipper.remove(emptied_scope(get) || get)}
+    end
+
+    # phx.new's `scope "/", MySiteWeb do pipe_through :browser … end`
+    # holds nothing but its `pipe_through` once the home route goes, so
+    # it goes too. A scope with any other route stays.
+    defp emptied_scope(get) do
+      with %Zipper{node: {:scope, _, args}} = scope <- enclosing_scope(get),
+           [{{:__block__, _, [:do]}, body}] <- List.last(args) do
+        exprs =
+          case body do
+            {:__block__, _, exprs} -> exprs
+            expr -> [expr]
+          end
+
+        if Enum.all?(exprs -- [get.node], &match?({:pipe_through, _, _}, &1)), do: scope
+      else
+        _ -> nil
+      end
+    end
+
+    defp enclosing_scope(zipper) do
+      case Zipper.up(zipper) do
+        nil ->
+          nil
+
+        parent ->
+          if Function.function_call?(parent, :scope), do: parent, else: enclosing_scope(parent)
+      end
     end
 
     # `/` itself: `live "/"` in `scope "/admin"` is the admin's home.

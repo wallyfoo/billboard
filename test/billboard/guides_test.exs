@@ -220,7 +220,7 @@ defmodule Billboard.GuidesTest do
 
       - A list item
 
-            still the item's, not code
+          still the item's, not code
 
       <!-- sketch -->
       ```elixir
@@ -240,6 +240,66 @@ defmodule Billboard.GuidesTest do
       error = assert_raise ExUnit.AssertionError, fn -> assert_fences(blocks) end
       assert error.message =~ "guides/a.md:3, guides/a.md:7, guides/a.md:13"
       assert error.message =~ "three backticks"
+    end
+
+    # Each of these is code ExDoc draws, so each is a block the check
+    # sees, and refuses: none is three backticks at the margin or in a
+    # list item's words.
+    test "sees code in a blockquote, on a list item's line, in a list, after a heading, or raw" do
+      guide = """
+      # A guide
+
+      > ```elixir
+      > IO.puts("quoted")
+      > ```
+
+      - ```elixir
+        IO.puts("on the item")
+        ```
+
+      - An item, whose words are its own
+
+              IO.puts("deep in the item")
+
+      ## A heading
+          IO.puts("after a heading")
+
+      <!-- a comment -->
+          IO.puts("after a comment")
+
+      ```elixir
+      IO.puts("fenced")
+      ```
+          IO.puts("after a fence")
+
+      A paragraph.
+      \tIO.puts("tabbed, but the paragraph's")
+
+      \tIO.puts("tabbed")
+
+      <pre><code>IO.puts("raw")</code></pre>
+      """
+
+      blocks = Guides.parse(guide, "guides/a.md")
+
+      assert [
+               %{fence: "> ```", text: ~s|> IO.puts("quoted")|, line: 3},
+               %{fence: "- ```", text: ~s|  IO.puts("on the item")|, line: 7},
+               %{fence: :indented, text: ~s|        IO.puts("deep in the item")|, line: 13},
+               %{fence: :indented, text: ~s|    IO.puts("after a heading")|, line: 16},
+               %{fence: :indented, text: ~s|    IO.puts("after a comment")|, line: 19},
+               %{fence: "```", text: ~s|IO.puts("fenced")|},
+               %{fence: :indented, text: ~s|    IO.puts("after a fence")|, line: 24},
+               %{fence: :indented, text: ~s|    IO.puts("tabbed")|, line: 29},
+               %{fence: :pre, line: 31}
+             ] = blocks
+
+      error = assert_raise ExUnit.AssertionError, fn -> assert_fences(blocks) end
+
+      for line <- [3, 7, 13, 16, 19, 24, 29, 31],
+          do: assert(error.message =~ "guides/a.md:#{line}")
+
+      refute error.message =~ "guides/a.md:21"
     end
 
     test "refuses a `from:` or `site:` with no path, and a path on another marker" do
@@ -294,6 +354,10 @@ defmodule Billboard.GuidesTest do
                      Guides.source("README.md")
                    end
 
+      assert_raise ArgumentError, ~r/which the library neither compiles nor tests/, fn ->
+        Guides.source("lib/../README.md")
+      end
+
       assert Guides.source("priv/templates/billboard.install/page.ex.eex") =~ "use Billboard.Page"
       assert Guides.source("assets/css/theme.css") =~ "bb-"
     end
@@ -317,6 +381,18 @@ defmodule Billboard.GuidesTest do
 
       assert_raise ExUnit.AssertionError, ~r/runs `mix billboard.nope`/, fn ->
         assert_run(block(:run, "mix billboard.nope"))
+      end
+
+      # The integration check runs each line as a list of arguments, not
+      # through a shell, so a shell's operators would reach mix as words.
+      for line <- [
+            "mix deps.get && mix compile",
+            "mix compile; mix test",
+            "mix test | tee x",
+            "mix test > out",
+            "mix test `echo x`"
+          ] do
+        assert_raise ExUnit.AssertionError, ~r/no shell/, fn -> assert_run(block(:run, line)) end
       end
     end
 
@@ -374,6 +450,31 @@ defmodule Billboard.GuidesTest do
 
       assert_raise ExUnit.AssertionError, ~r/calls Billboard.Sections.Words.text\/1/, fn ->
         assert_sketch(block(:sketch, "Billboard.Sections.Words.text(ctx)"))
+      end
+    end
+
+    test "follows a sketch's aliases and imports to the billboard functions they name" do
+      assert_sketch(
+        block(:sketch, """
+        alias Billboard.Sections.{Parts, Words}
+        alias Billboard.Sections.EditorFields, as: Fields
+        import Billboard.Rule, only: [warning: 2]
+        Parts.blank(:point)
+        Fields.narrowed(:faq)
+        Words.editing?(%{})
+        """)
+      )
+
+      assert_raise ExUnit.AssertionError, ~r/Billboard.Sections.Parts.nope\/1/, fn ->
+        assert_sketch(block(:sketch, "alias Billboard.Sections.Parts\nParts.nope(1)"))
+      end
+
+      assert_raise ExUnit.AssertionError, ~r/Billboard.Sections.Nope, which doesn't exist/, fn ->
+        assert_sketch(block(:sketch, "alias Billboard.Sections\nSections.Nope.go()"))
+      end
+
+      assert_raise ExUnit.AssertionError, ~r/Billboard.Rule.nope\/2/, fn ->
+        assert_sketch(block(:sketch, "import Billboard.Rule, only: [nope: 2]"))
       end
     end
 
@@ -474,7 +575,9 @@ defmodule Billboard.GuidesTest do
     for line <- String.split(block.text, "\n"), line != "" do
       assert line =~ ~r/^cd [\w.\/-]+$/ or task_known?(line),
              "#{block.guide}:#{block.line} runs `#{line}`, which the integration check can't. " <>
-               "A `run` block holds `cd DIR` and `mix` tasks it knows (Guides.outside_tasks/0)"
+               "A `run` block holds `cd DIR` and `mix` tasks it knows (Guides.outside_tasks/0), " <>
+               "one to a line, with no shell operators (`&&`, `;`, `|`, `>`, or backticks), " <>
+               "since each line runs as a list of arguments, not through a shell"
     end
   end
 
@@ -537,20 +640,32 @@ defmodule Billboard.GuidesTest do
     end
   end
 
-  defp task_known?("mix " <> rest) do
+  # A shell's operators are refused: the integration check runs each line
+  # as a list of arguments, not through a shell.
+  defp task_known?("mix " <> rest = line) do
     task = rest |> String.split(" ", parts: 2) |> hd()
-    task in Guides.outside_tasks() or Mix.Task.get(task) != nil
+
+    not shell?(line) and (task in Guides.outside_tasks() or Mix.Task.get(task) != nil)
   end
 
   defp task_known?(_line), do: false
 
+  defp shell?(line), do: line =~ ~r/&&|[;|>`]/
+
   defp squash(text), do: text |> String.split() |> Enum.join(" ")
 
+  # Each billboard module a sketch names, by its full name or by a short
+  # name its `alias` lines give.
   defp billboard_modules(quoted) do
+    aliases = billboard_aliases(quoted)
+
     {_, modules} =
       Macro.prewalk(quoted, [], fn
-        {:__aliases__, _, [:Billboard | _] = parts} = node, acc ->
-          {node, [Module.concat(parts) | acc]}
+        {:__aliases__, _, parts} = node, acc when is_list(parts) ->
+          case expand(parts, aliases) do
+            nil -> {node, acc}
+            full -> {node, [Module.concat(full) | acc]}
+          end
 
         node, acc ->
           {node, acc}
@@ -559,19 +674,46 @@ defmodule Billboard.GuidesTest do
     Enum.uniq(modules)
   end
 
-  # Each call to a billboard module's function, with its arity, one more
-  # when it's piped into.
+  # Each call to a billboard module's function, by its full name or an
+  # alias, with its arity, one more when it's piped into; and each
+  # function an `import Billboard.X, only: [...]` names.
   defp billboard_calls(quoted) do
+    aliases = billboard_aliases(quoted)
+
     {_, calls} =
       Macro.prewalk(quoted, [], fn
-        {:|>, _, [left, {{:., _, [{:__aliases__, _, [:Billboard | _] = parts}, fun]}, _, args}]},
-        acc
+        {:|>, _, [left, {{:., _, [{:__aliases__, _, parts}, fun]}, _, args}]} = node, acc
         when is_atom(fun) and is_list(args) ->
-          {{:__block__, [], [left | args]}, [{Module.concat(parts), fun, length(args) + 1} | acc]}
+          case expand(parts, aliases) do
+            nil ->
+              {node, acc}
 
-        {{:., _, [{:__aliases__, _, [:Billboard | _] = parts}, fun]}, _, args} = node, acc
-        when is_atom(fun) and is_list(args) ->
-          {node, [{Module.concat(parts), fun, length(args)} | acc]}
+            full ->
+              {{:__block__, [], [left | args]},
+               [{Module.concat(full), fun, length(args) + 1} | acc]}
+          end
+
+        # `alias Billboard.Sections.{Parts, Words}` is a call to `{}`.
+        {{:., _, [{:__aliases__, _, parts}, fun]}, _, args} = node, acc
+        when is_atom(fun) and fun != :{} and is_list(args) ->
+          case expand(parts, aliases) do
+            nil -> {node, acc}
+            full -> {node, [{Module.concat(full), fun, length(args)} | acc]}
+          end
+
+        {:import, _, [{:__aliases__, _, parts}, opts]} = node, acc when is_list(opts) ->
+          case expand(parts, aliases) do
+            nil ->
+              {node, acc}
+
+            full ->
+              only =
+                for {fun, arity} <- Keyword.get(opts, :only, []),
+                    is_integer(arity),
+                    do: {Module.concat(full), fun, arity}
+
+              {node, only ++ acc}
+          end
 
         node, acc ->
           {node, acc}
@@ -579,6 +721,49 @@ defmodule Billboard.GuidesTest do
 
     Enum.uniq(calls)
   end
+
+  # The short names a sketch's `alias Billboard.…` lines give, to the
+  # modules' full names: `Parts` for `alias Billboard.Sections.Parts`, the
+  # name `as:` gives, and each name in `alias Billboard.Sections.{Parts, Words}`.
+  defp billboard_aliases(quoted) do
+    {_, aliases} =
+      Macro.prewalk(quoted, %{}, fn
+        {:alias, _, [{:__aliases__, _, [:Billboard | _] = parts} | opts]} = node, acc ->
+          short =
+            case opts do
+              [[as: {:__aliases__, _, [as]}]] -> as
+              _none -> List.last(parts)
+            end
+
+          {node, Map.put(acc, short, parts)}
+
+        {:alias, _, [{{:., _, [{:__aliases__, _, [:Billboard | _] = base}, :{}]}, _, children}]} =
+            node,
+        acc ->
+          acc =
+            for {:__aliases__, _, child} <- children, reduce: acc do
+              acc -> Map.put(acc, List.last(child), base ++ child)
+            end
+
+          {node, acc}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    aliases
+  end
+
+  defp expand([:Billboard | _] = parts, _aliases), do: parts
+
+  defp expand([first | rest], aliases) when is_atom(first) do
+    case aliases do
+      %{^first => full} -> full ++ rest
+      _other -> nil
+    end
+  end
+
+  defp expand(_parts, _aliases), do: nil
 
   defp purge(text) do
     {:ok, quoted} = Code.string_to_quoted(text)

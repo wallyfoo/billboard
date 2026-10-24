@@ -7,12 +7,17 @@ defmodule Billboard.Test.Guides do
   A block's marker is the HTML comment on the line before its opening
   fence, blank lines between allowed: `<!-- from: PATH -->`,
   `<!-- from: PATH#NAME -->`, `<!-- site: PATH -->`, `<!-- run -->`,
-  `<!-- fails -->`, or `<!-- sketch -->`. ExDoc doesn't draw it.
+  `<!-- fails -->`, or `<!-- sketch -->`. ExDoc doesn't draw it. A
+  `text` block needs none, by design: it's what a command prints, or
+  the message a failing example gives, and holds no code to check.
 
-  The guides fence code with three backticks, and nothing else: a block
-  fenced with tildes or more backticks, or indented four spaces outside
-  a list, is read too, with its `fence`, so the check can refuse it
-  rather than miss code ExDoc draws.
+  The guides fence code with three backticks, at the margin or inside a
+  list item, and nothing else. Every other way ExDoc draws code is read
+  too, with its `fence`, so the check can refuse it rather than miss it:
+  a fence of tildes or more backticks; one inside a blockquote or on a
+  list item's own line (`"> ```"`, `"- ```"`); a block indented four
+  spaces (a tab counts as four) after any line but a paragraph's; a line
+  of a list item indented four past the item's words; and raw `<pre>`.
 
   A region of a file is the lines between a start line and an end line,
   in the file's own comments: `# guide:NAME` and `# guide:end` in Elixir,
@@ -29,8 +34,13 @@ defmodule Billboard.Test.Guides do
   # A region's start or end line, in any of the three comment forms.
   @region ~r/^(?:# guide:(\S+)|\/\* guide:(\S+) \*\/|<%!-- guide:(\S+) --%>)$/
 
-  # A list item's first line, which keeps a list going.
-  @list_item ~r/^ {0,3}(?:[-*+]|\d+[.)])\s/
+  # A list item's first line: its indent, its marker, and the spaces
+  # after it, which together are the column its words start at.
+  @list_item ~r/^( {0,3})([-*+]|\d+[.)])( +|$)/
+
+  # Where a fence may sit other than the margin: after a blockquote's
+  # `>`s, or a list item's marker, on the same line.
+  @fence_prefix ~r/^((?:\s*>)+\s?|\s{0,3}(?:[-*+]|\d+[.)])\s+)/
 
   @doc "Every guide, in the order `mix docs` lists them."
   def guides do
@@ -44,43 +54,76 @@ defmodule Billboard.Test.Guides do
   def parse(text, guide) do
     text
     |> String.split("\n")
+    |> Enum.map(&String.replace(&1, "\t", "    "))
     |> Enum.with_index(1)
-    |> collect(%{guide: guide, marker: nil, blank?: true, list?: false}, [])
+    |> collect(%{guide: guide, marker: nil, prev: :other, list: nil}, [])
   end
 
   # Outside a block: a marker is held until the next fence, across blank
-  # lines, and any other line drops it. Whether the line before was
-  # blank, and whether a list is open, say if an indented line is code.
+  # lines, and any other line drops it. `prev` is what the line before
+  # was, `:blank`, `:para` (a paragraph's, or a list item's words), or
+  # `:other` (a heading, a comment, a fence's end, or the start), since
+  # an indented line after a paragraph's carries the paragraph on, and
+  # after anything else is code. `list` is the column an open list
+  # item's words start at, or nil.
   defp collect([], _state, acc), do: Enum.reverse(acc)
 
   defp collect([{line, n} | rest] = lines, state, acc) do
     trimmed = String.trim(line)
+    indent = String.length(line) - String.length(String.trim_leading(line))
 
     cond do
       match = Regex.run(@marker, trimmed) ->
         [_, kind | arg] = match
         arg = if arg in [[], [""]], do: nil, else: hd(arg)
         # One of the five kinds the regex names, so the atom is safe.
-        state = %{state | marker: {String.to_atom(kind), arg}, blank?: false, list?: false}
+        state = %{state | marker: {String.to_atom(kind), arg}, prev: :other, list: nil}
         collect(rest, state, acc)
 
-      fence = opening_fence(line) ->
-        lang = trimmed |> String.trim_leading(String.first(fence)) |> String.trim()
+      String.contains?(String.downcase(line), "<pre") ->
+        acc = [block(state, n, "", [line], :pre) | acc]
+        collect(rest, %{state | marker: nil, prev: :other}, acc)
+
+      opened = opening_fence(line) ->
+        {prefix, fence} = opened
+
+        lang =
+          line
+          |> String.replace_prefix(prefix, "")
+          |> String.trim()
+          |> String.trim_leading(String.first(fence))
+          |> String.trim()
+
         {body, rest} = fenced(rest, fence)
-        acc = [block(state, n, lang, body, fence) | acc]
-        collect(rest, %{state | marker: nil, blank?: false}, acc)
+        acc = [block(state, n, lang, body, String.trim("#{String.trim(prefix)} #{fence}")) | acc]
+        collect(rest, %{state | marker: nil, prev: :other}, acc)
 
       trimmed == "" ->
-        collect(rest, %{state | blank?: true}, acc)
+        collect(rest, %{state | prev: :blank}, acc)
 
-      state.blank? and not state.list? and String.starts_with?(line, "    ") ->
-        {body, rest} = indented(lines)
+      state.list && indent >= state.list + 4 ->
+        {body, rest} = indented(lines, state.list + 4)
         acc = [block(state, n, "", body, :indented) | acc]
-        collect(rest, %{state | marker: nil, blank?: false}, acc)
+        collect(rest, %{state | marker: nil, prev: :other}, acc)
+
+      is_nil(state.list) and indent >= 4 and state.prev != :para ->
+        {body, rest} = indented(lines, 4)
+        acc = [block(state, n, "", body, :indented) | acc]
+        collect(rest, %{state | marker: nil, prev: :other}, acc)
+
+      trimmed =~ ~r/^\#{1,6}(\s|$)/ or trimmed =~ ~r/^<!--.*-->$/ ->
+        collect(rest, %{state | marker: nil, prev: :other, list: nil}, acc)
+
+      item = Regex.run(@list_item, line) ->
+        [_, lead, mark, gap] = item
+        column = String.length(lead) + String.length(mark) + max(String.length(gap), 1)
+        collect(rest, %{state | marker: nil, prev: :para, list: column}, acc)
 
       true ->
-        list? = Regex.match?(@list_item, line) or (state.list? and line =~ ~r/^\s/)
-        collect(rest, %{state | marker: nil, blank?: false, list?: list?}, acc)
+        # A list stays open over its item's indented lines, and over a
+        # paragraph's lazy lines; anything else at the margin closes it.
+        list = if state.list && (indent >= state.list or state.prev == :para), do: state.list
+        collect(rest, %{state | marker: nil, prev: :para, list: list}, acc)
     end
   end
 
@@ -98,11 +141,18 @@ defmodule Billboard.Test.Guides do
     }
   end
 
-  # The fence a line opens: three or more backticks, or tildes. An
-  # opening fence may be indented.
+  # The fence a line opens, three or more backticks or tildes, and what
+  # comes before it on the line: an indent, or a blockquote's `>` or a
+  # list item's marker, which the guides never put a fence after.
   defp opening_fence(line) do
-    case Regex.run(~r/^\s*(`{3,}|~{3,})/, line) do
-      [_, fence] -> fence
+    prefix =
+      case Regex.run(@fence_prefix, line) do
+        [prefix | _] -> prefix
+        nil -> line |> String.split(~r/[^\s]/, parts: 2) |> hd()
+      end
+
+    case Regex.run(~r/^(`{3,}|~{3,})/, String.replace_prefix(line, prefix, "")) do
+      [_, fence] -> {if(String.trim(prefix) == "", do: "", else: prefix), fence}
       nil -> nil
     end
   end
@@ -114,17 +164,21 @@ defmodule Billboard.Test.Guides do
     {Enum.map(body, &elem(&1, 0)), Enum.drop(rest, 1)}
   end
 
+  # A blockquote's lines carry its `>`s, which come off first.
   defp closing_fence?(line, fence) do
     char = String.first(fence)
+    line = String.replace(line, ~r/^(?:\s*>)+/, "")
     String.trim(line) =~ ~r/^#{Regex.escape(char)}{#{byte_size(fence)},}$/
   end
 
-  # An indented block's lines: while each is blank or four spaces in,
+  # An indented block's lines: while each is blank or `depth` spaces in,
   # less the blank lines it ends with.
-  defp indented(lines) do
+  defp indented(lines, depth) do
+    pad = String.duplicate(" ", depth)
+
     {body, rest} =
       Enum.split_while(lines, fn {line, _n} ->
-        String.trim(line) == "" or String.starts_with?(line, "    ")
+        String.trim(line) == "" or String.starts_with?(line, pad)
       end)
 
     {trailing, body} =
@@ -158,7 +212,8 @@ defmodule Billboard.Test.Guides do
       raise ArgumentError, "a guide quotes #{path}, which isn't in the library"
     end
 
-    unless Enum.any?(quotable(), &String.starts_with?(path, &1 <> "/")) do
+    # By where the path leads, so `lib/../README.md` is README.md.
+    unless Enum.any?(quotable(), &String.starts_with?(full, Path.expand(&1, @root) <> "/")) do
       raise ArgumentError,
             "a guide quotes #{path}, which the library neither compiles nor tests. Quote " <>
               "from #{Enum.join(quotable(), ", ")}, so what's quoted is checked"
@@ -223,7 +278,7 @@ defmodule Billboard.Test.Guides do
         cond do
           fence && closing_fence?(line, fence) -> {{line, nil}, nil}
           fence -> {{line, nil}, fence}
-          open = opening_fence(line) -> {{line, nil}, open}
+          opened = opening_fence(line) -> {{line, nil}, elem(opened, 1)}
           true -> {{line, heading_level(line)}, nil}
         end
       end)
