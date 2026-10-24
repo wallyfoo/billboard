@@ -105,6 +105,18 @@ defmodule Billboard.RulesTest do
              ])
     end
 
+    test "a max above one is counted, and worded, by the component's own max" do
+      put_site!(components: [Billboard.Components.Hero, Billboard.Test.Banner])
+      home = %Directory.Page{pattern: "/", label: "Home", kind: :free}
+      banner = fn -> s(:banner, %{heading: "Sale"}) end
+      check = &(Rules.check(home, &1, %{}) |> Enum.map(fn i -> {i.level, i.message} end))
+
+      assert check.([hero(), banner.(), banner.()]) == []
+
+      assert check.([hero(), banner.(), banner.(), banner.()]) ==
+               [{:error, "a page has at most two Banner"}]
+    end
+
     test "components only go where they belong" do
       assert {:error, "Two columns can't go on this page"} in messages("/items/:slug", [
                hero(),
@@ -175,7 +187,7 @@ defmodule Billboard.RulesTest do
     end
 
     test "a head's action and a single action count with the rest" do
-      # No shop component has either, so the hero's value is built by hand.
+      # No shop component has both, so the hero's value is built by hand.
       hero = %{
         hero()
         | content: %Ash.Union{

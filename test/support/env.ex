@@ -23,7 +23,9 @@ defmodule Billboard.Test.Env do
   Merges `overrides` into `Billboard.Test.Shop`'s overrides until the
   test ends, for example `put_shop!(rules: [MyTest.Rule])`. The shop
   reads them by the rules in `Billboard.Site`'s "Overriding in tests":
-  surfaces, offers, options, rules, kinds, and palette only.
+  surfaces, offers, options, rules, kinds, and palette only. `kinds:`,
+  like `rules:` and `palette:`, replaces the shop's whole answer, so a
+  test that narrows one component's kinds lists every one it keeps.
   """
   @spec put_shop!(keyword()) :: :ok
   def put_shop!(overrides) when is_list(overrides) do

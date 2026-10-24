@@ -1,5 +1,9 @@
 defmodule Billboard.Test.Router do
-  @moduledoc "The test site's routes: the editor, mounted as a site mounts it, and a probe."
+  @moduledoc """
+  The test site's routes: a probe, in a signed-in `live_session`, as a
+  site's admin pages are. The editor joins it, mounted as a site mounts
+  it.
+  """
   use Phoenix.Router
   import Phoenix.LiveView.Router
 
