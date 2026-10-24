@@ -464,18 +464,23 @@
 
 /* What the open section's renderers draw for the editor
    (Billboard.Sections.Parts): its buttons, marked to open their popover;
-   a way to add one; a list item's tools; and a photograph's. */
+   a way to add one; a list item's tools; and a photograph's. A button's
+   dashed hover outline is held off while it has the focus, so a
+   focused one shows the site's own ring, which this unlayered outline
+   would otherwise hide. */
 .bb-editor .bb-edit-action {
   display: contents;
 }
 .bb-editor .bb-edit-action :is(a, button) {
   cursor: pointer;
-  outline: 1px dashed transparent;
-  outline-offset: 3px;
   transition: outline-color var(--bb-edit-duration) var(--bb-edit-ease);
 }
+.bb-editor .bb-edit-action :is(a, button):not(:focus-visible) {
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+}
 @media (hover: hover) {
-  .bb-editor .bb-edit-action :is(a, button):hover {
+  .bb-editor .bb-edit-action :is(a, button):hover:not(:focus-visible) {
     outline-color: currentColor;
   }
 }
@@ -628,7 +633,8 @@
    marked, such as a popover that takes the focus. Not the rest of the
    page inside .bb-editor, nor a site's button the open section marks to
    open its popover (.bb-edit-action), which sit on the site's ground
-   and keep the site's ring. Unlike the rules above, it's in the base
+   and take the site's ring: the button's hover outline above is held
+   off while it's focused, so that ring shows. Unlike the rules above, it's in the base
    layer, where the theme's ring is, which it outweighs: so every
    focus-visible: utility beats it, the text fields keep their
    underline and no ring (focus-visible:outline-none), and the controls

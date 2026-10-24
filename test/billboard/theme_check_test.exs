@@ -49,6 +49,7 @@ defmodule Billboard.ThemeCheckTest do
       css = """
       /* a comment { with braces }, .x { } */
       :root { --bb-edit-accent: blue; }
+      :root .x { color: red; }
       @theme inline { --color-bb-edit: var(--bb-edit-accent); }
       @utility bb-edit-type-body { font: 16px; @variant md { font-size: 17px; } }
       .a, .b:is(.c, .d:not(.e)) > .f { color: red; }
@@ -58,7 +59,14 @@ defmodule Billboard.ThemeCheckTest do
       @keyframes pop { from { opacity: 0; } }
       """
 
-      assert rule_selectors(css) == [".a", ".b:is(.c, .d:not(.e)) > .f", ".g:hover", ".h .i"]
+      assert rule_selectors(css) == [
+               ":root .x",
+               ".a",
+               ".b:is(.c, .d:not(.e)) > .f",
+               ".g:hover",
+               ".h .i"
+             ]
+
       assert [{["@layer base"], [".h .i"]}] = Enum.filter(rules(css), &(elem(&1, 0) != []))
     end
 
@@ -66,7 +74,7 @@ defmodule Billboard.ThemeCheckTest do
     # a text field keeps its underline with no ring. It rings the bar and
     # what the editor marks as its own, but not a site's button the open
     # section marks to open its popover (`.bb-edit-action`), which sits
-    # on the site's ground and keeps the site's ring.
+    # on the site's ground and takes the site's ring (the next test).
     test "rings the editor's own UI in its blue, in the base layer" do
       layered = for {["@layer base"], selectors} <- rules(File.read!(@editor)), do: selectors
 
@@ -76,6 +84,27 @@ defmodule Billboard.ThemeCheckTest do
                  ".bb-editor [data-editor-ui]:focus-visible"
                ]
              ]
+    end
+
+    # A site's button in the open section draws a dashed outline on
+    # hover, unlayered, which would hide the site's own focus ring if it
+    # were always on, so it's held off a focused one.
+    test "leaves a focused site button in the open section the site's ring" do
+      css = File.read!(@editor)
+      selectors = rule_selectors(css)
+
+      assert Enum.filter(selectors, &(&1 =~ ".bb-edit-action :is(a, button)")) == [
+               ".bb-editor .bb-edit-action :is(a, button)",
+               ".bb-editor .bb-edit-action :is(a, button):not(:focus-visible)",
+               ".bb-editor .bb-edit-action :is(a, button):hover:not(:focus-visible)"
+             ]
+
+      assert [body] =
+               Regex.run(~r/\.bb-editor \.bb-edit-action :is\(a, button\) \{([^}]*)\}/, css,
+                 capture: :all_but_first
+               )
+
+      refute body =~ ~r/\boutline(-offset)?\s*:/
     end
 
     # The editor ships no fonts: a site that loads these faces gets them,
@@ -473,7 +502,8 @@ defmodule Billboard.ThemeCheckTest do
       cond do
         String.starts_with?(prelude, ["@media", "@supports"]) -> rules(body, layers)
         String.starts_with?(prelude, "@layer") -> rules(body, layers ++ [prelude])
-        String.starts_with?(prelude, [":root", "@theme", "@utility", "@keyframes"]) -> []
+        prelude == ":root" -> []
+        String.starts_with?(prelude, ["@theme", "@utility", "@keyframes"]) -> []
         true -> [{layers, selectors(prelude)}]
       end
     end)

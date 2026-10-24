@@ -5,5 +5,5 @@
 //     import {hooks as billboardHooks} from "phoenix-colocated/billboard"
 //
 //     hooks: {...colocatedHooks, ...billboardHooks, EditCanvas, InlineWords}
-export {EditCanvas} from "./edit_canvas"
-export {InlineWords} from "./inline_words"
+export {EditCanvas} from "./edit_canvas.js"
+export {InlineWords} from "./inline_words.js"

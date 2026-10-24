@@ -95,29 +95,34 @@ defmodule Billboard.EditorLive.Palette do
   def places([%{content: %{type: :hero}} | _] = sections), do: 1..length(sections)
   def places(sections), do: 0..length(sections)
 
-  # Counts include the sections inside Two columns, as the rules' do.
-  defp unavailable(%{key: :shared}, _all, sections, library) do
+  # Shared and Two columns have reasons of their own, then a page's
+  # limit (`max_reached/2`), as every other component has.
+  defp unavailable(%{key: :shared} = entry, all, sections, library) do
     cond do
       library == [] -> "The shared library is empty."
       unplaced(library, sections) == [] -> Messages.message(:nothing_to_share)
-      true -> nil
+      true -> max_reached(entry, all)
     end
   end
 
   # Two columns arrive holding two of a component that fits in a column
   # (`column_type/0`), so on a site with none they can't be added.
-  defp unavailable(%{key: :columns}, _all, _sections, _library) do
-    if column_type(), do: nil, else: "Nothing on this site fits in a column."
+  defp unavailable(%{key: :columns} = entry, all, _sections, _library) do
+    if column_type(),
+      do: max_reached(entry, all),
+      else: "Nothing on this site fits in a column."
   end
 
-  defp unavailable(%{key: key, max: max, label: label}, all, _sections, _library)
-       when is_integer(max) do
+  defp unavailable(entry, all, _sections, _library), do: max_reached(entry, all)
+
+  # Counts include the sections inside Two columns, as the rules' do.
+  defp max_reached(%{key: key, max: max, label: label}, all) when is_integer(max) do
     if Enum.count(all, &(&1.content.type == key)) >= max,
       do: "#{label} is already on this page.",
       else: nil
   end
 
-  defp unavailable(_entry, _all, _sections, _library), do: nil
+  defp max_reached(_entry, _all), do: nil
 
   # A section as the component arrives: its placeholder, and for Two
   # columns, two Details, or two of the first component that fits in a
