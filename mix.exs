@@ -26,6 +26,8 @@ defmodule Billboard.MixProject do
     [
       {:ash, "~> 3.33"},
       {:ash_postgres, "~> 2.13"},
+      # The editor's forms are `AshPhoenix.Form`s.
+      {:ash_phoenix, "~> 2.3"},
       {:spark, "~> 2.7"},
       {:phoenix_pubsub, "~> 2.1"},
       # `Billboard.Errors.Refused` is a Splode error; Ash requires the same.

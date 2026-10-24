@@ -34,7 +34,7 @@ defmodule Billboard.Test.Shop.Starter do
     hero =
       build(:hero, %{
         heading: "Everything for the shop",
-        actions: [%{label: "Shop now", style: :primary}]
+        actions: [%{label: "Shop now", style: :primary, path: "/"}]
       })
 
     hero = %{hero | actions: Enum.map(hero.actions, &%{&1 | id: @shop_now})}
@@ -63,7 +63,7 @@ defmodule Billboard.Test.Shop.Starter do
     do: [hero("Terms"), section("terms", :text, build(:text, %{body: "Be kind."}))]
 
   defp sections(nil) do
-    band = build(:band, %{heading: "Visit the shop", action: %{label: "Visit"}})
+    band = build(:band, %{heading: "Visit the shop", action: %{label: "Visit", path: "/"}})
     [section("promo", :band, %{band | action: %{band.action | id: @visit}}, "promo")]
   end
 

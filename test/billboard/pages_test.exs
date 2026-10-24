@@ -111,7 +111,10 @@ defmodule Billboard.PagesTest do
         items: [%{title: "Book"}, %{title: "Visit"}]
       })
 
-      section_fixture(draft, :band, %{heading: "Come by", action: %{label: "Directions"}})
+      section_fixture(draft, :band, %{
+        heading: "Come by",
+        action: %{label: "Directions", path: "/"}
+      })
 
       {:ok, live} = Shop.Pages.commit_page("/", @opts)
       {:ok, next} = Shop.Pages.edit_page("/", @opts)

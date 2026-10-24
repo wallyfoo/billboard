@@ -37,12 +37,14 @@ defmodule Billboard.CatalogueTest do
   end
 
   test "lists the site's components in its order, the palette's" do
-    assert Catalogue.keys() == [:hero, :band, :cards, :text, :columns, :shared]
+    assert Catalogue.keys() ==
+             ~w(hero band cards text points text_media details reviews news columns shared)a
+
     assert Enum.map(Catalogue.entries(), & &1.key) == Catalogue.keys()
   end
 
   test "groups components for the palette, in the order the components first name each category" do
-    assert Catalogue.categories() == [:opener, :band, :paper, :layout, :special]
+    assert Catalogue.categories() == [:opener, :band, :paper, :content, :data, :layout, :special]
 
     for key <- Catalogue.keys() do
       assert [_] = for(c <- Catalogue.categories(), key in keys_in(c), do: c)

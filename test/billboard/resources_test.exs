@@ -128,7 +128,7 @@ defmodule Billboard.ResourcesTest do
               section: Billboard.ResourcesTest.TabledSection,
               content: Billboard.ResourcesTest.TabledContent
             ],
-            components: [Billboard.Test.Hero, Billboard.Test.Text]
+            components: [Billboard.Components.Hero, Billboard.Test.Text]
         end
 
         defmodule Billboard.ResourcesTest.TabledContent do

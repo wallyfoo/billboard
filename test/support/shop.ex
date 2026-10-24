@@ -5,9 +5,13 @@ defmodule Billboard.Test.Shop do
   A test overrides its surfaces, offers, options, rules, kinds, and
   palette with `Billboard.Test.Env.put_shop!/1`.
 
-  Its action kinds and context are the test site's (`Billboard.Test.Actions`
-  and `Billboard.Test.Context`). Its pages: a free home page and about page, an item page whose kind
-  takes no Two columns, a fixed terms page, and the library.
+  It's on billboard's stock components, with two of its own, Cards and
+  Text, and its own Two columns and Shared. Its `kinds:` keep the hero
+  off the library, and the band and the points to free pages and the
+  library. Its action kinds and context are the test site's
+  (`Billboard.Test.Actions` and `Billboard.Test.Context`). Its pages: a
+  free home page and about page, an item page whose kind takes no Two
+  columns, a fixed terms page, and the library.
   """
   alias Billboard.Test
 
@@ -22,12 +26,25 @@ defmodule Billboard.Test.Shop do
       section: Test.Shop.Section,
       content: Test.Shop.Content
     ],
-    components: [Test.Hero, Test.Band, Test.Cards, Test.Text, Test.Columns, Test.Shared],
+    components: [
+      Billboard.Components.Hero,
+      Billboard.Components.Band,
+      Test.Cards,
+      Test.Text,
+      Billboard.Components.Points,
+      Billboard.Components.TextMedia,
+      Billboard.Components.Details,
+      Billboard.Components.Reviews,
+      Billboard.Components.News,
+      Test.Columns,
+      Test.Shared
+    ],
     surfaces: [%{name: "plain", label: "Plain"}, %{name: "loud", label: "Loud"}],
     offered: [page: ["plain"], stand_out: ["loud"], card: []],
     starter: Test.Shop.Starter,
     actions: Test.Actions,
     context: Test.Context,
+    kinds: [hero: [:free, :item, :fixed], band: [:free, :library], points: [:free, :library]],
     reserved_ids: [
       ids: ~w(shop-header),
       prefixes: ~w(item-),

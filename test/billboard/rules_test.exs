@@ -24,6 +24,7 @@ defmodule Billboard.RulesTest do
   defp hero, do: s(:hero, %{heading: "Hi"})
   defp band, do: s(:band, %{heading: "Visit"})
   defp text, do: s(:text, %{body: "Words"})
+  defp news, do: s(:news, %{head: %{heading: "What's on"}})
 
   # The shared library, as `Billboard.Pages.shared_sections/0` gives it.
   defp lib_band, do: %{band() | key: "promo", anchor: "promo"}
@@ -94,13 +95,13 @@ defmodule Billboard.RulesTest do
     end
 
     test "a page holds no more of a component than its max" do
-      assert {:error, "a page has at most two Band"} in messages("/", [
+      assert messages("/", [hero(), news(), text()]) == []
+
+      assert {:error, "a page has at most one What's on"} in messages("/", [
                hero(),
-               band(),
+               news(),
                text(),
-               band(),
-               text(),
-               band()
+               news()
              ])
     end
 
@@ -140,12 +141,11 @@ defmodule Billboard.RulesTest do
     end
 
     test "sections in columns count towards a page's limits and placement" do
-      columns = s(:columns, %{}, [text(), band()])
+      columns = s(:columns, %{}, [news(), band()])
 
-      assert {:error, "a page has at most two Band"} in messages("/", [
+      assert {:error, "a page has at most one What's on"} in messages("/", [
                hero(),
-               band(),
-               band(),
+               news(),
                columns
              ])
 
@@ -159,7 +159,10 @@ defmodule Billboard.RulesTest do
       hero =
         s(:hero, %{
           heading: "Hi",
-          actions: [%{label: "A", style: :primary}, %{label: "B", style: :primary}]
+          actions: [
+            %{label: "A", style: :primary, path: "/"},
+            %{label: "B", style: :primary, path: "/"}
+          ]
         })
 
       assert {:warning, "use one primary action per section; Hero has 2"} in messages("/", [hero])
@@ -185,7 +188,7 @@ defmodule Billboard.RulesTest do
     end
 
     test "each issue names the section it is about" do
-      [issue] = Rules.check(Directory.fetch!("/"), [hero(), band(), band(), last = band()], %{})
+      [issue] = Rules.check(Directory.fetch!("/"), [hero(), news(), text(), last = news()], %{})
 
       assert issue.key == last.key
     end
@@ -299,7 +302,7 @@ defmodule Billboard.RulesTest do
   describe "a component's own rules" do
     test "run on each of its sections, after the stock rules and before the site's" do
       put_site!(
-        components: [Billboard.Test.Hero, Billboard.Test.Faq],
+        components: [Billboard.Components.Hero, Billboard.Test.Faq],
         rules: [Billboard.Test.PageNote]
       )
 

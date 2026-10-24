@@ -27,7 +27,7 @@ defmodule Billboard.SectionTest do
   test "content round-trips as a typed component" do
     section = section_fixture(version_fixture(path: "/about"), :hero, %{heading: "About"})
 
-    assert %Ash.Union{type: :hero, value: %Billboard.Test.Hero{heading: "About"}} =
+    assert %Ash.Union{type: :hero, value: %Billboard.Components.Hero{heading: "About"}} =
              Shop.Pages.get_section!(section.id, @opts).content
   end
 

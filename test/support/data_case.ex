@@ -16,9 +16,19 @@ defmodule Billboard.Test.DataCase do
   end
 
   setup tags do
+    setup_sandbox(tags)
+    :ok
+  end
+
+  @doc """
+  Starts the test's sandbox owner, and stops it when the test ends. An
+  `async: false` test shares the owner's connection with every process,
+  such as a LiveView's, so they read and write in the test's
+  transaction.
+  """
+  def setup_sandbox(tags) do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Billboard.Test.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
-    :ok
   end
 
   @doc """

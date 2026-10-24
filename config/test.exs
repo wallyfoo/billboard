@@ -20,6 +20,13 @@ config :billboard, Billboard.Test.Repo,
   priv: "test/support/postgres",
   snapshots_path: "test/support/postgres/resource_snapshots"
 
+# The test site's endpoint, for the editor's LiveView tests.
+config :billboard, Billboard.Test.Endpoint,
+  secret_key_base: String.duplicate("billboard", 8),
+  live_view: [signing_salt: "billboard-test"],
+  pubsub_server: Billboard.Test.PubSub,
+  server: false
+
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 
 config :logger, level: :warning

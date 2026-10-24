@@ -7,13 +7,19 @@ defmodule Billboard.ContentTest do
   test "holds the site's components, in order, each tagged by its key" do
     types = Shop.Content.subtype_constraints()[:types]
 
-    assert Keyword.keys(types) == [:hero, :band, :cards, :text, :columns, :shared]
+    assert Keyword.keys(types) ==
+             ~w(hero band cards text points text_media details reviews news columns shared)a
 
     for {key, module} <- [
-          hero: Test.Hero,
-          band: Test.Band,
+          hero: Billboard.Components.Hero,
+          band: Billboard.Components.Band,
           cards: Test.Cards,
           text: Test.Text,
+          points: Billboard.Components.Points,
+          text_media: Billboard.Components.TextMedia,
+          details: Billboard.Components.Details,
+          reviews: Billboard.Components.Reviews,
+          news: Billboard.Components.News,
           columns: Test.Columns,
           shared: Test.Shared
         ] do
