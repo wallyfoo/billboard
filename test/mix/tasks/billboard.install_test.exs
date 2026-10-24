@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Billboard.InstallTest do
-  @moduledoc "mix billboard.install: the config and the modules, written once."
+  @moduledoc "mix billboard.install: the config, the modules, and the web, written once."
   use ExUnit.Case, async: true
 
   import Igniter.Test
@@ -72,5 +72,169 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     |> apply_igniter!()
     |> install()
     |> assert_unchanged()
+  end
+
+  describe "the web" do
+    test "gives the site's Layouts a page layout for billboard" do
+      layouts = project() |> install() |> content("lib/my_site_web/components/layouts.ex")
+
+      assert layouts =~ "@behaviour Billboard.Layout"
+      assert layouts =~ "def page(assigns)"
+      assert layouts =~ ~s|<div class="bb-surface-band">{render_slot(@hero)}</div>|
+    end
+
+    test "leaves alone a Layouts that has a page/1" do
+      layouts = """
+      defmodule MySiteWeb.Layouts do
+        use MySiteWeb, :html
+
+        def page(assigns), do: ~H"<main>{render_slot(@inner_block)}</main>"
+      end
+      """
+
+      project(%{"lib/my_site_web/components/layouts.ex" => layouts})
+      |> install()
+      |> assert_unchanged("lib/my_site_web/components/layouts.ex")
+    end
+
+    test "mounts the editor in the signed-in live_session, and imports its macro" do
+      router = project() |> install() |> content("lib/my_site_web/router.ex")
+
+      assert router =~ ~r/use MySiteWeb, :router\s+import Billboard\.Editor\.Router/
+
+      assert router =~
+               ~r/live_session[ (]:require_authenticated_user.*billboard_editor[ (]"\/admin\/pages"/s
+    end
+
+    test "takes another live_session and path" do
+      router =
+        project()
+        |> install(["--live-session", "admin", "--editor-path", "/pages"])
+        |> tap(&assert_has_warning(&1, fn w -> w =~ "Couldn't find `live_session :admin`" end))
+        |> content("lib/my_site_web/router.ex")
+
+      refute router =~ "billboard_editor"
+    end
+
+    test "with --home, draws the home page with billboard" do
+      igniter = project() |> install(["--home"])
+
+      assert_creates(igniter, "lib/my_site_web/live/billboard_page_live.ex")
+      page_live = content(igniter, "lib/my_site_web/live/billboard_page_live.ex")
+      assert page_live =~ "use MySiteWeb, :live_view"
+      assert page_live =~ "site={@site}"
+      assert page_live =~ "route_info(socket.router, \"GET\", path, host)"
+
+      router = content(igniter, "lib/my_site_web/router.ex")
+
+      # In phx.gen.auth's :current_user session, whose on_mount gives
+      # the root layout its @current_scope.
+      assert router =~ ~r/live_session[ (]:current_user.*live[ (]"\/", BillboardPageLive/s
+      refute router =~ "PageController, :home"
+    end
+
+    test "with --home, takes `/` for itself, not another scope's" do
+      router =
+        project()
+        |> content("lib/my_site_web/router.ex")
+        |> String.replace("  ## Authentication routes", """
+          scope "/admin", MySiteWeb do
+            pipe_through :browser
+
+            live "/", AdminLive
+          end
+
+          ## Authentication routes\
+        """)
+
+      router =
+        project(%{"lib/my_site_web/router.ex" => router})
+        |> install(["--home"])
+        |> content("lib/my_site_web/router.ex")
+
+      assert router =~ ~r/live_session[ (]:current_user.*live[ (]"\/", BillboardPageLive/s
+      refute router =~ "PageController, :home"
+    end
+
+    test "with --home, warns and leaves the router alone without :current_user" do
+      router = project() |> content("lib/my_site_web/router.ex")
+      router = String.replace(router, "live_session :current_user", "live_session :visitors")
+
+      project(%{"lib/my_site_web/router.ex" => router})
+      |> install(["--home"])
+      |> tap(&assert_has_warning(&1, fn w -> w =~ ~s|live "/", BillboardPageLive| end))
+      |> content("lib/my_site_web/router.ex")
+      |> Kernel.=~("PageController, :home")
+      |> assert()
+    end
+
+    test "without --home, writes no page of its own" do
+      igniter = project() |> install()
+      refute_creates(igniter, "lib/my_site_web/live/billboard_page_live.ex")
+      assert content(igniter, "lib/my_site_web/router.ex") =~ "PageController, :home"
+    end
+
+    test "serves uploaded photographs, from a directory set for each environment" do
+      igniter = project() |> install()
+
+      assert content(igniter, "lib/my_site_web/endpoint.ex") =~
+               ~r/plug[ (]Billboard\.Plugs\.UploadsStatic\)?\s+.*plug[ (]Plug\.Static/s
+
+      assert content(igniter, "config/config.exs") =~
+               ~s|uploads_dir: Path.expand("../priv/uploads", __DIR__)|
+
+      assert content(igniter, "config/test.exs") =~
+               ~s|uploads_dir: Path.expand("../tmp/test-uploads", __DIR__)|
+
+      assert content(igniter, "config/runtime.exs") =~ "UPLOADS_DIR"
+    end
+
+    test "leaves alone a site and an uploads_dir set in config calls of their own" do
+      config = project() |> content("config/config.exs")
+
+      config =
+        String.replace(
+          config,
+          "import Config\n",
+          """
+          import Config
+
+          config :billboard, uploads_dir: Path.expand("../uploads", __DIR__)
+
+          config :billboard, site: MySite.Billboard
+          """
+        )
+
+      config =
+        project(%{"config/config.exs" => config}) |> install() |> content("config/config.exs")
+
+      assert [_] = Regex.scan(~r/uploads_dir:/, config)
+      assert [_] = Regex.scan(~r/\bsite: MySite.Billboard/, config)
+    end
+
+    test "leaves a runtime uploads_dir alone wherever runtime.exs sets it" do
+      # Outside the prod block, in a block of its own.
+      runtime = """
+      import Config
+
+      uploads_dir = if config_env() != :test, do: System.get_env("UPLOADS_DIR")
+
+      if uploads_dir do
+        config :billboard, uploads_dir: uploads_dir
+      end
+      """
+
+      project(%{"config/runtime.exs" => runtime})
+      |> install()
+      |> assert_unchanged("config/runtime.exs")
+    end
+
+    test "changes nothing the second time, --home and all" do
+      project()
+      |> install(["--home"])
+      |> apply_igniter!()
+      |> install(["--home"])
+      |> assert_unchanged()
+    end
   end
 end

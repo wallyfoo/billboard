@@ -30,7 +30,9 @@ if Code.ensure_loaded?(Igniter) do
       * `--home` - draws the home page with billboard: writes
         `MySiteWeb.BillboardPageLive`, which draws any of the site's
         pages for visitors, and routes `/` to it in place of
-        `PageController`'s home.
+        `PageController`'s home, inside `mix phx.gen.auth`'s
+        `live_session :current_user`, since the root layout reads
+        `@current_scope`.
     """
     use Igniter.Mix.Task
 
@@ -59,6 +61,11 @@ if Code.ensure_loaded?(Igniter) do
           igniter
           |> config(names)
           |> modules(names)
+          |> Install.add_layout(names)
+          |> Install.mount_editor(igniter.args.options)
+          |> home(names, igniter.args.options[:home])
+          |> Install.plug_uploads(names)
+          |> uploads()
           |> Install.add_cache()
           |> notices()
 
@@ -76,7 +83,7 @@ if Code.ensure_loaded?(Igniter) do
     defp config(igniter, names) do
       igniter
       |> Igniter.Project.Formatter.import_dep(:billboard)
-      |> Igniter.Project.Config.configure_new("config.exs", :billboard, [:site], names.site)
+      |> Install.configure_new("config.exs", :billboard, :site, names.site)
       |> Igniter.Project.Config.configure(
         "config.exs",
         names.app,
@@ -103,6 +110,55 @@ if Code.ensure_loaded?(Igniter) do
           Install.template("billboard.install", template, names)
         )
       end)
+    end
+
+    defp home(igniter, _names, false), do: igniter
+
+    defp home(igniter, names, true) do
+      igniter
+      |> Install.create_module(
+        names.page_live,
+        Install.template("billboard.install", "page_live.ex.eex", names)
+      )
+      |> Install.route_home(names)
+    end
+
+    # Where uploaded photographs go: the site's priv in dev, a directory
+    # tests empty, and, in production, a volume that outlives a deploy.
+    defp uploads(igniter) do
+      expand = &{:code, Sourceror.parse_string!(~s|Path.expand("#{&1}", __DIR__)|)}
+
+      igniter
+      |> Install.configure_new("config.exs", :billboard, :uploads_dir, expand.("../priv/uploads"))
+      |> Install.configure_new(
+        "test.exs",
+        :billboard,
+        :uploads_dir,
+        expand.("../tmp/test-uploads")
+      )
+      |> runtime_uploads()
+    end
+
+    defp runtime_uploads(igniter) do
+      case Install.configures?(igniter, "runtime.exs", :billboard, :uploads_dir) do
+        {igniter, true} ->
+          igniter
+
+        {igniter, false} ->
+          Igniter.Project.Config.configure_runtime_env(
+            igniter,
+            :prod,
+            :billboard,
+            [:uploads_dir],
+            {:code,
+             Sourceror.parse_string!("""
+             System.get_env("UPLOADS_DIR") ||
+               raise "environment variable UPLOADS_DIR is missing. Set it to a directory on a " <>
+                       "volume that outlives a deploy: billboard keeps uploaded photographs there."
+             """)},
+            updater: &{:ok, &1}
+          )
+      end
     end
 
     defp notices(igniter) do

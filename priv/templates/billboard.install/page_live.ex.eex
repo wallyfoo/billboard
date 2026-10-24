@@ -1,0 +1,57 @@
+defmodule <%= inspect(@page_live) %> do
+  @moduledoc """
+  A page of the site's, as visitors see it: the live version of the
+  billboard page whose route this is, in `Layouts.page/1`. Route each
+  of the site's pages here, by the pattern its `page` entry names, as
+  `live "/about", BillboardPageLive`, beside the home page's route in
+  `live_session :current_user`. A publish redraws it for everyone
+  reading it.
+  """
+  use <%= @web %>, :live_view
+
+  alias <%= inspect(@pages) %>
+
+  @impl true
+  def mount(_params, _session, socket) do
+    if connected?(socket), do: Pages.subscribe()
+    {:ok, assign(socket, :site, Billboard.Layout.site())}
+  end
+
+  @impl true
+  def handle_params(_params, uri, socket) do
+    %URI{path: path, host: host} = URI.parse(uri)
+    %{route: pattern} = Phoenix.Router.route_info(socket.router, "GET", path, host)
+
+    {:noreply, socket |> assign(pattern: pattern, current_path: path) |> load()}
+  end
+
+  @impl true
+  def handle_info({:pages_updated, _node, _snapshot}, socket), do: {:noreply, load(socket)}
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <Billboard.Sections.page
+      version={@version}
+      data={@data}
+      library={@library}
+      site={@site}
+      flash={@flash}
+      current_path={@current_path}
+    />
+    """
+  end
+
+  defp load(socket) do
+    pattern = socket.assigns.pattern
+    version = Pages.page_for(pattern)
+
+    assign(socket,
+      version: version,
+      data: Billboard.Resolver.resolve(version),
+      library: Pages.page_for(nil),
+      page_title:
+        Billboard.Directory.fetch!(pattern).title || Billboard.Sections.Hero.title(version)
+    )
+  end
+end

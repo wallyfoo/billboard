@@ -1,0 +1,29 @@
+  @behaviour Billboard.Layout
+
+  @doc """
+  The site's chrome round billboard's pages, in the editor and for
+  visitors: a header, the page's hero on the stand-out surface, its
+  sections, and a footer. The editor draws its own messages, so
+  `editing` draws none here.
+  """
+  attr :flash, :map, required: true
+  attr :site, :map, default: %{}
+  attr :current_path, :string, default: nil
+  attr :editing, :boolean, default: false
+  slot :hero, required: true
+  slot :inner_block, required: true
+
+  @impl Billboard.Layout
+  def page(assigns) do
+    ~H"""
+    <header class="bb-wrap flex items-center justify-between py-6">
+      <a href="/" class="bb-type-label text-bb-ink"><%= @name %></a>
+    </header>
+    <div class="bb-surface-band">{render_slot(@hero)}</div>
+    <main>{render_slot(@inner_block)}</main>
+    <footer class="bb-wrap bb-type-small py-12 text-bb-ink-soft">
+      <%= @name %>
+    </footer>
+    <.flash_group :if={!@editing} flash={@flash} />
+    """
+  end
