@@ -7,8 +7,27 @@ defmodule Billboard.ResolverTest do
   # Refreshes the pages cache and swaps the site, so not async.
   use Billboard.Test.DataCase, async: false
 
+  alias Billboard.Components.Reviews
   alias Billboard.Resolver
   alias Billboard.Test.{Data, Shop}
+
+  # A data module that forgets to hand back what it read.
+  defmodule BadData do
+    @behaviour Billboard.Data
+
+    @impl true
+    def fetch(%Reviews{}, _context, _loaded), do: {:ok, ["a review"]}
+    def fetch(_content, _context, _loaded), do: :none
+  end
+
+  # A data module whose reviews are the page's context.
+  defmodule ContextData do
+    @behaviour Billboard.Data
+
+    @impl true
+    def fetch(%Reviews{}, context, loaded), do: {:ok, context, loaded}
+    def fetch(_content, _context, _loaded), do: :none
+  end
 
   @opts [authorize?: false]
 
@@ -51,6 +70,22 @@ defmodule Billboard.ResolverTest do
            }
 
     assert Data.reads() == [:reviews, {:news, 2}]
+  end
+
+  test "news sections of different limits read each limit once" do
+    sections = [
+      s("n1", :news, Map.put(@news, :limit, 1)),
+      s("n3", :news, Map.put(@news, :limit, 3)),
+      s("n1b", :news, Map.put(@news, :limit, 1))
+    ]
+
+    assert Resolver.resolve(version(sections)) == %{
+             "n1" => [@post],
+             "n3" => [@post],
+             "n1b" => [@post]
+           }
+
+    assert Data.reads() == [{:news, 1}, {:news, 3}]
   end
 
   test "children of Two columns are resolved like top-level ones" do
@@ -101,5 +136,38 @@ defmodule Billboard.ResolverTest do
 
     assert Resolver.resolve(version(sections)) == %{}
     assert Data.reads() == []
+  end
+
+  test "the page's context reaches the data module, an empty map unless given" do
+    sections = [s("r", :reviews)]
+    put_site!(data: ContextData)
+
+    assert Resolver.resolve(version(sections), %{group: "colour"}) == %{
+             "r" => %{group: "colour"}
+           }
+
+    assert Resolver.resolve(version(sections)) == %{"r" => %{}}
+  end
+
+  test "raises, naming the fix, when the data module returns neither data nor :none" do
+    sections = [s("h", :hero, %{heading: "x"}), s("r", :reviews)]
+    put_site!(data: BadData)
+
+    message =
+      ~s(Billboard.ResolverTest.BadData.fetch/3 returned {:ok, ["a review"]} for section "r". ) <>
+        "Return `{:ok, value, loaded}` (`Billboard.Data.once/3` gives one) or `:none`."
+
+    assert_raise RuntimeError, message, fn ->
+      Resolver.resolve(version(sections))
+    end
+  end
+
+  test "raises for unloaded children even with no data module" do
+    columns = %{s("cols", :columns) | children: %Ash.NotLoaded{}}
+    put_site!(data: nil)
+
+    assert_raise ArgumentError, ~r/load the children of Two columns section "cols"/, fn ->
+      Resolver.resolve(version([columns]))
+    end
   end
 end

@@ -20,19 +20,32 @@ defmodule Billboard.Resolver do
   The data for each of `version`'s data sections, by section key, given
   the page's `context` (the map `Billboard.Context` describes). Each Two
   columns section needs its `children` loaded; this raises
-  `ArgumentError` otherwise.
+  `ArgumentError` otherwise. It raises too when the data module's
+  `fetch/3` returns neither `{:ok, value, loaded}` nor `:none`.
   """
   @spec resolve(map(), map()) :: %{String.t() => term()}
   def resolve(%{sections: sections}, context \\ %{}) do
-    data = Billboard.Site.data()
+    sections = Enum.flat_map(sections, &with_children/1)
 
+    case Billboard.Site.data() do
+      nil -> %{}
+      data -> fetch_all(data, sections, context)
+    end
+  end
+
+  defp fetch_all(data, sections, context) do
     {result, _loaded} =
-      sections
-      |> Enum.flat_map(&with_children/1)
-      |> Enum.reduce({%{}, %{}}, fn %{key: key, content: content}, {result, loaded} ->
-        case data && data.fetch(content.value, context, loaded) do
-          {:ok, value, loaded} -> {Map.put(result, key, value), loaded}
-          _none -> {result, loaded}
+      Enum.reduce(sections, {%{}, %{}}, fn %{key: key, content: content}, {result, loaded} ->
+        case data.fetch(content.value, context, loaded) do
+          {:ok, value, loaded} when is_map(loaded) ->
+            {Map.put(result, key, value), loaded}
+
+          :none ->
+            {result, loaded}
+
+          other ->
+            raise "#{inspect(data)}.fetch/3 returned #{inspect(other)} for section #{inspect(key)}. " <>
+                    "Return `{:ok, value, loaded}` (`Billboard.Data.once/3` gives one) or `:none`."
         end
       end)
 

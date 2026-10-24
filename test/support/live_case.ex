@@ -11,7 +11,14 @@ defmodule Billboard.Test.LiveCase do
   """
   use ExUnit.CaseTemplate
 
-  using do
+  using opts do
+    if opts[:async] do
+      raise ArgumentError,
+            "#{inspect(__CALLER__.module)} uses Billboard.Test.LiveCase with `async: true`, " <>
+              "but LiveView tests run async: false, so the LiveView shares the test's " <>
+              "connection. Use `use Billboard.Test.LiveCase, async: false`."
+    end
+
     quote do
       @endpoint Billboard.Test.Endpoint
 
@@ -22,13 +29,6 @@ defmodule Billboard.Test.LiveCase do
   end
 
   setup tags do
-    if tags[:async] do
-      raise ArgumentError,
-            "#{inspect(tags.module)} uses Billboard.Test.LiveCase with `async: true`, but " <>
-              "LiveView tests run async: false, so the LiveView shares the test's connection. " <>
-              "Use `use Billboard.Test.LiveCase, async: false`."
-    end
-
     Billboard.Test.DataCase.setup_sandbox(tags)
     :ok
   end

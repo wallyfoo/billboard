@@ -6,9 +6,9 @@ defmodule Billboard.Sections.News do
   sections', since it's often a page's last, above the footer; in a
   column it has none of its own.
 
-  The posts are the site's, given by section key in the page's data
-  (`ctx.data[key]`), which fetches as many as the section's `limit`, in
-  the order they're drawn. Each is a map of `id`, `published_on` (a
+  The posts are the site's, read by its `Billboard.Data` module, as many
+  as the section's `limit`, and given by section key in the page's data
+  (`ctx.data[key]`) by `Billboard.Resolver`, in the order they're drawn. Each is a map of `id`, `published_on` (a
   `Date`), `title` (plain text), and `body` (Markdown).
   """
   use Billboard.Renderer

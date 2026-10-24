@@ -4,6 +4,11 @@ defmodule Billboard.Test.Data do
   dictionary, under `:shop_reviews` and `:shop_news` (none unless it
   does), the news cut to each section's `limit`. Each read is noted
   there too, so `reads/0` says what a test's pages read, in order.
+
+  The process dictionary is the test's own, so its rows don't reach a
+  LiveView, which runs in a process of its own: a mounted page reads no
+  reviews or news, and its reads aren't noted where the test can see
+  them. Test the rows through `Billboard.Resolver` in the test's process.
   """
   @behaviour Billboard.Data
 

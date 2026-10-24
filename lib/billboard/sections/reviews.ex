@@ -7,8 +7,9 @@ defmodule Billboard.Sections.Reviews do
   the browser, with no round trip. With no reviews, it draws nothing at
   all.
 
-  The reviews are the site's, given by section key in the page's data
-  (`ctx.data[key]`), in the order they're drawn. Each is a map of `id`,
+  The reviews are the site's, read by its `Billboard.Data` module and
+  given by section key in the page's data (`ctx.data[key]`) by
+  `Billboard.Resolver`, in the order they're drawn. Each is a map of `id`,
   `name`, `reviewed_on` (a `Date`, drawn as its month and year), and
   `quote`, all plain text but the date.
   """
