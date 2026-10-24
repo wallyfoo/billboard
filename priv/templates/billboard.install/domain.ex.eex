@@ -1,0 +1,7 @@
+defmodule <%= inspect(@pages) %> do
+  @moduledoc """
+  The site's pages, their versions, and their sections, and the
+  functions that edit and publish them.
+  """
+  use Billboard.Domain, site: <%= inspect(@site) %>, extensions: [AshPhoenix]
+end

@@ -1,0 +1,6 @@
+defmodule <%= inspect(@pages) %>.Page do
+  @moduledoc """
+  A page the builder knows, by its route pattern. Billboard writes the resource.
+  """
+  use Billboard.Page, site: <%= inspect(@site) %>
+end

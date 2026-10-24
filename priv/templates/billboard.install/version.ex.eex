@@ -1,0 +1,6 @@
+defmodule <%= inspect(@pages) %>.Version do
+  @moduledoc """
+  A version of a page: the live one, or a draft of changes. Billboard writes the resource.
+  """
+  use Billboard.Version, site: <%= inspect(@site) %>
+end

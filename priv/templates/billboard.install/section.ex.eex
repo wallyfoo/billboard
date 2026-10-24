@@ -1,0 +1,6 @@
+defmodule <%= inspect(@pages) %>.Section do
+  @moduledoc """
+  A section of a version. Billboard writes the resource.
+  """
+  use Billboard.Section, site: <%= inspect(@site) %>
+end

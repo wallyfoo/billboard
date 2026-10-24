@@ -1,0 +1,40 @@
+defmodule <%= inspect(@site) %> do
+  @moduledoc """
+  The site's pages, as billboard builds them: the sections the
+  palette offers, the surfaces they're drawn on, and the pages the
+  editor lists. Billboard's getting started guide explains each answer.
+  """
+  alias <%= inspect(@pages) %>
+
+  use Billboard.Site,
+    otp_app: <%= inspect(@app) %>,
+    repo: <%= inspect(@repo) %>,
+    pubsub: <%= @prefix %>.PubSub,
+    domain: Pages,
+    resources: [
+      page: Pages.Page,
+      version: Pages.Version,
+      section: Pages.Section,
+      content: Pages.Content
+    ],
+    # The palette, in order. Reviews and News draw rows the site reads
+    # through a `data:` module; add them once it has one.
+    components: [
+      Billboard.Components.Hero,
+      Billboard.Components.Band,
+      Billboard.Components.Points,
+      Billboard.Components.TextMedia,
+      Billboard.Components.Details,
+      Billboard.Components.Columns,
+      Billboard.Components.Shared
+    ],
+    # The first is the page's own. assets/css/billboard-tokens.css draws both.
+    surfaces: [%{name: "paper", label: "Paper"}, %{name: "band", label: "Band"}],
+    offered: [page: ["paper"], stand_out: ["band"], card: []],
+    starter: Pages.Starter,
+    layout: <%= @web %>.Layouts
+
+  pages do
+    page "/", "Home", kind: :free
+  end
+end

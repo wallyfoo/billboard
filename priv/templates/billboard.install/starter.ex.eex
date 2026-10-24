@@ -1,0 +1,29 @@
+defmodule <%= inspect(@pages) %>.Starter do
+  @moduledoc """
+  What each page shows before its first publish: a hero, whose words
+  the editor marks as filler until they're written over. The shared
+  library starts empty.
+  """
+  @behaviour Billboard.Starter
+
+  alias <%= inspect(@pages) %>.{Section, Version}
+
+  @impl true
+  def version(nil), do: %Version{status: :starter, sections: []}
+
+  def version(_pattern) do
+    hero = Billboard.Component.build!(:hero, Billboard.SiteOptions.placeholder(:hero))
+
+    %Version{
+      status: :starter,
+      sections: [
+        %Section{
+          key: "hero",
+          position: 0,
+          children: [],
+          content: %Ash.Union{type: :hero, value: hero}
+        }
+      ]
+    }
+  end
+end
