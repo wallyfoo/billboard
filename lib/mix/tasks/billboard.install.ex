@@ -27,10 +27,12 @@ if Code.ensure_loaded?(Igniter) do
         be one only signed-in users can join: its `on_mount` gives the
         editor `current_scope`, whose user the editor acts as, and the
         editor checks no permission of its own, so everyone the session
-        lets in can edit and publish every page. The installer mounts it
-        only in a session whose `on_mount` runs `:require_authenticated`,
-        or whose scope pipes through `:require_authenticated_user`, and
-        never in `:current_user`, which is for everyone. Defaults to
+        lets in can edit and publish every page. By default, the
+        installer mounts it only in a session whose `on_mount` runs
+        `:require_authenticated`, and never in `:current_user`, which is
+        for everyone. A session you name is mounted in when its `on_mount`
+        names a `require_…` hook (`{MySiteWeb.UserAuth, :require_admin}`),
+        and otherwise trusted, with a notice saying so. Defaults to
         `require_authenticated_user`, `mix phx.gen.auth`'s, which lets in
         every signed-in user, and `mix phx.gen.auth`'s registration lets
         anyone sign up: before you deploy, close registration, or mount
@@ -205,6 +207,7 @@ if Code.ensure_loaded?(Igniter) do
       |> Install.add_hooks()
       |> Install.add_line(".gitignore", "/assets/vendor/billboard")
       |> Install.add_line(".gitignore", "/priv/uploads/")
+      |> dockerignore()
       |> Igniter.Project.TaskAliases.modify_existing_alias(
         "assets.build",
         &Install.after_compile(&1, "billboard.assets")
@@ -216,12 +219,29 @@ if Code.ensure_loaded?(Igniter) do
       |> Install.add_dev_server_alias()
     end
 
+    # Uploaded photographs stay out of a Docker image too, when the site
+    # builds one.
+    defp dockerignore(igniter) do
+      if Igniter.exists?(igniter, ".dockerignore"),
+        do: Install.add_line(igniter, ".dockerignore", "/priv/uploads/"),
+        else: igniter
+    end
+
+    @security """
+    Every signed-in user can edit and publish every page, and
+    `mix phx.gen.auth`'s /users/register lets anyone sign up. Before you
+    deploy, close registration, or mount the editor in a live_session
+    only your admins can join.
+    """
+
     defp notices(igniter, %{installed?: true} = names) do
       Igniter.add_notice(igniter, """
       Billboard is installed already, as #{inspect(names.site)}. This run adds only
       what's missing, and leaves the rest as it is: if it proposes no changes, the
       site has everything the installer writes. Billboard's getting started guide
       says what's next.
+
+      #{String.trim_trailing(@security)}
       """)
     end
 
@@ -235,10 +255,7 @@ if Code.ensure_loaded?(Igniter) do
       Then start the site, sign in, and open the editor. Billboard's
       getting started guide says what was written, and what's next.
 
-      Every signed-in user can edit and publish every page, and
-      `mix phx.gen.auth`'s /users/register lets anyone sign up. Before you
-      deploy, close registration, or mount the editor in a live_session
-      only your admins can join.
+      #{String.trim_trailing(@security)}
       """)
     end
   end

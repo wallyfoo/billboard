@@ -23,6 +23,27 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     Enum.join([first | body], "\n")
   end
 
+  # The router with a live_session of the site's own, NAME, whose
+  # on_mount is ON_MOUNT (or none), in a scope that pipes through only
+  # :browser.
+  defp with_session(name, on_mount) do
+    opts = if on_mount, do: ", on_mount: #{on_mount}", else: ""
+
+    project()
+    |> content("lib/my_site_web/router.ex")
+    |> String.replace("  ## Authentication routes", """
+      scope "/admin", MySiteWeb do
+        pipe_through :browser
+
+        live_session #{inspect(name)}#{opts} do
+          live "/", AdminLive
+        end
+      end
+
+      ## Authentication routes\
+    """)
+  end
+
   test "refuses a site without AshPostgres, and says how to set it up" do
     without_ash()
     |> install()
@@ -181,12 +202,26 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     |> assert_unchanged("lib/my_site/application.ex")
   end
 
-  test "says so when billboard is installed already" do
+  test "says so when billboard is installed already, and still warns who can publish" do
     project()
     |> install()
     |> apply_igniter!()
     |> install()
-    |> assert_has_notice(&(&1 =~ "Billboard is installed already, as MySite.Billboard"))
+    |> assert_has_notice(
+      &(&1 =~ "Billboard is installed already, as MySite.Billboard" and
+          &1 =~ "/users/register lets anyone sign up")
+    )
+  end
+
+  test "names the file to move when one is where a module it writes belongs" do
+    # Not applied: Igniter's test project would move the file to where
+    # MySite.Elsewhere belongs.
+    project()
+    |> Igniter.create_new_file("lib/my_site/billboard.ex", "defmodule MySite.Elsewhere do\nend\n")
+    |> install()
+    |> assert_has_issue(
+      &(&1 =~ "lib/my_site/billboard.ex is there already, and doesn't define MySite.Billboard")
+    )
   end
 
   test "changes nothing the second time" do
@@ -231,31 +266,56 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       refute session_block(router, :current_user) =~ "billboard_editor"
     end
 
-    test "won't mount the editor in a live_session anyone can join" do
-      for session <- ~w(current_user visitors) do
-        router = project() |> content("lib/my_site_web/router.ex")
+    test "won't mount the editor in :current_user, which is for everyone" do
+      project()
+      |> install(["--live-session", "current_user"])
+      |> assert_has_warning(&(&1 =~ "`live_session :current_user`" and &1 =~ "for everyone"))
+      |> content("lib/my_site_web/router.ex")
+      |> then(&refute(&1 =~ "billboard_editor"))
+    end
 
-        # A session of the site's own, in a scope that pipes through only
-        # :browser, with no on_mount that asks for a signed-in user.
-        router =
-          String.replace(router, "  ## Authentication routes", """
-            scope "/", MySiteWeb do
-              pipe_through :browser
-
-              live_session :visitors do
-                live "/about", AboutLive
-              end
-            end
-
-            ## Authentication routes\
-          """)
-
-        project(%{"lib/my_site_web/router.ex" => router})
-        |> install(["--live-session", session])
-        |> assert_has_warning(&(&1 =~ "`live_session :#{session}`" and &1 =~ "doesn't require"))
+    test "won't mount the editor by default where only a scope's plug asks for signing in" do
+      router =
+        project()
         |> content("lib/my_site_web/router.ex")
-        |> then(&refute(&1 =~ "billboard_editor"))
+        |> String.replace(
+          "on_mount: [{MySiteWeb.UserAuth, :require_authenticated}]",
+          "on_mount: [{MySiteWeb.UserAuth, :mount_current_scope}]"
+        )
+
+      project(%{"lib/my_site_web/router.ex" => router})
+      |> install()
+      |> assert_has_warning(
+        &(&1 =~ "couldn't confirm `live_session :require_authenticated_user`" and
+            &1 =~ "requires signing in")
+      )
+      |> content("lib/my_site_web/router.ex")
+      |> then(&refute(&1 =~ "billboard_editor"))
+    end
+
+    test "mounts the editor in a session --live-session names whose on_mount requires a sign-in" do
+      for on_mount <- ["[{MySiteWeb.UserAuth, :require_admin}]", "MySiteWeb.RequireAdmin"] do
+        igniter =
+          project(%{"lib/my_site_web/router.ex" => with_session(:admin, on_mount)})
+          |> install(["--live-session", "admin"])
+
+        assert session_block(content(igniter, "lib/my_site_web/router.ex"), :admin) =~
+                 "billboard_editor"
+
+        refute Enum.any?(igniter.notices, &(&1 =~ "couldn't confirm"))
       end
+    end
+
+    test "trusts a session --live-session names, and says it couldn't confirm it signs in" do
+      igniter =
+        project(%{"lib/my_site_web/router.ex" => with_session(:visitors, nil)})
+        |> install(["--live-session", "visitors"])
+        |> assert_has_notice(
+          &(&1 =~ "`live_session :visitors`" and &1 =~ "couldn't confirm it requires signing in")
+        )
+
+      assert session_block(content(igniter, "lib/my_site_web/router.ex"), :visitors) =~
+               "billboard_editor"
     end
 
     test "mounts the editor in a live_session of the site's whose on_mount signs in" do
@@ -570,6 +630,13 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       |> install()
       |> assert_has_warning(&(&1 =~ "phoenix-colocated/billboard" and &1 =~ "EditCanvas"))
       |> assert_unchanged("assets/js/app.js")
+    end
+
+    test "keeps uploads out of a Docker image, when the site builds one" do
+      igniter = project(%{".dockerignore" => "/deps/\n"}) |> install()
+      assert content(igniter, ".dockerignore") == "/deps/\n/priv/uploads/\n"
+
+      refute_creates(project() |> install(), ".dockerignore")
     end
 
     test "links billboard's assets before every build, and keeps the link and uploads out of git" do

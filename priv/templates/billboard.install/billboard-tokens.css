@@ -46,7 +46,7 @@
      no fallback, so all nine are needed. */
   --bb-placeholder: #ececec;
   --bb-placeholder-ink: #1c1c1c;   /* its label; falls back to --bb-ink */
-  /* --bb-placeholder-chip: the label's ground; falls back to --bb-card */
+  --bb-placeholder-chip: #ffffff;  /* the label's ground; falls back to --bb-card, which the band changes */
   --bb-noise-1: #1c1c1c;
   --bb-noise-2: #2e2e2e;
   --bb-noise-3: #424242;
@@ -146,6 +146,66 @@
   /* --bb-measure-title: falls back to --bb-measure, then 24ch */
   --bb-ease: cubic-bezier(0.2, 0, 0, 1);   /* falls back to ease */
   --bb-duration: 150ms;            /* falls back to 150ms */
+}
+
+/* Paper in the dark theme. phx.new's layout switches between a light and
+   a dark theme, with data-theme on <html>, or none to follow the system,
+   and paints the page dark in the dark one: these tokens keep paper's
+   words light on it. The two blocks are the same; keep them so. The band
+   stays near-black, so it still stands out from the page. A site with one
+   theme can delete both. */
+[data-theme=dark],
+[data-theme=dark] .bb-surface-paper {
+  --bb-ink: #e6e8eb;
+  --bb-ink-soft: #a9b0b8;
+  --bb-heading: initial;
+  --bb-accent: #f4f5f7;
+  --bb-link: initial;
+  --bb-rule: rgb(255 255 255 / 0.18);
+  --bb-focus: #ffffff;
+  --bb-card: #333a44;
+  --bb-edge: initial;
+  --bb-action: #f4f5f7;
+  --bb-on-action: #1c1c1c;
+  --bb-action-hover: #d5d9de;
+  --bb-action-active: initial;
+  --bb-on-action-active: initial;
+  --bb-action-2: #f4f5f7;
+  --bb-on-action-2: #1c1c1c;
+  --bb-placeholder: #343b45;
+  --bb-placeholder-ink: #e6e8eb;
+  --bb-placeholder-chip: #1e2329;
+  /* Paper paints the dark page's ground, so paper inside the band, which
+     sets a white one for the light theme, is dark too. */
+  --paper-ground: var(--color-base-100, #292f37);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]),
+  :root:not([data-theme]) .bb-surface-paper {
+    --bb-ink: #e6e8eb;
+    --bb-ink-soft: #a9b0b8;
+    --bb-heading: initial;
+    --bb-accent: #f4f5f7;
+    --bb-link: initial;
+    --bb-rule: rgb(255 255 255 / 0.18);
+    --bb-focus: #ffffff;
+    --bb-card: #333a44;
+    --bb-edge: initial;
+    --bb-action: #f4f5f7;
+    --bb-on-action: #1c1c1c;
+    --bb-action-hover: #d5d9de;
+    --bb-action-active: initial;
+    --bb-on-action-active: initial;
+    --bb-action-2: #f4f5f7;
+    --bb-on-action-2: #1c1c1c;
+    --bb-placeholder: #343b45;
+    --bb-placeholder-ink: #e6e8eb;
+    --bb-placeholder-chip: #1e2329;
+    /* Paper paints the dark page's ground, so paper inside the band, which
+       sets a white one for the light theme, is dark too. */
+    --paper-ground: var(--color-base-100, #292f37);
+  }
 }
 
 /* Sections name their surface in their data, so no source file names

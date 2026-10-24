@@ -122,7 +122,9 @@ if Code.ensure_loaded?(Igniter) do
     wherever it lives. It goes where Igniter puts a module of `kind` (and
     Igniter moves a new file there when it writes, whatever path it's
     given): a LiveView in `lib/MY_SITE_WEB/live/` with Igniter's Phoenix
-    extension in `.igniter.exs`, and in `lib/MY_SITE_WEB/` without it.
+    extension in `.igniter.exs`, and in `lib/MY_SITE_WEB/` without it. A
+    file at that path that defines something else stops the run, naming
+    the file to move.
     """
     def create_module(igniter, module, contents, kind \\ :source_folder) do
       case Igniter.Project.Module.module_exists(igniter, module) do
@@ -131,7 +133,17 @@ if Code.ensure_loaded?(Igniter) do
 
         {false, igniter} ->
           path = Igniter.Project.Module.proper_location(igniter, module, kind)
-          Igniter.create_new_file(igniter, path, contents)
+
+          if Igniter.exists?(igniter, path) do
+            Igniter.add_issue(
+              igniter,
+              "#{path} is there already, and doesn't define #{inspect(module)}, which " <>
+                "belongs there. Move what's in it to a file of its own, or rename the " <>
+                "module it defines, then run the task again."
+            )
+          else
+            Igniter.create_new_file(igniter, path, contents)
+          end
       end
     end
 
@@ -288,12 +300,19 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    @doc "Imports the editor's router macro, and mounts the editor in the signed-in live_session."
+    @doc """
+    Imports the editor's router macro, and mounts the editor in the
+    signed-in live_session: phx.gen.auth's, when its `on_mount` runs
+    `:require_authenticated`, or the one `--live-session` names, which is
+    trusted when its `on_mount` can't be read as signing in, with a
+    notice saying so. Never `:current_user`, which is for everyone.
+    """
     def mount_editor(igniter, opts) do
       {igniter, router} = Igniter.Libs.Phoenix.select_router(igniter)
       web = Igniter.Libs.Phoenix.web_module(igniter)
       # A name typed on the command line, once, so the atom is safe.
       session = String.to_atom(opts[:live_session])
+      named? = opts[:live_session] != "require_authenticated_user"
       route = ~s|billboard_editor #{inspect(opts[:editor_path])}, back: {"Home", "/"}|
 
       if router do
@@ -302,10 +321,7 @@ if Code.ensure_loaded?(Igniter) do
           router,
           &import_editor_router(&1, web, router)
         )
-        |> Igniter.Project.Module.find_and_update_module!(
-          router,
-          &add_editor_route(&1, session, route, router)
-        )
+        |> add_editor_route(router, session, named?, route)
       else
         Igniter.add_warning(
           igniter,
@@ -331,78 +347,117 @@ if Code.ensure_loaded?(Igniter) do
 
     # Anywhere in the router: a site that mounted the editor itself, in
     # a live_session of its own, keeps it there.
-    defp add_editor_route(zipper, session, route, router) do
-      if found?(zipper, &Function.function_call?(&1, :billboard_editor, [1, 2])) do
-        {:ok, zipper}
-      else
-        with {:ok, live_session} <- Common.move_to(zipper, &session?(&1, session)),
-             true <- signed_in?(live_session, session) do
-          live_session |> Common.move_to_do_block() |> add_route(route)
-        else
-          :error ->
-            {:warning,
-             "Couldn't find `live_session #{inspect(session)}` in #{inspect(router)}. Add " <>
-               "`#{route}` inside the live_session your signed-in pages use, or run " <>
-               "mix billboard.install again with `--live-session NAME`."}
+    defp add_editor_route(igniter, router, session, named?, route) do
+      {:ok, {igniter, _source, zipper}} = Igniter.Project.Module.find_module(igniter, router)
 
-          false ->
-            {:warning,
-             "`live_session #{inspect(session)}` in #{inspect(router)} doesn't require " <>
-               "signing in: its `on_mount` has no `:require_authenticated`, and its scope " <>
-               "doesn't pipe through `:require_authenticated_user`. Anyone the editor lets in " <>
-               "can edit and publish every page, so the editor wasn't mounted. Add `#{route}` " <>
-               "inside a live_session only signed-in admins can join, or run " <>
-               "mix billboard.install again with `--live-session NAME`."}
-        end
+      cond do
+        found?(zipper, &Function.function_call?(&1, :billboard_editor, [1, 2])) ->
+          igniter
+
+        not found?(zipper, &session?(&1, session)) ->
+          Igniter.add_warning(
+            igniter,
+            "Couldn't find `live_session #{inspect(session)}` in #{inspect(router)}. Add " <>
+              "`#{route}` inside the live_session your signed-in pages use, or run " <>
+              "mix billboard.install again with `--live-session NAME`."
+          )
+
+        true ->
+          {:ok, live_session} = Common.move_to(zipper, &session?(&1, session))
+
+          case signing_in(live_session, session, named?) do
+            :signed_in ->
+              write_editor_route(igniter, router, session, route)
+
+            :trusted ->
+              igniter
+              |> write_editor_route(router, session, route)
+              |> Igniter.add_notice(
+                "The editor is mounted in `live_session #{inspect(session)}`, as " <>
+                  "`--live-session` asked, but the installer couldn't confirm it requires " <>
+                  "signing in: its `on_mount` names no `require_…` hook. Everyone the " <>
+                  "session lets in can edit and publish every page, so make sure only " <>
+                  "signed-in admins can join it."
+              )
+
+            :refused ->
+              Igniter.add_warning(igniter, refusal(router, session, route))
+          end
       end
+    end
+
+    defp write_editor_route(igniter, router, session, route) do
+      Igniter.Project.Module.find_and_update_module!(igniter, router, fn zipper ->
+        zipper |> move_to_session(session) |> add_route(route)
+      end)
     end
 
     defp add_route({:ok, block}, route), do: {:ok, Common.add_code(block, route)}
     defp add_route(:error, _route), do: :error
 
-    # Whether only a signed-in user can join the live_session: its
-    # `on_mount` runs phx.gen.auth's `:require_authenticated`, or a scope
-    # round it pipes through `:require_authenticated_user`. phx.gen.auth's
-    # `:current_user` session is for everyone, whatever it says.
-    defp signed_in?(_live_session, :current_user), do: false
-
-    defp signed_in?(live_session, _session) do
-      on_mount_requires? =
-        with {:ok, opts} <- Function.move_to_nth_argument(live_session, 1),
-             {:ok, on_mount} <- Igniter.Code.Keyword.get_key(opts, :on_mount) do
-          mentions?(on_mount.node, :require_authenticated)
-        else
-          _ -> false
-        end
-
-      on_mount_requires? or piped_through?(live_session, :require_authenticated_user)
+    defp refusal(router, :current_user, route) do
+      "`live_session :current_user` in #{inspect(router)} is phx.gen.auth's session for " <>
+        "everyone, signed in or not, so the editor wasn't mounted there: anyone it lets in " <>
+        "can edit and publish every page. Add `#{route}` inside a live_session only " <>
+        "signed-in admins can join, or run mix billboard.install again with " <>
+        "`--live-session NAME`."
     end
 
-    defp piped_through?(zipper, plug) do
-      case Zipper.up(zipper) do
-        nil ->
-          false
+    defp refusal(router, session, route) do
+      "The installer couldn't confirm `live_session #{inspect(session)}` in " <>
+        "#{inspect(router)} requires signing in: its `on_mount` doesn't run " <>
+        "`:require_authenticated`. Anyone the editor lets in can edit and publish every " <>
+        "page, so the editor wasn't mounted. Add `#{route}` inside a live_session only " <>
+        "signed-in admins can join, or run mix billboard.install again with " <>
+        "`--live-session NAME`, which is trusted."
+    end
 
-        parent ->
-          (Function.function_call?(parent, :scope) and scope_pipes?(parent.node, plug)) or
-            piped_through?(parent, plug)
+    # Whether only a signed-in user can join the live_session.
+    # phx.gen.auth's `:current_user` session is for everyone, whatever it
+    # says. Its signed-in one runs `:require_authenticated` in its
+    # `on_mount`. A scope's `pipe_through` alone isn't enough: plugs guard
+    # only the first, HTTP render, while `on_mount` runs on the connected
+    # mount and on every live navigation within the session too.
+    # A session `--live-session` names is signed in when its `on_mount`
+    # names any `require_…` hook, as `{MySiteWeb.UserAuth, :require_admin}`
+    # or `MySiteWeb.RequireAdmin`, and otherwise trusted.
+    defp signing_in(_live_session, :current_user, _named?), do: :refused
+
+    defp signing_in(live_session, _session, named?) do
+      on_mount =
+        with {:ok, opts} <- Function.move_to_nth_argument(live_session, 1),
+             {:ok, on_mount} <- Igniter.Code.Keyword.get_key(opts, :on_mount) do
+          on_mount.node
+        else
+          _ -> nil
+        end
+
+      cond do
+        not is_nil(on_mount) and mentions?(on_mount, :require_authenticated) -> :signed_in
+        named? and not is_nil(on_mount) and requires_something?(on_mount) -> :signed_in
+        named? -> :trusted
+        true -> :refused
       end
     end
 
-    # A `pipe_through` among the scope's own statements, not a nested
-    # scope's.
-    defp scope_pipes?({:scope, _, args}, plug),
-      do: args |> List.last() |> do_body() |> Enum.any?(&pipes_plug?(&1, plug))
+    # An `on_mount` that names a `require_…` atom, or a module whose last
+    # name starts `Require`.
+    defp requires_something?(ast) do
+      {_ast, found?} =
+        Macro.prewalk(ast, false, fn
+          {:__aliases__, _, parts} = node, found ->
+            last = parts |> List.last() |> to_string()
+            {node, found or String.starts_with?(last, "Require")}
 
-    defp pipes_plug?({:pipe_through, _, [pipes]}, plug), do: mentions?(pipes, plug)
-    defp pipes_plug?(_statement, _plug), do: false
+          atom = node, found when is_atom(atom) ->
+            {node, found or String.starts_with?(Atom.to_string(atom), "require_")}
 
-    defp do_body([{{:__block__, _, [:do]}, {:__block__, _, statements}}])
-         when is_list(statements),
-         do: statements
+          node, found ->
+            {node, found}
+        end)
 
-    defp do_body([{{:__block__, _, [:do]}, statement}]), do: [statement]
-    defp do_body(_args), do: []
+      found?
+    end
 
     defp mentions?(ast, atom) do
       {_ast, found?} =
