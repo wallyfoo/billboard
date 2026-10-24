@@ -1,8 +1,8 @@
 defmodule Billboard.StockComponentsWorkTest do
   @moduledoc """
   Every stock component passes assert_component_works/2, on the shop, and
-  so do the shop's own, but Unwritten, which `component_case_test.exs`
-  fails on purpose.
+  so do the shop's own, but Unwritten and Misdrawn, which
+  `component_case_test.exs` fails on purpose.
   """
   use Billboard.ComponentCase,
     endpoint: Billboard.Test.Endpoint,

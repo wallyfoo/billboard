@@ -43,8 +43,8 @@ defmodule Billboard.EditorLive.PaletteTest do
         assert o.entry.category == category
       end
 
-      # The shop's `kinds:` keep Unwritten off every page.
-      assert keys(options) == Catalogue.keys() -- [:hero, :unwritten]
+      # The shop's `kinds:` keep Unwritten and Misdrawn off every page.
+      assert keys(options) == Catalogue.keys() -- [:hero, :unwritten, :misdrawn]
       assert Enum.all?(options, fn {_c, os} -> Enum.all?(os, &(&1.disabled == nil)) end)
     end
 

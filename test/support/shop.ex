@@ -5,13 +5,14 @@ defmodule Billboard.Test.Shop do
   A test overrides its surfaces, offers, options, rules, kinds, and
   palette with `Billboard.Test.Env.put_shop!/1`.
 
-  It's on billboard's stock components, with four of its own: Cards,
-  Text, Notes, whose items are a site's own part, and Unwritten, which
-  draws a words entry as plain text, for `Billboard.ComponentCase` to
-  name; and the guides' FAQ (`MySite.Sections.Faq`). Its `kinds:` keep
-  the hero off the library, the band and the points to free pages and
-  the library, Two columns to free pages, Shared to free and item pages,
-  and Unwritten off every page's palette. Its action kinds and context
+  It's on billboard's stock components, with five of its own: Cards,
+  Text, Notes, whose items are a site's own part, Unwritten, which
+  draws a words entry as plain text, and Misdrawn, which a test makes
+  draw wrong, both for `Billboard.ComponentCase` to name; and the guides'
+  FAQ (`MySite.Sections.Faq`). Its `kinds:` keep the hero off the
+  library, the band and the points to free pages and the library, Two
+  columns to free pages, Shared to free and item pages, and Unwritten
+  and Misdrawn off every page's palette. Its action kinds and context
   are the test site's (`Billboard.Test.Actions` and
   `Billboard.Test.Context`), its reviews and news are a test's own
   (`Billboard.Test.Data`), and its chrome is `Billboard.Test.Layout`. It
@@ -47,7 +48,8 @@ defmodule Billboard.Test.Shop do
       Billboard.Components.News,
       Billboard.Components.Columns,
       Billboard.Components.Shared,
-      Test.Unwritten
+      Test.Unwritten,
+      Test.Misdrawn
     ],
     surfaces: [%{name: "plain", label: "Plain"}, %{name: "loud", label: "Loud"}],
     offered: [page: ["plain"], stand_out: ["loud"], card: []],
@@ -63,7 +65,8 @@ defmodule Billboard.Test.Shop do
       points: [:free, :library],
       columns: [:free],
       shared: [:free, :item],
-      unwritten: []
+      unwritten: [],
+      misdrawn: []
     ],
     reserved_ids: [
       ids: ~w(shop-header),
