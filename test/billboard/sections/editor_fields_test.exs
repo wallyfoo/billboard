@@ -9,6 +9,7 @@ defmodule Billboard.Sections.EditorFieldsTest do
   use ExUnit.Case, async: false
 
   import Billboard.Test.Env
+  import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Billboard.Sections.EditorFields
 
@@ -58,6 +59,73 @@ defmodule Billboard.Sections.EditorFieldsTest do
       assert EditorFields.more?(specs(:faq)[:intro])
       assert EditorFields.more?(specs(:faq)[:sign_off])
       refute EditorFields.more?(specs(:faq)[:title])
+    end
+  end
+
+  describe "fields/1" do
+    defp doc(html), do: LazyHTML.from_fragment(html)
+
+    defp text(doc, selector),
+      do: doc |> LazyHTML.query(selector) |> LazyHTML.text() |> String.trim()
+
+    test "draws neither a card's surface nor a photo, which the open section changes" do
+      html =
+        render_component(&EditorFields.fields/1,
+          form: Phoenix.Component.to_form(%{"label" => "Visit"}, as: :link),
+          specs: [
+            surface: Billboard.Sections.Parts.editor_fields(:point)[:surface],
+            photo: [as: :photo],
+            label: [label: "Link words"]
+          ],
+          ctx: %{target: nil}
+        )
+
+      document = doc(html)
+      assert document |> LazyHTML.query("input[name='link[label]']") |> Enum.count() == 1
+
+      assert document
+             |> LazyHTML.query("[name='link[surface]'], [name='link[photo]']")
+             |> Enum.empty?()
+    end
+
+    test "draws a select, words with their accent hint and count, and a note" do
+      html =
+        render_component(&EditorFields.fields/1,
+          form:
+            Phoenix.Component.to_form(%{"style" => "folded", "title" => "Questions"}, as: :faq),
+          specs: Keyword.take(specs(:faq), [:style, :title, :note]),
+          ctx: %{target: nil, page: %{kind: :free}}
+        )
+
+      document = doc(html)
+
+      assert text(document, "select[name='faq[style]'] option[selected]") == "Folded"
+      assert document |> LazyHTML.query("select[name='faq[style]'] option") |> Enum.count() == 2
+      assert text(document, "label[for='faq_title']") == "Title"
+      assert html =~ "Wrap one word in asterisks to set it in italic"
+      assert text(document, "#faq_title-count[phx-hook][data-limit='60']") == "9 of 60 characters"
+      assert text(document, "p.border-bb-edit-warn") == "Answers fold on phones."
+    end
+  end
+
+  describe "variant_glyph/1" do
+    test "draws two columns at Two columns' widths" do
+      for {variant, widths} <- [
+            even: ["flex-1", "flex-1"],
+            wide_left: ["flex-[1.6]", "flex-1"],
+            wide_right: ["flex-1", "flex-[1.6]"]
+          ] do
+        assert EditorFields.column_widths(variant) == widths
+
+        classes =
+          render_component(&EditorFields.variant_glyph/1, variant: variant)
+          |> doc()
+          |> LazyHTML.query("span[aria-hidden] > *")
+          |> Enum.map(&(&1 |> LazyHTML.attribute("class") |> hd()))
+
+        assert Enum.map(classes, &(&1 |> String.split() |> Enum.find(fn c -> c in widths end))) ==
+                 widths
+      end
     end
   end
 

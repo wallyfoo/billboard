@@ -28,7 +28,7 @@ defmodule Billboard.ThemeCheckTest do
   # they're drawn from. The check reads their prose too, so their
   # comments and docs name the role, not a site's class.
   @web Path.expand("../../lib/billboard/sections", __DIR__)
-  @stock ~w(buttons.ex voronoi.ex glyph.ex icons.ex blocks.ex words.ex parts.ex editor_fields.ex
+  @stock ~w(buttons.ex voronoi.ex glyph.ex icons.ex blocks.ex words.ex parts.ex
             hero.ex band.ex points.ex text_media.ex details.ex reviews.ex news.ex)
 
   # Tailwind's own type utilities, which set a size, weight, case,
@@ -89,6 +89,37 @@ defmodule Billboard.ThemeCheckTest do
       assert offences(path, offence(unquote(file))) == []
       assert path |> File.read!() |> arbitrary_colours() == []
     end
+  end
+
+  # The editor's chrome: the fields it draws that it doesn't type into
+  # on the page. It reads neither a site's classes nor
+  # billboard's theme, only its own tokens: its colours are `bb-edit-*`
+  # and `bb-glyph-*`, its type `bb-edit-type-*`, its faces `font-bb-edit`
+  # and `font-bb-glyph`, and its easing `ease-bb-edit`.
+  @editor_files ~w(lib/billboard/sections/editor_fields.ex)
+
+  for file <- @editor_files do
+    test "#{file} draws only through the editor's tokens" do
+      path = Path.expand("../../#{unquote(file)}", __DIR__)
+      assert offences(path, &editor_offence?/1) == []
+    end
+  end
+
+  # The editor's corners are its own, fixed ones, so it may round them as
+  # it likes, but not with the theme's corners, which read the site's. It
+  # sets its own type, so Tailwind's weights are its to use. Its motion is
+  # its own too, so it takes neither the theme's easing nor its type
+  # roles, and an arbitrary value may read only the editor's tokens. The
+  # old, unprefixed names of the theme and of the editor's own utilities
+  # are out too, so they can't come back.
+  defp editor_offence?(class) do
+    (site_class?(class) and not String.starts_with?(class, "rounded")) or
+      ClassWords.colour?(class, ClassWords.theme_colours()) or
+      String.starts_with?(class, "bb-type-") or
+      class in ~w(bb-measure bb-measure-title rounded-bb-card rounded-bb-button rounded-bb-photo
+                  rounded-bb-field ease-bb) or
+      ClassWords.old_theme_name?(class) or ClassWords.old_editor_name?(class) or
+      (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-edit-"))
   end
 
   # Glyphs are the palette's thumbnails, editor chrome rather than the
