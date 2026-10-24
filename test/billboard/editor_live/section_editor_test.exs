@@ -1495,6 +1495,27 @@ defmodule Billboard.EditorLive.SectionEditorTest do
       assert [_, %{title: "Your question", body: "Every day but Sunday."}] =
                content("/", "notes").items
     end
+
+    test "offers Markdown words under More in a box, and they save" do
+      notes!()
+      lv = open("/", "notes")
+
+      assert has_element?(lv, "#section-more textarea[name='section[content][aside]']")
+      assert has_element?(lv, "#section-more label", "Aside")
+
+      change_header(lv, %{"section" => %{"content" => %{"aside" => "Open *late* on Fridays."}}})
+
+      assert content("/", "notes").aside == "Open *late* on Fridays."
+    end
+
+    test "draws no picker of a set of choices the site doesn't give" do
+      notes!()
+      lv = open("/", "notes")
+
+      assert has_element?(lv, "#section-editor[data-section='notes']")
+      refute has_element?(lv, "#section-setting-region")
+      refute has_element?(lv, "[name='section[content][region]']")
+    end
   end
 
   describe "a Shared section" do

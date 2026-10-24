@@ -229,11 +229,12 @@ defmodule Billboard.ComponentCase do
         context: context
       )
 
-    id = if key == :hero, do: "page-hero", else: Billboard.Section.dom_id(section)
+    ctx = draw_ctx(data, context, opts[:library])
+    id = drawn_id(section, key, ctx)
     renderer = Billboard.Renderer.for!(key)
 
-    drawn? = html =~ ~s(id="#{id}")
-    empty? = Billboard.Sections.empty?(section, %{data: data, context: context, state: %{}})
+    drawn? = is_binary(id) and html =~ ~s(id="#{id}")
+    empty? = Billboard.Sections.empty?(section, ctx)
 
     unless drawn? or empty? do
       flunk(
@@ -346,11 +347,10 @@ defmodule Billboard.ComponentCase do
     end
 
     empty? =
-      Billboard.Sections.empty?(section, %{
-        data: session["data"],
-        context: session["context"],
-        state: %{}
-      })
+      Billboard.Sections.empty?(
+        section,
+        draw_ctx(session["data"], session["context"], opts[:library])
+      )
 
     %{view: view, component: component, key: key, section: section, empty?: empty?}
   end
@@ -706,6 +706,31 @@ defmodule Billboard.ComponentCase do
           )
     end
   end
+
+  # What the page hands its sections to draw them by, as
+  # `Billboard.Sections.page/1` builds it: with a `library`, its sections,
+  # by key, for a Shared section to draw the one it places.
+  defp draw_ctx(data, context, library) do
+    ctx = %{data: data, context: context, state: %{}}
+
+    if library,
+      do: Map.put(ctx, :shared, Map.new(library.sections, &{&1.key, &1})),
+      else: ctx
+  end
+
+  # The id the section is drawn under: the hero's, its page's hero block;
+  # a Shared section's, the library section it places, under that
+  # section's own id, or none when it places none; any other's, its own.
+  defp drawn_id(_section, :hero, _ctx), do: "page-hero"
+
+  defp drawn_id(%{content: %{type: :shared, value: %{key: key}}}, :shared, ctx) do
+    case Billboard.Sections.Shared.source(ctx, key) do
+      nil -> nil
+      library_section -> Billboard.Section.dom_id(library_section)
+    end
+  end
+
+  defp drawn_id(section, _key, _ctx), do: Billboard.Section.dom_id(section)
 
   defp page_name(%{pattern: nil}), do: "the library"
   defp page_name(%{pattern: pattern}), do: pattern

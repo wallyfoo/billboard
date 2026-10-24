@@ -77,6 +77,22 @@ defmodule Billboard.ComponentCaseTest do
     assert error.message =~ "widen `kinds:` in `use Billboard.Site`"
   end
 
+  test "finds a Shared section drawn as the library section it places, under that one's id" do
+    Billboard.Test.DataCase.preserve_cache(%{})
+    band = ComponentCase.Render.section(:band, %{heading: "This week's deals"}, "deals")
+    library = ComponentCase.Render.version([%{band | anchor: "deals"}])
+
+    # The live library has it too, so a Shared section never draws nothing
+    # here, whether it reads `library:` or the live one.
+    snapshot = Billboard.Cache.snapshot()
+    Billboard.Cache.put(%{snapshot | pages: Map.put(snapshot.pages, nil, library)})
+
+    assert ComponentCase.check_visitor(Billboard.Components.Shared,
+             attrs: %{key: "deals"},
+             library: library
+           ) == :ok
+  end
+
   test "refuses a module that isn't a component, and says what to add" do
     error = assert_raise ExUnit.AssertionError, fn -> assert_component_works(String) end
 

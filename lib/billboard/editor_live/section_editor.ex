@@ -16,9 +16,10 @@ defmodule Billboard.EditorLive.SectionEditor do
   surfaces (`Billboard.Surfaces`); its settings, drawn small
   (`EditorFields.setting/1`), as the ground is, each select with only
   the options the site offers (`EditorFields.narrowed/1`) and none left
-  with one; a way to add a list's items, and a heading a section can do
-  without; More, for words a visitor sees only now and then and the
-  section's link name; Up and Down; and Done. Remove, Up, Down, and Done
+  with one, and no picker of a set of choices the site doesn't give; a
+  way to add a list's items, and a heading a section can do without;
+  More, for words a visitor sees only now and then, in a box for
+  Markdown, and the section's link name; Up and Down; and Done. Remove, Up, Down, and Done
   go to the page editor, which says which of them the section has
   (`moves`). A fixed page's sections have none of Remove, Up, and Down,
   and say so. Two columns swap sides from their header (to the page
@@ -906,7 +907,10 @@ defmodule Billboard.EditorLive.SectionEditor do
 
   defp part_value?({:choice, from}, value, socket, form, field) do
     value in ["", to_string(AshPhoenix.Form.value(form, String.to_existing_atom(field)))] or
-      List.keymember?(socket.assigns.choices[from].options, value, 1)
+      case socket.assigns.choices[from] do
+        nil -> false
+        choices -> List.keymember?(choices.options, value, 1)
+      end
   end
 
   defp part_value?({:surface, _from}, value, _socket, _form, _field),
@@ -1257,6 +1261,7 @@ defmodule Billboard.EditorLive.SectionEditor do
             {field, spec} <- shown,
             as.(spec) in @setting_kinds,
             EditorFields.drawn?(spec),
+            choices_given?(spec, assigns.choices),
             do:
               {field,
                if(as.(spec) == :shared, do: [label: "Swap for another"] ++ spec, else: spec)}
@@ -1275,7 +1280,7 @@ defmodule Billboard.EditorLive.SectionEditor do
         more_words:
           for(
             {field, spec} <- shown,
-            as.(spec) == :text,
+            as.(spec) in [:text, :markdown],
             EditorFields.more?(spec),
             do: {field, spec}
           ),
@@ -1466,6 +1471,7 @@ defmodule Billboard.EditorLive.SectionEditor do
                 <Components.input
                   :for={{field, spec} <- @more_words}
                   field={plain_errors(content[field])}
+                  type={more_input_type(spec)}
                   label={spec[:label]}
                   hint={spec[:hint]}
                   phx-debounce="blur"
@@ -1800,6 +1806,17 @@ defmodule Billboard.EditorLive.SectionEditor do
       {at, problem_label(at, specs), Enum.uniq(messages)}
     end
   end
+
+  # Words under More are a line of text, or, for Markdown, which may run
+  # to paragraphs, a box that takes them.
+  defp more_input_type(spec),
+    do: if(Keyword.get(spec, :as) == :markdown, do: "textarea", else: "text")
+
+  # A picker of a set of choices the site doesn't give draws nothing, as
+  # `Billboard.Context.choices_for/1` leaves the set out, and as a
+  # detail's "Shows on" draws nothing without its set.
+  defp choices_given?(spec, choices),
+    do: spec[:as] not in [:choice, :choices] or Map.has_key?(choices, spec[:from])
 
   # A field's errors in plain words, for `<Components.input>`, which draws them.
   defp plain_errors(field),

@@ -2,7 +2,8 @@ defmodule Billboard.Test.Cards do
   @moduledoc """
   A component with a part and a list of parts, and settings a site can
   narrow: a `look` with `one_of`, bounded `columns`, and its layouts,
-  which its `editor` section offers, with its list of items.
+  which its `editor` section offers, with its list of items. Its items
+  are points but for their words and links, which an item doesn't hold.
   """
   use Billboard.Component
 
@@ -27,7 +28,13 @@ defmodule Billboard.Test.Cards do
       label: "Columns",
       options: [{"Two", 2}, {"Three", 3}, {"Four", 4}]
 
-    field :items, as: :list, part: :point, min: 1, max: 4, item_label: "card"
+    field :items,
+      as: :list,
+      part: :point,
+      except: [:body, :link],
+      min: 1,
+      max: 4,
+      item_label: "card"
   end
 
   attributes do

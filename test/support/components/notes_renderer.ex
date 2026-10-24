@@ -1,5 +1,5 @@
 defmodule Billboard.Test.NotesRenderer do
-  @moduledoc "Draws the shop's Notes: each question, typed in place, in a list."
+  @moduledoc "Draws the shop's Notes: each question and its answer, typed in place, in a list."
   use Billboard.Renderer
 
   def render(assigns) do
@@ -8,6 +8,7 @@ defmodule Billboard.Test.NotesRenderer do
       <ul>
         <li :for={{item, i} <- Enum.with_index(@content.items)}>
           {Words.text(@ctx, "items.#{i}.title", item.title)}
+          {Words.text(@ctx, "items.#{i}.body", item.body)}
         </li>
       </ul>
     </section>
