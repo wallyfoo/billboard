@@ -171,9 +171,11 @@ defmodule Billboard.ThemeCheckTest do
   # It reads neither a site's classes nor billboard's theme, only its own
   # tokens: its colours are `bb-edit-*` and `bb-glyph-*`, its type
   # `bb-edit-type-*`, its faces `font-bb-edit` and `font-bb-glyph`, and
-  # its easing `ease-bb-edit`. The one colour of its own it names is its
-  # popovers' neutral shadow, `shadow-[0_8px_24px_rgb(0_0_0/0.18)]`,
-  # which is no theme's, so the check lets it be.
+  # its easing `ease-bb-edit`, and its shadows `shadow-bb-edit-popover`
+  # and `shadow-bb-edit-palette`. It names no colour of its own, neither
+  # a hex nor an arbitrary value that holds one (as its shadows once
+  # did, `shadow-[0_8px_24px_rgb(0_0_0/0.18)]`), so its stylesheet's
+  # tokens are all there is to change.
   @root Path.expand("../..", __DIR__)
 
   @editor_files Enum.sort(
@@ -202,9 +204,42 @@ defmodule Billboard.ThemeCheckTest do
     end
   end
 
+  test "the editor's check refuses a colour of its own, but not its shadows' tokens" do
+    assert editor_offence?("#2e1428")
+    assert arbitrary_colours("shadow-[0_8px_24px_rgb(0_0_0/0.18)]") != []
+
+    assert arbitrary_colours(
+             "shadow-[0_12px_32px_rgb(46_20_40/0.15),0_2px_6px_rgb(46_20_40/0.08)]"
+           ) != []
+
+    for class <- ~w(shadow-bb-edit-popover shadow-bb-edit-palette) do
+      refute editor_offence?(class), class
+      assert arbitrary_colours(class) == []
+    end
+  end
+
+  # A shadow utility with no `--shadow-*` key in the stylesheet's
+  # `@theme` builds nothing, so the popover or palette would lose its
+  # shadow without a word.
+  test "every shadow the editor draws is one its stylesheet defines" do
+    drawn =
+      for path <- @editor_files,
+          class <- ClassWords.read(path),
+          String.starts_with?(class, "shadow-bb-edit-"),
+          uniq: true,
+          do: class
+
+    css = File.read!(@editor)
+
+    assert Enum.sort(drawn) == ~w(shadow-bb-edit-palette shadow-bb-edit-popover)
+
+    for class <- drawn, do: assert(css =~ "--#{class}: var(--bb-edit-", class)
+  end
+
   for path <- @editor_files do
     test "#{Path.relative_to(path, @root)} draws only through the editor's tokens" do
       assert offences(unquote(path), &editor_offence?/1) == []
+      assert unquote(path) |> File.read!() |> arbitrary_colours() == []
     end
   end
 
@@ -225,7 +260,8 @@ defmodule Billboard.ThemeCheckTest do
       String.starts_with?(class, "bb-type-") or Regex.match?(~r/^rounded(-[a-z]+)?-bb-/, class) or
       (class in ClassWords.theme_utilities() and class != "bb-wrap") or
       ClassWords.old_theme_name?(class) or ClassWords.old_editor_name?(class) or
-      (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-edit-"))
+      (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-edit-")) or
+      hex?(class)
   end
 
   # Glyphs are the palette's thumbnails, editor chrome rather than the
@@ -256,9 +292,12 @@ defmodule Billboard.ThemeCheckTest do
     site_class?(class) or ClassWords.old_theme_name?(class) or
       ClassWords.old_editor_name?(class) or
       (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-")) or
-      Regex.match?(~r/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, class) or
-      type_utility?(class)
+      hex?(class) or type_utility?(class)
   end
+
+  # A colour written as a hex, as the splitter leaves it.
+  defp hex?(class),
+    do: Regex.match?(~r/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, class)
 
   defp type_utility?(class) do
     class in @type_utilities or String.starts_with?(class, ["tracking-", "leading-"])

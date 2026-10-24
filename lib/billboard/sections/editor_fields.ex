@@ -702,7 +702,7 @@ defmodule Billboard.Sections.EditorFields do
       ]}>
         <span>{@summary}<span aria-hidden="true">…</span></span>
       </summary>
-      <div class="z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-bb-edit-ground p-4 text-bb-edit-ink shadow-[0_8px_24px_rgb(0_0_0/0.18)] sm:absolute sm:top-full sm:right-0">
+      <div class="z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-bb-edit-ground p-4 text-bb-edit-ink shadow-bb-edit-popover sm:absolute sm:top-full sm:right-0">
         <.field form={@form} field={@field} spec={@spec} ctx={@ctx} />
       </div>
     </details>

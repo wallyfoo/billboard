@@ -1462,7 +1462,7 @@ defmodule Billboard.EditorLive.SectionEditor do
               ]}>
                 <span>More<span aria-hidden="true">…</span></span>
               </summary>
-              <div class="z-40 mt-2 grid w-80 max-w-[calc(100vw-2rem)] gap-5 bg-bb-edit-ground p-4 text-bb-edit-ink shadow-[0_8px_24px_rgb(0_0_0/0.18)] sm:absolute sm:top-full sm:right-0">
+              <div class="z-40 mt-2 grid w-80 max-w-[calc(100vw-2rem)] gap-5 bg-bb-edit-ground p-4 text-bb-edit-ink shadow-bb-edit-popover sm:absolute sm:top-full sm:right-0">
                 <Components.input
                   :for={{field, spec} <- @more_words}
                   field={plain_errors(content[field])}
@@ -1738,7 +1738,7 @@ defmodule Billboard.EditorLive.SectionEditor do
   defp popover_class do
     [
       "absolute top-full right-4 z-40 mt-2 grid w-80 max-w-[calc(100vw-2rem)] gap-4 bg-bb-edit-ground p-4",
-      "text-bb-edit-ink shadow-[0_8px_24px_rgb(0_0_0/0.18)] outline-none md:right-6"
+      "text-bb-edit-ink shadow-bb-edit-popover outline-none md:right-6"
     ]
   end
 

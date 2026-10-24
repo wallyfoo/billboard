@@ -213,7 +213,7 @@ defmodule Billboard.EditorLive.Palette do
         class={[
           "absolute top-6 left-1/2 z-10 max-h-[min(34rem,70vh)] w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2",
           "overflow-y-auto overscroll-contain bg-bb-edit-ground p-2 font-bb-edit text-bb-edit-ink",
-          "shadow-[0_12px_32px_rgb(46_20_40/0.15),0_2px_6px_rgb(46_20_40/0.08)]",
+          "shadow-bb-edit-palette",
           "motion-safe:animate-[bb-edit-pop_160ms_var(--bb-edit-ease)]"
         ]}
       >

@@ -30,6 +30,11 @@
   --bb-edit-duration: 120ms;
   --bb-edit-duration-ui: 200ms;
 
+  /* Its shadows: a popover's, neutral, and the palette's, tinted with
+     its strong ink. */
+  --bb-edit-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.18);
+  --bb-edit-shadow-palette: 0 12px 32px rgb(46 20 40 / 0.15), 0 2px 6px rgb(46 20 40 / 0.08);
+
   /* The palette's glyphs: small sketches of each section. */
   --bb-edit-glyph-ink: #4a2340;
   --bb-edit-glyph-soft: #665a68;
@@ -42,9 +47,10 @@
 
 /* The editor's tokens as Tailwind utilities, for the editor's templates:
    its colours, with the editor's blue (bb-edit) for its outlines and
-   controls, the glyphs' colours, its two typefaces, and its easing. Each
-   carries the bb- prefix, as in text-bb-edit-ink and font-bb-glyph, so
-   none can clash with a name the site already has. Its durations have
+   controls, the glyphs' colours, its two typefaces, its easing, and its
+   two shadows. Each carries the bb- prefix, as in text-bb-edit-ink,
+   font-bb-glyph, and shadow-bb-edit-popover, so none can clash with a
+   name the site already has. Its durations have
    no Tailwind namespace, so the templates read them with
    duration-[var(--bb-edit-duration)], for a hover, and
    duration-[var(--bb-edit-duration-ui)], for a field's focus. */
@@ -76,6 +82,9 @@
   --font-bb-glyph: var(--bb-edit-glyph-font, "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif);
 
   --ease-bb-edit: var(--bb-edit-ease);
+
+  --shadow-bb-edit-popover: var(--bb-edit-shadow-popover);
+  --shadow-bb-edit-palette: var(--bb-edit-shadow-palette);
 }
 
 /* The editor's own type, at its own sizes, whatever the site's are. */
