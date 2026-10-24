@@ -869,6 +869,34 @@ defmodule Billboard.EditorLive.SectionEditorTest do
     end
   end
 
+  describe "parts kept through a change" do
+    # The shop's starters have no head with an action and no point with a
+    # link, so these stand on live pages: the draft is copied from the live
+    # version the form was built from, and the parts must come across.
+    test "a section head's action stays as it was" do
+      storefront!()
+      range = section_of("/", :text_media)
+      lv = open("/", range.key)
+
+      change(lv, %{content: %{head: %{heading: "All of it"}}})
+
+      assert %{head: %{heading: "All of it", action: action}} = content("/", range.key)
+      assert action_fields(action) == action_fields(range.content.value.head.action)
+    end
+
+    test "points keep their links" do
+      about!()
+      points = section_of("/about", :points)
+      lv = open("/about", points.key)
+
+      change(lv, %{content: %{columns: "3"}})
+
+      links = &Enum.map(&1.points, fn point -> point.link && action_fields(point.link) end)
+      assert content("/about", points.key).columns == 3
+      assert links.(content("/about", points.key)) == links.(points.content.value)
+    end
+  end
+
   describe "fields by component" do
     test "points choose their columns, and a point's link can be added" do
       about!()
