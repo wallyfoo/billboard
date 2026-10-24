@@ -54,29 +54,28 @@ if Code.ensure_loaded?(Igniter) do
 
     @impl Igniter.Mix.Task
     def igniter(igniter) do
-      names = Install.names(igniter)
+      options = igniter.args.options
+      {igniter, names} = Install.names(igniter)
 
-      case Install.ash_postgres_repo?(igniter, names.repo) do
-        {igniter, true} ->
-          igniter
-          |> config(names)
-          |> modules(names)
-          |> Install.add_layout(names)
-          |> Install.mount_editor(igniter.args.options)
-          |> home(names, igniter.args.options[:home])
-          |> Install.plug_uploads(names)
-          |> uploads()
-          |> Install.add_cache()
-          |> notices()
-
-        {igniter, false} ->
-          Igniter.add_issue(
-            igniter,
-            "#{inspect(names.repo)} isn't an AshPostgres repo, and billboard keeps its pages " <>
-              "with AshPostgres. Set up Ash first, with " <>
-              "`mix igniter.install ash ash_postgres ash_phoenix --yes`, then run " <>
-              "`mix billboard.install` again."
-          )
+      if names.repo do
+        igniter
+        |> config(names)
+        |> modules(names)
+        |> Install.add_layout(names)
+        |> Install.mount_editor(options)
+        |> home(names, options[:home])
+        |> Install.plug_uploads(names)
+        |> uploads()
+        |> Install.add_cache()
+        |> notices(names)
+      else
+        Igniter.add_issue(
+          igniter,
+          "#{names.prefix} has no AshPostgres repo, and billboard keeps its pages " <>
+            "with AshPostgres. Set up Ash first, with " <>
+            "`mix igniter.install ash ash_postgres ash_phoenix --yes`, then run " <>
+            "`mix billboard.install` again."
+        )
       end
     end
 
@@ -84,12 +83,29 @@ if Code.ensure_loaded?(Igniter) do
       igniter
       |> Igniter.Project.Formatter.import_dep(:billboard)
       |> Install.configure_new("config.exs", :billboard, :site, names.site)
-      |> Igniter.Project.Config.configure(
+      |> domains(names)
+    end
+
+    defp domains(igniter, %{pages: nil}), do: igniter
+
+    defp domains(igniter, names) do
+      Igniter.Project.Config.configure(
+        igniter,
         "config.exs",
         names.app,
         [:ash_domains],
         [names.pages],
         updater: &Igniter.Code.List.append_new_to_list(&1, names.pages)
+      )
+    end
+
+    # A site that has billboard under a domain this can't read keeps its
+    # own modules, and gets no second domain.
+    defp modules(igniter, %{pages: nil} = names) do
+      Igniter.add_warning(
+        igniter,
+        "Couldn't read the `domain:` of #{inspect(names.site)}'s `use Billboard.Site`, so " <>
+          "billboard's domain and resources are left as they are."
       )
     end
 
@@ -113,6 +129,14 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp home(igniter, _names, false), do: igniter
+
+    defp home(igniter, %{pages: nil} = names, true) do
+      Igniter.add_warning(
+        igniter,
+        "Couldn't read #{inspect(names.site)}'s domain, so `--home` wrote no page. Write " <>
+          "a LiveView that draws `Billboard.Sections.page/1`, and route `/` to it."
+      )
+    end
 
     defp home(igniter, names, true) do
       igniter
@@ -161,7 +185,16 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp notices(igniter) do
+    defp notices(igniter, %{installed?: true} = names) do
+      Igniter.add_notice(igniter, """
+      Billboard is installed already, as #{inspect(names.site)}, so this run adds
+      only what's missing, and leaves the rest as it is. If it proposes no changes,
+      the site has everything the installer writes. Billboard's getting started
+      guide says what's next.
+      """)
+    end
+
+    defp notices(igniter, _names) do
       Igniter.add_notice(igniter, """
       Billboard is installed. Write its tables' migrations, and run them:
 

@@ -11,7 +11,7 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     without_ash()
     |> install()
     |> assert_has_issue(fn issue ->
-      issue =~ "MySite.Repo isn't an AshPostgres repo" and
+      issue =~ "MySite has no AshPostgres repo" and
         issue =~ "mix igniter.install ash ash_postgres ash_phoenix"
     end)
   end
@@ -47,6 +47,59 @@ defmodule Mix.Tasks.Billboard.InstallTest do
              "use Billboard.Page, site: MySite.Billboard"
   end
 
+  test "names the site's AshPostgres repo, whatever it's called" do
+    ecto_repo = """
+    defmodule MySite.Repo do
+      use Ecto.Repo, otp_app: :my_site, adapter: Ecto.Adapters.Postgres
+    end
+    """
+
+    store = """
+    defmodule MySite.Store do
+      use AshPostgres.Repo, otp_app: :my_site
+    end
+    """
+
+    site =
+      project(%{"lib/my_site/repo.ex" => ecto_repo, "lib/my_site/store.ex" => store})
+      |> install()
+      |> content("lib/my_site/billboard.ex")
+
+    assert site =~ "repo: MySite.Store"
+  end
+
+  test "writes no second site or domain for a site that has billboard under other names" do
+    cms = """
+    defmodule MySite.Cms do
+      alias MySite.Content
+
+      use Billboard.Site, otp_app: :my_site, repo: MySite.Repo, domain: Content
+    end
+    """
+
+    config = project() |> content("config/config.exs")
+
+    config =
+      String.replace(
+        config,
+        "import Config\n",
+        "import Config\n\nconfig :billboard, site: MySite.Cms\n"
+      )
+
+    igniter =
+      project(%{"lib/my_site/cms.ex" => cms, "config/config.exs" => config})
+      |> install(["--home"])
+
+    refute_creates(igniter, "lib/my_site/billboard.ex")
+    refute_creates(igniter, "lib/my_site/pages.ex")
+    refute content(igniter, "config/config.exs") =~ "MySite.Pages"
+
+    assert content(igniter, "lib/my_site_web/live/billboard_page_live.ex") =~
+             "alias MySite.Content"
+
+    assert_has_notice(igniter, &(&1 =~ "Billboard is installed already, as MySite.Cms"))
+  end
+
   test "starts the cache straight after PubSub" do
     children = project() |> install() |> content("lib/my_site/application.ex")
     assert children =~ ~r/\{Phoenix\.PubSub, name: MySite\.PubSub\},\s+Billboard\.Cache,/
@@ -64,6 +117,37 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     project()
     |> install()
     |> assert_has_notice(&(&1 =~ "mix ash.codegen add_billboard" and &1 =~ "mix ecto.migrate"))
+  end
+
+  test "looks for the children only in start/2" do
+    application = """
+    defmodule MySite.Application do
+      use Application
+
+      @impl true
+      def start(_type, _args) do
+        Supervisor.start_link(children(), strategy: :one_for_one, name: MySite.Supervisor)
+      end
+
+      defp children do
+        children = [{Phoenix.PubSub, name: MySite.PubSub}]
+        children
+      end
+    end
+    """
+
+    project(%{"lib/my_site/application.ex" => application})
+    |> install()
+    |> assert_has_warning(&(&1 =~ "Couldn't find `{Phoenix.PubSub, …}`"))
+    |> assert_unchanged("lib/my_site/application.ex")
+  end
+
+  test "says so when billboard is installed already" do
+    project()
+    |> install()
+    |> apply_igniter!()
+    |> install()
+    |> assert_has_notice(&(&1 =~ "Billboard is installed already, as MySite.Billboard"))
   end
 
   test "changes nothing the second time" do

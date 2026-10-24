@@ -12,24 +12,86 @@ if Code.ensure_loaded?(Igniter) do
     alias Igniter.Code.List, as: IList
     alias Sourceror.Zipper
 
-    @doc "The site's names: its app, its modules, and the modules billboard writes."
+    @doc """
+    The site's names: its app, its modules, and the modules billboard
+    writes. `repo` is the site's AshPostgres repo, or nil when it has
+    none. When the site has billboard already (`config :billboard, :site`
+    names a module that exists, or `MySite.Billboard` does), `site` is
+    that module and `pages` the domain its `use Billboard.Site` names, or
+    nil when that can't be read, and `installed?` is true, so a site
+    built under other names gets no second site module or domain.
+    """
     def names(igniter) do
       app = Igniter.Project.Application.app_name(igniter)
       prefix = Igniter.Project.Module.module_name_prefix(igniter)
       web = Igniter.Libs.Phoenix.web_module(igniter)
+      {igniter, repo} = ash_postgres_repo(igniter)
 
-      %{
+      names = %{
         app: app,
         name: app |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize(),
         prefix: inspect(prefix),
         web: inspect(web),
         site: Module.concat(prefix, Billboard),
         pages: Module.concat(prefix, Pages),
-        repo: Module.concat(prefix, Repo),
+        repo: repo,
         layouts: Module.concat(web, Layouts),
         endpoint: Module.concat(web, Endpoint),
-        page_live: Module.concat(web, BillboardPageLive)
+        page_live: Module.concat(web, BillboardPageLive),
+        installed?: false
       }
+
+      existing_site(igniter, names)
+    end
+
+    defp existing_site(igniter, names) do
+      {igniter, configured} = config_value(igniter, "config.exs", :billboard, :site)
+      site = (configured && module_of(configured)) || names.site
+
+      case Igniter.Project.Module.find_module(igniter, site) do
+        {:ok, {igniter, _source, zipper}} ->
+          pages =
+            if site == names.site,
+              do: site_domain(zipper) || names.pages,
+              else: site_domain(zipper)
+
+          {igniter, %{names | site: site, pages: pages, installed?: true}}
+
+        {:error, igniter} ->
+          {igniter, names}
+      end
+    end
+
+    # The `domain:` of the site's `use Billboard.Site`, aliases expanded.
+    defp site_domain(zipper) do
+      with {:ok, body} <- Common.move_to_do_block(zipper),
+           {:ok, use} <- Igniter.Code.Module.move_to_use(body, Billboard.Site),
+           {:ok, opts} <- Function.move_to_nth_argument(use, 1),
+           {:ok, domain} <- Igniter.Code.Keyword.get_key(opts, :domain) do
+        domain |> Common.expand_alias() |> module_of()
+      else
+        _ -> nil
+      end
+    end
+
+    defp module_of(%Zipper{node: {:__aliases__, _, parts}}) do
+      if Enum.all?(parts, &is_atom/1), do: Module.concat(parts)
+    end
+
+    defp module_of(%Zipper{node: {:__block__, _, [module]}}) when is_atom(module), do: module
+    defp module_of(%Zipper{node: module}) when is_atom(module) and not is_nil(module), do: module
+    defp module_of(_zipper), do: nil
+
+    # The first of the site's repos that does `use AshPostgres.Repo`.
+    defp ash_postgres_repo(igniter) do
+      {igniter, repos} = Igniter.Libs.Ecto.list_repos(igniter)
+
+      Enum.reduce_while(repos, {igniter, nil}, fn repo, {igniter, nil} ->
+        case ash_postgres_repo?(igniter, repo) do
+          {igniter, true} -> {:halt, {igniter, repo}}
+          {igniter, false} -> {:cont, {igniter, nil}}
+        end
+      end)
     end
 
     @doc "`priv/templates/DIR/NAME`, rendered with `assigns`."
@@ -52,8 +114,7 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    @doc "Whether `repo` does `use AshPostgres.Repo`."
-    def ash_postgres_repo?(igniter, repo) do
+    defp ash_postgres_repo?(igniter, repo) do
       case Igniter.Project.Module.find_module(igniter, repo) do
         {:ok, {igniter, _source, zipper}} ->
           # `find_module/2` leaves the zipper on the `defmodule`; the
@@ -93,22 +154,28 @@ if Code.ensure_loaded?(Igniter) do
 
     defp add_cache(zipper, app) do
       case Function.move_to_def(zipper, :start, 2) do
+        # Looks only inside `start/2`, so a child list elsewhere in the
+        # module is neither read nor changed.
         {:ok, start} ->
-          cond do
-            match?({:ok, _}, Common.move_to(start, &Common.nodes_equal?(&1, Billboard.Cache))) ->
-              {:ok, zipper}
-
-            pubsub = find_pubsub(start) ->
-              {:ok, Zipper.insert_right(pubsub, Sourceror.parse_string!("Billboard.Cache"))}
-
-            true ->
-              {:warning,
-               "Couldn't find `{Phoenix.PubSub, …}` in #{inspect(app)}'s children. Start " <>
-                 "`Billboard.Cache` there yourself, after the repo and PubSub."}
-          end
+          Common.within(start, &add_cache_to_start(&1, app))
 
         :error ->
           {:warning, "Start `Billboard.Cache` in #{inspect(app)}, after the repo and PubSub."}
+      end
+    end
+
+    defp add_cache_to_start(start, app) do
+      cond do
+        found?(start, &Common.nodes_equal?(&1, Billboard.Cache)) ->
+          {:ok, start}
+
+        pubsub = find_pubsub(start) ->
+          {:ok, Zipper.insert_right(pubsub, Sourceror.parse_string!("Billboard.Cache"))}
+
+        true ->
+          {:warning,
+           "Couldn't find `{Phoenix.PubSub, …}` in #{inspect(app)}'s children. Start " <>
+             "`Billboard.Cache` there yourself, after the repo and PubSub."}
       end
     end
 
@@ -377,18 +444,37 @@ if Code.ensure_loaded?(Igniter) do
     in a call or a block of its own.
     """
     def configures?(igniter, file, app, key) do
+      {igniter, value} = config_value(igniter, file, app, key)
+      {igniter, not is_nil(value)}
+    end
+
+    # The value the first `config` call in `file` that sets `key` for
+    # `app` gives it, wherever the call sits, or nil.
+    defp config_value(igniter, file, app, key) do
       path =
         igniter |> Igniter.Project.Application.config_path() |> Path.dirname() |> Path.join(file)
 
       igniter = Igniter.include_existing_file(igniter, path, required?: false)
 
-      case Rewrite.source(igniter.rewrite, path) do
-        {:ok, source} ->
-          zipper = source |> Rewrite.Source.get(:quoted) |> Zipper.zip()
-          {igniter, found?(zipper, &config?(&1, app, key))}
+      with {:ok, source} <- Rewrite.source(igniter.rewrite, path),
+           zipper = source |> Rewrite.Source.get(:quoted) |> Zipper.zip(),
+           {:ok, call} <- Common.move_to(zipper, &config?(&1, app, key)) do
+        {igniter, config_arg(call, key)}
+      else
+        _ -> {igniter, nil}
+      end
+    end
 
-        _ ->
-          {igniter, false}
+    defp config_arg(call, key) do
+      if Function.function_call?(call, :config, 3) do
+        with {:ok, value} <- Function.move_to_nth_argument(call, 2), do: value, else: (_ -> nil)
+      else
+        with {:ok, opts} <- Function.move_to_nth_argument(call, 1),
+             {:ok, value} <- Igniter.Code.Keyword.get_key(opts, key) do
+          value
+        else
+          _ -> nil
+        end
       end
     end
 
