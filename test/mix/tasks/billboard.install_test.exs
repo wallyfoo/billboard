@@ -7,6 +7,18 @@ defmodule Mix.Tasks.Billboard.InstallTest do
 
   defp install(igniter, argv \\ []), do: Igniter.compose_task(igniter, "billboard.install", argv)
 
+  # The text of `live_session NAME`'s block, from its line to its `end`,
+  # so a route is asserted inside it and not merely somewhere after it.
+  defp session_block(router, name) do
+    lines = String.split(router, "\n")
+    start = Enum.find_index(lines, &(&1 =~ ~r/live_session[ (]#{inspect(name)}\b/))
+    assert start, "no live_session #{inspect(name)} in the router"
+    [first | rest] = Enum.drop(lines, start)
+    [indent] = Regex.run(~r/^\s*/, first)
+    body = Enum.take_while(rest, &(&1 != indent <> "end"))
+    Enum.join([first | body], "\n")
+  end
+
   test "refuses a site without AshPostgres, and says how to set it up" do
     without_ash()
     |> install()
@@ -100,6 +112,23 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     assert_has_notice(igniter, &(&1 =~ "Billboard is installed already, as MySite.Cms"))
   end
 
+  test "writes the site module a config names, when the site doesn't define it" do
+    config =
+      project()
+      |> content("config/config.exs")
+      |> String.replace(
+        "import Config\n",
+        "import Config\n\nconfig :billboard, site: MySite.Cms\n"
+      )
+
+    igniter = project(%{"config/config.exs" => config}) |> install()
+
+    assert_has_warning(igniter, &(&1 =~ "names MySite.Cms, which the site doesn't define"))
+    assert_creates(igniter, "lib/my_site/cms.ex")
+    refute_creates(igniter, "lib/my_site/billboard.ex")
+    assert content(igniter, "lib/my_site/cms.ex") =~ "defmodule MySite.Cms do"
+  end
+
   test "starts the cache straight after PubSub" do
     children = project() |> install() |> content("lib/my_site/application.ex")
     assert children =~ ~r/\{Phoenix\.PubSub, name: MySite\.PubSub\},\s+Billboard\.Cache,/
@@ -117,6 +146,12 @@ defmodule Mix.Tasks.Billboard.InstallTest do
     project()
     |> install()
     |> assert_has_notice(&(&1 =~ "mix ash.codegen add_billboard" and &1 =~ "mix ecto.migrate"))
+  end
+
+  test "warns that every signed-in user can publish, and anyone can sign up" do
+    project()
+    |> install()
+    |> assert_has_notice(&(&1 =~ "/users/register lets anyone sign up" and &1 =~ "Before you"))
   end
 
   test "looks for the children only in start/2" do
@@ -186,8 +221,61 @@ defmodule Mix.Tasks.Billboard.InstallTest do
 
       assert router =~ ~r/use MySiteWeb, :router\s+import Billboard\.Editor\.Router/
 
-      assert router =~
-               ~r/live_session[ (]:require_authenticated_user.*billboard_editor[ (]"\/admin\/pages"/s
+      assert session_block(router, :require_authenticated_user) =~
+               ~r/billboard_editor[ (]"\/admin\/pages"/
+
+      refute session_block(router, :current_user) =~ "billboard_editor"
+    end
+
+    test "won't mount the editor in a live_session anyone can join" do
+      for session <- ~w(current_user visitors) do
+        router = project() |> content("lib/my_site_web/router.ex")
+
+        # A session of the site's own, in a scope that pipes through only
+        # :browser, with no on_mount that asks for a signed-in user.
+        router =
+          String.replace(router, "  ## Authentication routes", """
+            scope "/", MySiteWeb do
+              pipe_through :browser
+
+              live_session :visitors do
+                live "/about", AboutLive
+              end
+            end
+
+            ## Authentication routes\
+          """)
+
+        project(%{"lib/my_site_web/router.ex" => router})
+        |> install(["--live-session", session])
+        |> assert_has_warning(&(&1 =~ "`live_session :#{session}`" and &1 =~ "doesn't require"))
+        |> content("lib/my_site_web/router.ex")
+        |> then(&refute(&1 =~ "billboard_editor"))
+      end
+    end
+
+    test "mounts the editor in a live_session of the site's whose on_mount signs in" do
+      router =
+        project()
+        |> content("lib/my_site_web/router.ex")
+        |> String.replace("  ## Authentication routes", """
+          scope "/admin", MySiteWeb do
+            pipe_through :browser
+
+            live_session :admin, on_mount: [{MySiteWeb.UserAuth, :require_authenticated}] do
+              live "/", AdminLive
+            end
+          end
+
+          ## Authentication routes\
+        """)
+
+      router =
+        project(%{"lib/my_site_web/router.ex" => router})
+        |> install(["--live-session", "admin", "--editor-path", "/pages"])
+        |> content("lib/my_site_web/router.ex")
+
+      assert session_block(router, :admin) =~ ~r/billboard_editor[ (]"\/pages"/
     end
 
     test "takes another live_session and path" do
@@ -207,13 +295,14 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       page_live = content(igniter, "lib/my_site_web/live/billboard_page_live.ex")
       assert page_live =~ "use MySiteWeb, :live_view"
       assert page_live =~ "site={@site}"
-      assert page_live =~ "route_info(socket.router, \"GET\", path, host)"
+      assert page_live =~ "route_info(router, \"GET\", path, host)"
 
       router = content(igniter, "lib/my_site_web/router.ex")
 
       # In phx.gen.auth's :current_user session, whose on_mount gives
       # the root layout its @current_scope.
-      assert router =~ ~r/live_session[ (]:current_user.*live[ (]"\/", BillboardPageLive/s
+      assert session_block(router, :current_user) =~ ~r/live[ (]"\/", BillboardPageLive/
+      refute session_block(router, :require_authenticated_user) =~ "BillboardPageLive"
       refute router =~ "PageController, :home"
 
       assert_has_notice(
@@ -241,8 +330,57 @@ defmodule Mix.Tasks.Billboard.InstallTest do
         |> install(["--home"])
         |> content("lib/my_site_web/router.ex")
 
-      assert router =~ ~r/live_session[ (]:current_user.*live[ (]"\/", BillboardPageLive/s
+      assert session_block(router, :current_user) =~ ~r/live[ (]"\/", BillboardPageLive/
       refute router =~ "PageController, :home"
+    end
+
+    test "with --home, takes `/` for itself, not a keyword scope's" do
+      router =
+        project()
+        |> content("lib/my_site_web/router.ex")
+        |> String.replace("  ## Authentication routes", """
+          scope path: "/admin", alias: MySiteWeb do
+            pipe_through :browser
+
+            live "/", AdminLive
+          end
+
+          ## Authentication routes\
+        """)
+
+      router =
+        project(%{"lib/my_site_web/router.ex" => router})
+        |> install(["--home"])
+        |> content("lib/my_site_web/router.ex")
+
+      assert session_block(router, :current_user) =~ ~r/live[ (]"\/", BillboardPageLive/
+    end
+
+    test "with --home, writes no page when `/` is routed already, and says so" do
+      router =
+        project()
+        |> content("lib/my_site_web/router.ex")
+        |> String.replace(~s|get "/", PageController, :home|, ~s|live "/", HomeLive|)
+
+      igniter = project(%{"lib/my_site_web/router.ex" => router}) |> install(["--home"])
+
+      refute_creates(igniter, "lib/my_site_web/live/billboard_page_live.ex")
+      router = content(igniter, "lib/my_site_web/router.ex")
+      assert router =~ ~s|live "/", HomeLive|
+      refute router =~ "BillboardPageLive"
+      assert_has_notice(igniter, &(&1 =~ "`/` is routed already, to HomeLive"))
+    end
+
+    test "the visitor page redraws only for a new version, and names the fix for a route with no page" do
+      page_live =
+        project() |> install(["--home"]) |> content("lib/my_site_web/live/billboard_page_live.ex")
+
+      assert page_live =~ "Billboard.Snapshot.page(snapshot, pattern) || Pages.page_for(pattern)"
+      assert page_live =~ "same_version?(socket.assigns.version, version)"
+      assert page_live =~ "Billboard.Directory.fetch(pattern)"
+      refute page_live =~ "fetch!("
+      assert page_live =~ "has no billboard page"
+      assert page_live =~ "takes parameters"
     end
 
     test "with --home, warns and leaves the router alone without :current_user" do

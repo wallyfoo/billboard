@@ -46,7 +46,8 @@ if Code.ensure_loaded?(Igniter) do
 
     defp existing_site(igniter, names) do
       {igniter, configured} = config_value(igniter, "config.exs", :billboard, :site)
-      site = (configured && module_of(configured)) || names.site
+      configured = configured && module_of(configured)
+      site = configured || names.site
 
       case Igniter.Project.Module.find_module(igniter, site) do
         {:ok, {igniter, _source, zipper}} ->
@@ -57,8 +58,22 @@ if Code.ensure_loaded?(Igniter) do
 
           {igniter, %{names | site: site, pages: pages, installed?: true}}
 
-        {:error, igniter} ->
+        {:error, igniter} when is_nil(configured) or configured == names.site ->
           {igniter, names}
+
+        # The config names a site module that isn't there: write it under
+        # that name, so the config and the module agree.
+        {:error, igniter} ->
+          igniter =
+            Igniter.add_warning(
+              igniter,
+              "`config :billboard, :site` names #{inspect(configured)}, which the site " <>
+                "doesn't define, so the installer writes it under that name. If the config " <>
+                "is out of date, fix it, delete what this run wrote, and run " <>
+                "mix billboard.install again."
+            )
+
+          {igniter, %{names | site: configured}}
       end
     end
 
@@ -288,25 +303,94 @@ if Code.ensure_loaded?(Igniter) do
       if found?(zipper, &Function.function_call?(&1, :billboard_editor, [1, 2])) do
         {:ok, zipper}
       else
-        case move_to_session(zipper, session) do
-          {:ok, block} ->
-            {:ok, Common.add_code(block, route)}
-
+        with {:ok, live_session} <- Common.move_to(zipper, &session?(&1, session)),
+             true <- signed_in?(live_session, session) do
+          live_session |> Common.move_to_do_block() |> add_route(route)
+        else
           :error ->
             {:warning,
              "Couldn't find `live_session #{inspect(session)}` in #{inspect(router)}. Add " <>
                "`#{route}` inside the live_session your signed-in pages use, or run " <>
                "mix billboard.install again with `--live-session NAME`."}
+
+          false ->
+            {:warning,
+             "`live_session #{inspect(session)}` in #{inspect(router)} doesn't require " <>
+               "signing in: its `on_mount` has no `:require_authenticated`, and its scope " <>
+               "doesn't pipe through `:require_authenticated_user`. Anyone the editor lets in " <>
+               "can edit and publish every page, so the editor wasn't mounted. Add `#{route}` " <>
+               "inside a live_session only signed-in admins can join, or run " <>
+               "mix billboard.install again with `--live-session NAME`."}
         end
       end
     end
 
+    defp add_route({:ok, block}, route), do: {:ok, Common.add_code(block, route)}
+    defp add_route(:error, _route), do: :error
+
+    # Whether only a signed-in user can join the live_session: its
+    # `on_mount` runs phx.gen.auth's `:require_authenticated`, or a scope
+    # round it pipes through `:require_authenticated_user`. phx.gen.auth's
+    # `:current_user` session is for everyone, whatever it says.
+    defp signed_in?(_live_session, :current_user), do: false
+
+    defp signed_in?(live_session, _session) do
+      on_mount_requires? =
+        with {:ok, opts} <- Function.move_to_nth_argument(live_session, 1),
+             {:ok, on_mount} <- Igniter.Code.Keyword.get_key(opts, :on_mount) do
+          mentions?(on_mount.node, :require_authenticated)
+        else
+          _ -> false
+        end
+
+      on_mount_requires? or piped_through?(live_session, :require_authenticated_user)
+    end
+
+    defp piped_through?(zipper, plug) do
+      case Zipper.up(zipper) do
+        nil ->
+          false
+
+        parent ->
+          (Function.function_call?(parent, :scope) and scope_pipes?(parent.node, plug)) or
+            piped_through?(parent, plug)
+      end
+    end
+
+    # A `pipe_through` among the scope's own statements, not a nested
+    # scope's.
+    defp scope_pipes?({:scope, _, args}, plug),
+      do: args |> List.last() |> do_body() |> Enum.any?(&pipes_plug?(&1, plug))
+
+    defp pipes_plug?({:pipe_through, _, [pipes]}, plug), do: mentions?(pipes, plug)
+    defp pipes_plug?(_statement, _plug), do: false
+
+    defp do_body([{{:__block__, _, [:do]}, {:__block__, _, statements}}])
+         when is_list(statements),
+         do: statements
+
+    defp do_body([{{:__block__, _, [:do]}, statement}]), do: [statement]
+    defp do_body(_args), do: []
+
+    defp mentions?(ast, atom) do
+      {_ast, found?} =
+        Macro.prewalk(ast, false, fn
+          {:__block__, _, [^atom]} = node, _found -> {node, true}
+          ^atom = node, _found -> {node, true}
+          node, found -> {node, found}
+        end)
+
+      found?
+    end
+
     @doc """
-    Routes `/` to the site's `BillboardPageLive`, in place of phx.new's
-    `get "/", PageController, :home`, inside phx.gen.auth's
+    Writes the site's `BillboardPageLive` and routes `/` to it, in place
+    of phx.new's `get "/", PageController, :home`, inside phx.gen.auth's
     `live_session :current_user`: its root layout reads `@current_scope`,
     which only a LiveView in a session that mounts it has. A router that
-    has a `live "/"` already is left alone.
+    has a `live "/"` already is left alone, and gets no page: one routed
+    to another LiveView is noticed, so the site knows `--home` did
+    nothing.
     """
     def route_home(igniter, names) do
       {igniter, router} = Igniter.Libs.Phoenix.select_router(igniter)
@@ -317,8 +401,9 @@ if Code.ensure_loaded?(Igniter) do
           route_home(igniter, zipper, router, line, names)
 
         _ ->
-          Igniter.add_warning(
-            igniter,
+          igniter
+          |> write_page_live(names)
+          |> Igniter.add_warning(
             "Couldn't find the router. Route `/` in yours as `#{line}`, inside " <>
               "`live_session :current_user`."
           )
@@ -326,10 +411,49 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp route_home(igniter, zipper, router, line, names) do
-      cond do
-        found?(zipper, &home_live?/1) ->
-          igniter
+      case Common.move_to(zipper, &home_live?/1) do
+        {:ok, live} -> routed_home(igniter, live, names)
+        :error -> igniter |> write_page_live(names) |> replace_home(zipper, router, line, names)
+      end
+    end
 
+    defp write_page_live(igniter, names),
+      do:
+        create_module(
+          igniter,
+          names.page_live,
+          template("billboard.install", "page_live.ex.eex", names)
+        )
+
+    # `/` is routed already: to the visitor page, as a second run finds
+    # it (which is written if it's missing), or to a LiveView of the
+    # site's, which `--home` leaves alone.
+    defp routed_home(igniter, live, names) do
+      page_live = names.page_live |> Module.split() |> List.last()
+
+      target =
+        with {:ok, module} <- Function.move_to_nth_argument(live, 1),
+             %Zipper{node: {:__aliases__, _, parts}} <- module do
+          Enum.map_join(parts, ".", &to_string/1)
+        else
+          _ -> nil
+        end
+
+      if target && String.ends_with?("." <> target, "." <> page_live) do
+        write_page_live(igniter, names)
+      else
+        Igniter.add_notice(
+          igniter,
+          "`/` is routed already#{if target, do: ", to #{target}", else: ""}, so `--home` " <>
+            "wrote no page and left the route alone. To draw `/` with billboard, write a " <>
+            "LiveView that draws `Billboard.Sections.page/1` and route `/` to it, or remove " <>
+            "the route and run mix billboard.install --home again."
+        )
+      end
+    end
+
+    defp replace_home(igniter, zipper, router, line, names) do
+      cond do
         not found?(zipper, &home_get?/1) ->
           Igniter.add_warning(
             igniter,
@@ -349,7 +473,7 @@ if Code.ensure_loaded?(Igniter) do
 
         true ->
           igniter
-          |> Igniter.Project.Module.find_and_update_module!(router, &replace_home(&1, line))
+          |> Igniter.Project.Module.find_and_update_module!(router, &replace_home_get(&1, line))
           |> Igniter.add_notice(
             "`/` is drawn by #{inspect(names.page_live)} now, in place of " <>
               "PageController's home, so phx.new's test of that page, " <>
@@ -359,7 +483,7 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp replace_home(zipper, line) do
+    defp replace_home_get(zipper, line) do
       {:ok, block} = move_to_session(zipper, :current_user)
       added = Common.add_code(block, line)
       {:ok, get} = added |> Zipper.topmost() |> Common.move_to(&home_get?/1)
@@ -388,9 +512,26 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp nested?(scope) do
-      Function.argument_matches_predicate?(scope, 0, fn path ->
-        match?({:ok, path} when is_binary(path) and path != "/", Common.expand_literal(path))
+      Function.argument_matches_predicate?(scope, 0, fn arg ->
+        match?({:ok, path} when path != "/", scope_path(arg))
       end)
+    end
+
+    # A scope's path, given first (`scope "/admin", …`) or as a keyword
+    # (`scope path: "/admin"`).
+    defp scope_path(arg) do
+      case Common.expand_literal(arg) do
+        {:ok, path} when is_binary(path) ->
+          {:ok, path}
+
+        _ ->
+          with {:ok, path} <- Igniter.Code.Keyword.get_key(arg, :path),
+               {:ok, path} when is_binary(path) <- Common.expand_literal(path) do
+            {:ok, path}
+          else
+            _ -> :error
+          end
+      end
     end
 
     defp session?(zipper, session) do

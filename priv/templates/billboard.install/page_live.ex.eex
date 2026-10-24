@@ -2,10 +2,12 @@ defmodule <%= inspect(@page_live) %> do
   @moduledoc """
   A page of the site's, as visitors see it: the live version of the
   billboard page whose route this is, in `Layouts.page/1`. Route each
-  of the site's pages here, by the pattern its `page` entry names, as
-  `live "/about", BillboardPageLive`, beside the home page's route in
-  `live_session :current_user`. A publish redraws it for everyone
-  reading it.
+  of the site's pages whose route takes no parameters here, by the
+  pattern its `page` entry names, as `live "/about", BillboardPageLive`,
+  beside the home page's route in `live_session :current_user`. A page
+  whose route takes parameters, such as `/items/:slug`, draws data of
+  its own, so it needs a LiveView of its own. A publish redraws the page
+  for everyone reading it.
   """
   use <%= @web %>, :live_view
 
@@ -20,13 +22,35 @@ defmodule <%= inspect(@page_live) %> do
   @impl true
   def handle_params(_params, uri, socket) do
     %URI{path: path, host: host} = URI.parse(uri)
-    %{route: pattern} = Phoenix.Router.route_info(socket.router, "GET", path, host)
+    pattern = pattern!(socket.router, path, host)
 
-    {:noreply, socket |> assign(pattern: pattern, current_path: path) |> load()}
+    {:noreply,
+     socket
+     |> assign(pattern: pattern, current_path: path, library: Pages.page_for(nil))
+     |> load(Pages.page_for(pattern))}
   end
 
+  # Every publish refreshes billboard's cache, and every open page hears
+  # it, so a page reads its data again only when its own version has
+  # changed, and takes the library afresh only when the library has.
   @impl true
-  def handle_info({:pages_updated, _node, _snapshot}, socket), do: {:noreply, load(socket)}
+  def handle_info({:pages_updated, _node, snapshot}, socket) do
+    pattern = socket.assigns.pattern
+    version = Billboard.Snapshot.page(snapshot, pattern) || Pages.page_for(pattern)
+    library = Billboard.Snapshot.page(snapshot, nil) || Pages.page_for(nil)
+
+    socket =
+      if same_version?(socket.assigns.library, library),
+        do: socket,
+        else: assign(socket, :library, library)
+
+    socket =
+      if same_version?(socket.assigns.version, version),
+        do: socket,
+        else: load(socket, version)
+
+    {:noreply, socket}
+  end
 
   @impl true
   def render(assigns) do
@@ -42,16 +66,40 @@ defmodule <%= inspect(@page_live) %> do
     """
   end
 
-  defp load(socket) do
-    pattern = socket.assigns.pattern
-    version = Pages.page_for(pattern)
+  defp load(socket, version) do
+    page = Billboard.Directory.fetch(socket.assigns.pattern)
 
     assign(socket,
       version: version,
       data: Billboard.Resolver.resolve(version),
-      library: Pages.page_for(nil),
-      page_title:
-        Billboard.Directory.fetch!(pattern).title || Billboard.Sections.Hero.title(version)
+      page_title: page.title || Billboard.Sections.Hero.title(version)
     )
   end
+
+  # The route pattern of the page at `path`, which is its billboard
+  # page's: `/` for the home page.
+  defp pattern!(router, path, host) do
+    with %{route: pattern} <- Phoenix.Router.route_info(router, "GET", path, host),
+         %Billboard.Directory.Page{} <- Billboard.Directory.fetch(pattern) do
+      pattern
+    else
+      _ ->
+        raise ArgumentError,
+              "#{inspect(__MODULE__)} draws #{path}, but the site has no billboard page " <>
+                "for its route. Add one to the `pages` block of " <>
+                "#{inspect(Billboard.Site.get!())}, as `page \"/about\", \"About\", " <>
+                "kind: :free`, with the route's pattern, or route #{path} elsewhere."
+    end
+  end
+
+  # A published version never changes, so its id, status, and timestamp
+  # name it. A starter has none of these, and is built afresh with each
+  # snapshot: it's the same unless its sections are.
+  defp same_version?(%{status: :starter} = old, %{status: :starter} = new),
+    do: old.sections == new.sections
+
+  defp same_version?(%{status: _} = old, %{status: _} = new),
+    do: {old.id, old.status, old.updated_at} == {new.id, new.status, new.updated_at}
+
+  defp same_version?(old, new), do: old == new
 end

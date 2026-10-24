@@ -23,10 +23,18 @@ if Code.ensure_loaded?(Igniter) do
 
       * `--editor-path` - where the editor is mounted, inside the
         live_session's scope. Defaults to `/admin/pages`.
-      * `--live-session` - the signed-in live_session the editor joins:
-        its `on_mount` gives the editor `current_scope`, whose user the
-        editor acts as. Defaults to `require_authenticated_user`,
-        `mix phx.gen.auth`'s.
+      * `--live-session` - the live_session the editor joins, which must
+        be one only signed-in users can join: its `on_mount` gives the
+        editor `current_scope`, whose user the editor acts as, and the
+        editor checks no permission of its own, so everyone the session
+        lets in can edit and publish every page. The installer mounts it
+        only in a session whose `on_mount` runs `:require_authenticated`,
+        or whose scope pipes through `:require_authenticated_user`, and
+        never in `:current_user`, which is for everyone. Defaults to
+        `require_authenticated_user`, `mix phx.gen.auth`'s, which lets in
+        every signed-in user, and `mix phx.gen.auth`'s registration lets
+        anyone sign up: before you deploy, close registration, or mount
+        the editor in a session only your admins can join.
       * `--home` - draws the home page with billboard: writes
         `MySiteWeb.BillboardPageLive`, which draws any of the site's
         pages for visitors, and routes `/` to it in place of
@@ -139,14 +147,7 @@ if Code.ensure_loaded?(Igniter) do
       )
     end
 
-    defp home(igniter, names, true) do
-      igniter
-      |> Install.create_module(
-        names.page_live,
-        Install.template("billboard.install", "page_live.ex.eex", names)
-      )
-      |> Install.route_home(names)
-    end
+    defp home(igniter, names, true), do: Install.route_home(igniter, names)
 
     # Where uploaded photographs go: the site's priv in dev, a directory
     # tests empty, and, in production, a volume that outlives a deploy.
@@ -233,6 +234,11 @@ if Code.ensure_loaded?(Igniter) do
 
       Then start the site, sign in, and open the editor. Billboard's
       getting started guide says what was written, and what's next.
+
+      Every signed-in user can edit and publish every page, and
+      `mix phx.gen.auth`'s /users/register lets anyone sign up. Before you
+      deploy, close registration, or mount the editor in a live_session
+      only your admins can join.
       """)
     end
   end
