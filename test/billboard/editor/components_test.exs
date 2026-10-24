@@ -50,8 +50,7 @@ defmodule Billboard.Editor.ComponentsTest do
       String.starts_with?(word, ["bb-type-", "rounded-bb-"]) or
         (String.starts_with?(word, "--bb-") and not String.starts_with?(word, "--bb-edit-")) or
         ClassWords.colour?(word, ClassWords.theme_colours()) or
-        word in ~w(ease-bb duration-bb bb-card bb-wrap bb-measure bb-measure-title bb-section-pad
-                   bb-rule-top)
+        word in ClassWords.theme_utilities()
     end)
     |> Enum.uniq()
   end

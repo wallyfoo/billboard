@@ -66,6 +66,19 @@ defmodule Billboard.Test.ClassWords do
     |> Enum.map(&(&1 |> String.split(":") |> List.last() |> String.replace(~r"/\d+$", "")))
   end
 
+  # The theme's utilities that are neither a colour, a corner, nor a type
+  # role: its easing and duration, and its layout classes.
+  @theme_utilities ~w(ease-bb duration-bb bb-card bb-wrap bb-measure bb-measure-title
+                      bb-section-pad bb-rule-top)
+
+  @doc """
+  The theme's utilities that are neither a colour (`theme_colours/0`), a
+  corner (`rounded-bb-*`), nor a type role (`bb-type-*`): its easing,
+  its duration, and its layout classes. Every check that keeps the
+  theme out of the editor reads them here.
+  """
+  def theme_utilities, do: @theme_utilities
+
   @doc "The theme's colours, as `@theme` names them after `--color-`."
   def theme_colours, do: Enum.map(@colour_roots, &"bb-#{&1}")
 

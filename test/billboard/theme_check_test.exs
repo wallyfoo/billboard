@@ -91,17 +91,29 @@ defmodule Billboard.ThemeCheckTest do
     end
   end
 
-  # The editor's chrome: the fields it draws that it doesn't type into
-  # on the page, and its own controls. It reads neither a site's classes nor
-  # billboard's theme, only its own tokens: its colours are `bb-edit-*`
-  # and `bb-glyph-*`, its type `bb-edit-type-*`, its faces `font-bb-edit`
-  # and `font-bb-glyph`, and its easing `ease-bb-edit`.
-  @editor_files ~w(lib/billboard/sections/editor_fields.ex lib/billboard/editor/components.ex)
+  # Everything the editor draws: its controls, its section editor, and
+  # the rest under `editor/` and `editor_live/`, found by glob so a new
+  # file joins the check, and the fields it draws that it doesn't type
+  # into on the page. It reads neither a site's classes nor billboard's
+  # theme, only its own tokens: its colours are `bb-edit-*` and
+  # `bb-glyph-*`, its type `bb-edit-type-*`, its faces `font-bb-edit` and
+  # `font-bb-glyph`, and its easing `ease-bb-edit`. The one colour of its
+  # own it names is its popovers' neutral shadow,
+  # `shadow-[0_8px_24px_rgb(0_0_0/0.18)]`, which is no theme's, so the
+  # check lets it be.
+  @root Path.expand("../..", __DIR__)
 
-  for file <- @editor_files do
-    test "#{file} draws only through the editor's tokens" do
-      path = Path.expand("../../#{unquote(file)}", __DIR__)
-      assert offences(path, &editor_offence?/1) == []
+  @editor_files Enum.sort(
+                  Path.wildcard(Path.join(@root, "lib/billboard/editor/**/*.ex")) ++
+                    Path.wildcard(Path.join(@root, "lib/billboard/editor_live/**/*.ex")) ++
+                    [Path.join(@root, "lib/billboard/sections/editor_fields.ex")]
+                )
+
+  for path <- @editor_files do
+    @external_resource path
+
+    test "#{Path.relative_to(path, @root)} draws only through the editor's tokens" do
+      assert offences(unquote(path), &editor_offence?/1) == []
     end
   end
 
@@ -115,9 +127,8 @@ defmodule Billboard.ThemeCheckTest do
   defp editor_offence?(class) do
     (site_class?(class) and not String.starts_with?(class, "rounded")) or
       ClassWords.colour?(class, ClassWords.theme_colours()) or
-      String.starts_with?(class, "bb-type-") or
-      class in ~w(bb-measure bb-measure-title rounded-bb-card rounded-bb-button rounded-bb-photo
-                  rounded-bb-field ease-bb) or
+      String.starts_with?(class, ["bb-type-", "rounded-bb-"]) or
+      class in ClassWords.theme_utilities() or
       ClassWords.old_theme_name?(class) or ClassWords.old_editor_name?(class) or
       (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-edit-"))
   end
