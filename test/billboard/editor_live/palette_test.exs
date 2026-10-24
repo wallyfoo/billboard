@@ -71,6 +71,23 @@ defmodule Billboard.EditorLive.PaletteTest do
       assert option(options, :reviews).disabled == nil
     end
 
+    test "says Two columns can't be added on a site where nothing fits in a column" do
+      page = Directory.fetch!("/")
+
+      put_site!(
+        components: [
+          Billboard.Components.Hero,
+          Billboard.Components.Band,
+          Billboard.Components.Columns
+        ]
+      )
+
+      options = Palette.options(page, [hero()], [])
+
+      assert option(options, :columns).disabled == "Nothing on this site fits in a column."
+      assert option(options, :band).disabled == nil
+    end
+
     test "says why a Shared section can't be added: an empty library, or every one placed" do
       page = Directory.fetch!("/")
       shared = s(:shared, %{key: "promo"}, "s1")

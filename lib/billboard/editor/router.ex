@@ -15,13 +15,18 @@ defmodule Billboard.Editor.Router do
         end
       end
 
-  `back` is the bar's way out: its words and where it goes. The editor's
-  addresses are `Billboard.Editor.path/3`'s.
+  `back` is the bar's way out: its words and where it goes, `{"Back", "/"}`
+  unless given. The editor's addresses are `Billboard.Editor.path/3`'s.
+
+  The editor checks no permission of its own: any user the
+  `live_session` lets in can edit and publish every page, and the shared
+  library. Mount it only in a session that admits the people who may.
   """
 
   @doc "Mounts the editor at `path`. See the moduledoc."
   defmacro billboard_editor(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
+      opts = Keyword.validate!(opts, back: {"Back", "/"})
       full = Phoenix.Router.scoped_path(__MODULE__, path)
 
       scope path, alias: false, as: false do
@@ -29,7 +34,7 @@ defmodule Billboard.Editor.Router do
           as: :billboard_editor,
           container: {:div, class: "bb-editor"},
           metadata: %{
-            billboard_editor: %{path: full, back: Keyword.get(opts, :back, {"Back", "/"})}
+            billboard_editor: %{path: full, back: opts[:back]}
           }
       end
     end

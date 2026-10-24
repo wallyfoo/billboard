@@ -104,6 +104,12 @@ defmodule Billboard.EditorLive.Palette do
     end
   end
 
+  # Two columns arrive holding two of a component that fits in a column
+  # (`column_type/0`), so on a site with none they can't be added.
+  defp unavailable(%{key: :columns}, _all, _sections, _library) do
+    if column_type(), do: nil, else: "Nothing on this site fits in a column."
+  end
+
   defp unavailable(%{key: key, max: max, label: label}, all, _sections, _library)
        when is_integer(max) do
     if Enum.count(all, &(&1.content.type == key)) >= max,

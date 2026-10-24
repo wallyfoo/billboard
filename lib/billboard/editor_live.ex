@@ -61,7 +61,7 @@ defmodule Billboard.EditorLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    unless match?(%{user: _}, socket.assigns[:current_scope]) do
+    unless match?(%{user: user} when not is_nil(user), socket.assigns[:current_scope]) do
       raise ArgumentError,
             "the page editor needs `@current_scope`, with the signed-in user as " <>
               "`current_scope.user`. Mount it with `billboard_editor` inside the " <>
@@ -305,8 +305,8 @@ defmodule Billboard.EditorLive do
     {:noreply, socket |> load_page(quiet: true) |> push_event("words:reset", %{})}
   end
 
-  # The site's own pages send events of their own, such as a filter's
-  # or a booking's, which the editor draws and does nothing with
+  # The site's own pages send events of their own, such as a filter's,
+  # which the editor draws and does nothing with
   # (`Billboard.Site.page_events/0`). One of the editor's own events
   # (`@handled`) with parameters no clause above takes, or any other
   # event, is a mistake, so it's said, not swallowed.
@@ -945,7 +945,10 @@ defmodule Billboard.EditorLive do
   attr :errors, :list, required: true
   attr :mode, :atom, values: [:edit, :view], required: true
   attr :back, :any, required: true, doc: "where the back link goes, as `{words, path}`"
-  attr :editor_path, :any, required: true, doc: "the editor's address for a page, and options"
+
+  attr :editor_path, {:fun, 2},
+    required: true,
+    doc: "the editor's address for a page, and options"
 
   # The slim bar above the page: back to the admin, the page picker, what
   # the page's changes come to, Edit or View as visitor, and Discard and
@@ -1141,7 +1144,7 @@ defmodule Billboard.EditorLive do
   attr :pages, :list, required: true
   attr :page, :map, required: true
   attr :drafts, :any, required: true
-  attr :editor_path, :any, required: true
+  attr :editor_path, {:fun, 2}, required: true
 
   # Every page, with a dot for those with changes, and the library
   # last, after a rule. A pick moves the editor to that page, which closes
