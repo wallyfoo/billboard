@@ -8,7 +8,23 @@ the rules a page keeps. It also holds the page engine: each page's live
 version and draft, editing and committing them, and the cache that
 serves public pages.
 
-Version 0.3.0 adds what sections are drawn with:
+Version 0.4.0 adds the page and its editor:
+
+  * the page, `Billboard.Sections.page/1`, which draws a version's
+    sections in the site's own layout (`Billboard.Layout`);
+  * two more stock components, Two columns and Shared (see Stock
+    components);
+  * `Billboard.Resolver`, which reads the rows the page's sections draw,
+    such as reviews and news, once per page, through the site's
+    `Billboard.Data`;
+  * the page editor, `Billboard.EditorLive`, which a site mounts in its
+    own router with `billboard_editor` (see The editor): the page as
+    visitors see it, words typed where they sit, a section editor, a
+    palette of components, its own buttons, inputs, and messages, its
+    stylesheet, `editor.css`, and its hooks, which `mix billboard.assets`
+    links into the site's assets with the theme.
+
+Version 0.3.0 added what sections are drawn with:
 
   * seven stock components, with their renderers (see Stock components);
   * the parts they're made of, `Billboard.Parts.Head`, `Action`, `Photo`,
@@ -27,9 +43,8 @@ Version 0.3.0 adds what sections are drawn with:
   * `Billboard.Uploads`, which stores photographs, and
     `Billboard.Plugs.UploadsStatic`, which serves them.
 
-The page itself, two-column and shared sections, the palette, and the
-editor are still the site's, until they move into billboard (see What
-the site still draws).
+The site draws its own layout, its own components, and its pages' data
+(see The site); billboard draws the rest of the page, and the editor.
 
 Billboard is pre-1.0, and its API may change between minor versions
 until 1.0.
@@ -41,7 +56,7 @@ Add it as a git dependency, pinned to a tag:
 ```elixir
 def deps do
   [
-    {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.3.0"}
+    {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.4.0"}
   ]
 end
 ```
@@ -84,6 +99,9 @@ defmodule MySite.Billboard do
     starter: MySite.Pages.Starter,
     actions: MySiteWeb.Actions,
     context: MySite.Pages.Context,
+    data: MySite.Pages.Data,
+    layout: MySiteWeb.Layouts,
+    page_events: ~w(filter),
     kinds: [news: [:free]],
     palette: [hints: [news: "The shop's latest news."], categories: [content: "Words"]],
     example_path: "/about"
@@ -94,6 +112,28 @@ defmodule MySite.Billboard do
   end
 end
 ```
+
+The answers new in 0.4.0:
+
+  * `layout` names the site's `Billboard.Layout`: its chrome, the header
+    and footer the page is drawn in, for visitors and in the editor
+    alike, and `site/0`, the site's own data the layout draws from in
+    the editor. The page and the editor need it.
+  * `data` names the site's `Billboard.Data`: what the sections that
+    draw rows from outside the builder, such as reviews and news, read
+    for each page. Without it, they draw none.
+  * `page_events` lists the events the site's own page components send,
+    such as a filter's, which the editor draws them sending and does
+    nothing with (see The editor).
+
+The site's `Billboard.Context` may also answer two more, for the editor:
+`sample/1`, what a page whose route has a parameter is drawn about in
+the editor, such as the first service for `/services/:slug`, and
+`path/2`, the address that draws a page about such a context, such as
+`"/services/repairs"`, which the editor hands the layout as the address
+drawn. Without `sample/1`, such a page is drawn about nothing in
+particular; without `path/2`, a page's address is its pattern, and a
+page whose route has a parameter has none.
 
 The answers new in 0.3.0, each optional:
 
@@ -175,6 +215,69 @@ The domain carries the engine's functions, so the site calls
 `MySite.Pages.page_for("/")` for what a page shows visitors, and
 `MySite.Pages.change_draft/3` for an editor's change. `Billboard.Pages`
 documents them.
+
+### The layout, the data, and a page
+
+The layout is a module of the site's with `@behaviour Billboard.Layout`.
+Its `page/1` is a function component that draws the site's header and
+footer round two slots: `hero`, the page's hero block, which it wraps
+in the hero's surface, and `inner_block`, the other sections, in
+`<main>`. Its `site/0` is the site's own data, which the editor hands
+it:
+
+```elixir
+defmodule MySiteWeb.Layouts do
+  use MySiteWeb, :html
+  @behaviour Billboard.Layout
+
+  attr :flash, :map, required: true
+  attr :site, :map, required: true
+  attr :current_path, :string, default: nil
+  attr :editing, :boolean, default: false
+  slot :hero, required: true
+  slot :inner_block, required: true
+
+  @impl true
+  def page(assigns) do
+    ~H"""
+    <header>…</header>
+    <div class="bb-surface-band">{render_slot(@hero)}</div>
+    <main>{render_slot(@inner_block)}</main>
+    <footer>…</footer>
+    <.flash_group :if={!@editing} flash={@flash} />
+    """
+  end
+
+  @impl true
+  def site, do: %{settings: MySite.settings!()}
+end
+```
+
+`editing` is true in the editor, which draws its own bar and messages,
+so the layout then draws no messages, and nothing fixed over the page.
+`Billboard.Layout` documents what `page/1` is given.
+
+The data module answers `fetch/3` for each of a page's sections, and
+reads each thing once per page with `Billboard.Data.once/3`;
+`Billboard.Data` has an example. A site's LiveView draws a page with
+both:
+
+```heex
+<Billboard.Sections.page
+  version={@version}
+  data={@data}
+  ctx={%{context: @context}}
+  site={@site}
+  flash={@flash}
+  current_path={@current_path}
+/>
+```
+
+where `@version` is `MySite.Pages.page_for(pattern)`, `@context` what
+the page is about (`Billboard.Context`), `@data` its sections' rows,
+`Billboard.Resolver.resolve(@version, @context)`, and `@site` the
+site's own data, which its layout and its own sections read. `Billboard.Sections`
+documents the rest of what a section is drawn with.
 
 ## A component
 
@@ -267,13 +370,23 @@ makes the site's `--bb-*` tokens Tailwind utilities, such as
    ```
 
 2. In `app.css`, import `theme.css` after the site's tokens, and let
-   Tailwind read billboard's sections:
+   Tailwind read the files billboard draws classes in: its sections,
+   the page, and the editor:
 
    ```css
    @import "./tokens.css";
    @import "../vendor/billboard/assets/css/theme.css";
    @source "../vendor/billboard/lib/billboard/sections";
+   @source "../vendor/billboard/lib/billboard/sections.ex";
+   @source "../vendor/billboard/lib/billboard/editor_live.ex";
+   @source "../vendor/billboard/lib/billboard/editor_live";
+   @source "../vendor/billboard/lib/billboard/editor";
    ```
+
+   Name these five, not all of billboard: Tailwind builds a utility
+   from every word it reads that names one, and the words in
+   billboard's other code and docs would build stray ones, such as
+   `.table` and `.shrink`.
 
 3. Keep `assets/vendor/billboard` out of git, in `.gitignore`.
 
@@ -300,9 +413,83 @@ Icons are Heroicons, drawn by the Heroicons Tailwind plugin a Phoenix
 site has from `mix phx.new` (`@plugin "../vendor/heroicons"` in
 `app.css`).
 
+## The editor
+
+The page editor is a LiveView, `Billboard.EditorLive`. Mount it in the
+site's router, inside the `live_session` the site's signed-in admin
+pages use, so it runs that session's `on_mount` and has its
+`@current_scope`. It acts as `current_scope.user`:
+
+```elixir
+import Billboard.Editor.Router
+
+scope "/admin", MySiteWeb.Admin do
+  pipe_through [:browser, :require_authenticated_user]
+
+  live_session :admin, on_mount: [{MySiteWeb.UserAuth, :require_authenticated}] do
+    billboard_editor "/pages", back: {"Admin", "/admin"}
+  end
+end
+```
+
+`back` is the editor bar's way out, its words and where it goes. The
+editor checks no permission of its own: anyone the `live_session` lets
+in can edit and publish every page. Its addresses are
+`Billboard.Editor.path/3`'s, from the route:
+`Billboard.Editor.path(MySiteWeb.Router, "/", open: "hero")` is
+`"/admin/pages?open=hero&page=%2F"`, the home page with its hero open.
+
+Its hooks come from billboard, through the link `mix billboard.assets`
+makes and the colocated hooks LiveView writes for billboard. In
+`app.js`:
+
+```js
+import {hooks as colocatedHooks} from "phoenix-colocated/my_site"
+import {hooks as billboardHooks} from "phoenix-colocated/billboard"
+import {EditCanvas, InlineWords} from "../vendor/billboard/assets/js/billboard.js"
+
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: {...colocatedHooks, ...billboardHooks, EditCanvas, InlineWords},
+  // ...
+})
+```
+
+esbuild finds `phoenix-colocated/billboard` under the build path, which
+a site from `mix phx.new` already gives it in `NODE_PATH`.
+
+Its stylesheet goes in `app.css`, after `theme.css`:
+
+```css
+@import "../vendor/billboard/assets/css/editor.css";
+```
+
+It draws the editor's chrome from its own `--bb-edit-*` tokens, never
+the site's, so the editor looks the same on every site, and scopes
+every rule under `.bb-editor`, the class `billboard_editor` puts on the
+editor's container, so it touches nothing outside the editor. A site
+may change `--bb-edit-accent`, the editor's blue. The editor names Work
+Sans for its type and Cormorant Garamond for the palette's glyphs,
+falling back to the system's faces; it ships no fonts, so a site that
+loads these faces gets them, and `--bb-edit-font` and
+`--bb-edit-glyph-font` name others.
+
+Photographs uploaded in the editor (JPEG, PNG, or WebP, up to 15 MB)
+are stored by `Billboard.Uploads`, in the site's `uploads_dir`, and
+served by `Billboard.Plugs.UploadsStatic`, both set up under The theme.
+
+A site's own page components may send events of their own, such as a
+filter's, which the editor draws them sending. List them in
+`page_events:`, and the editor does nothing with them. For any other
+event it doesn't know, it does nothing and logs a warning naming it, so
+a mistyped one is seen:
+
+```text
+The page editor got an event it doesn't know, "filtre". If the site's page sends it, add it to `page_events:` in `use Billboard.Site`; otherwise handle it.
+```
+
 ## Stock components
 
-Seven components come with billboard, under `Billboard.Components`. A
+Nine components come with billboard, under `Billboard.Components`. A
 site lists them in `components:` among its own:
 
 | Component | Key | Reads from the page |
@@ -314,31 +501,21 @@ site lists them in `components:` among its own:
 | `Billboard.Components.Details` | `:details` | the context's `:scope` |
 | `Billboard.Components.Reviews` | `:reviews` | its reviews, in the page's data |
 | `Billboard.Components.News` | `:news` | its posts, in the page's data |
+| `Billboard.Components.Columns` | `:columns` | its children, the sections in its two columns |
+| `Billboard.Components.Shared` | `:shared` | the library section its key names |
 
 The context is the site's (`Billboard.Context`), as the page's
 `ctx.context`. Reviews and news posts are the site's too, by section
 key in the page's `ctx.data`. Each component's renderer, from
-`Billboard.Sections.Hero` to `Billboard.Sections.News`, says what it
-draws, and the reviews' and the news's say what each row holds.
+`Billboard.Sections.Hero` to `Billboard.Sections.Shared`, says what it
+draws, and the reviews' and the news's say what each row holds. Two
+columns holds two sections of components that fit in a column (their
+`column?`, `Billboard.Component`), and Shared shows a section of the
+shared library, edited there.
 
 A site words a stock component's hint, and labels its category, through
 `palette:`, keeps it to some kinds of page through `kinds:`, and narrows
 its values through `options:` (`Billboard.SiteOptions`).
-
-## What the site still draws
-
-Until the page and the editor move into billboard, the site keeps:
-
-  * the page: its sections in order, each through its renderer
-    (`Billboard.Renderer.for!/1`), the hero in the page's hero block
-    from `Billboard.Sections.Hero`'s slots, and the `ctx` each section
-    is drawn with: its `site`, `context`, `data`, `surface`, and
-    `joined`;
-  * two-column and shared sections: the components with the `:columns`
-    and `:shared` keys (`Billboard.Component`), and their renderers;
-  * the palette, the section editor, the drawing of the fields that
-    aren't typed in place, and the editor's hooks and styles, the
-    `InlineWords` hook among them.
 
 ## Licence
 

@@ -6,10 +6,18 @@ defmodule Mix.Tasks.Billboard.Assets do
   git dependency (`deps/billboard`) or a local checkout (`path:`):
 
       @import "../vendor/billboard/assets/css/theme.css";
+      @import "../vendor/billboard/assets/css/editor.css";
       @source "../vendor/billboard/lib/billboard/sections";
+      @source "../vendor/billboard/lib/billboard/sections.ex";
+      @source "../vendor/billboard/lib/billboard/editor_live.ex";
+      @source "../vendor/billboard/lib/billboard/editor_live";
+      @source "../vendor/billboard/lib/billboard/editor";
 
-  Tailwind reads billboard's sections alone, where every class it draws
-  is, so the words in the rest of its code build no utilities.
+      import {EditCanvas, InlineWords} from "../vendor/billboard/assets/js/billboard.js"
+
+  Tailwind reads only the files where billboard draws classes, its
+  sections, the page, and the editor, so the words in the rest of its
+  code build no utilities.
 
   It points the link at billboard as Mix found it, every run, so run it
   before Tailwind and esbuild, in the site's `assets.build` and
