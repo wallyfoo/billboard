@@ -69,8 +69,8 @@ defmodule Billboard.CatalogueTest do
   end
 
   test "an entry's placeholder is the component's own, less what the site doesn't offer" do
-    assert Catalogue.placeholder(:hero) == %{heading: "Your heading"}
-    assert Catalogue.fetch!(:hero).placeholder == %{heading: "Your heading"}
+    assert Catalogue.placeholder(:hero) == %{variant: :text_only, heading: "Your heading"}
+    assert Catalogue.fetch!(:hero).placeholder == %{variant: :text_only, heading: "Your heading"}
 
     put_site!(components: [Boxed])
     assert Catalogue.placeholder(:boxed) == %{look: :cards, words: "Your words"}

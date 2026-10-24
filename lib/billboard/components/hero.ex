@@ -41,7 +41,9 @@ defmodule Billboard.Components.Hero do
     max 1
     mirror? true
     surface_from :layout
-    placeholder %{heading: "Your heading"}
+    # It starts text only, since it has no photograph yet: a layout with
+    # one arrives with the photograph's placeholder, ready for one.
+    placeholder %{variant: :text_only, heading: "Your heading"}
 
     parts :actions, Billboard.Parts.Action, max: 3, allow_nil?: true
     part :photo, Billboard.Parts.Photo
