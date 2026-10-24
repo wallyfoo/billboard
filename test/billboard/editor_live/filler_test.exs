@@ -66,6 +66,26 @@ defmodule Billboard.EditorLive.FillerTest do
       assert [] = Filler.warnings([section("news", :news)])
     end
 
+    test "quotes the first filler by field name, so a Cards section quotes its heading" do
+      assert [%{message: message}] = Filler.warnings([section("cards", :cards)])
+      assert message =~ "“Your cards”"
+    end
+
+    test "reads a map's fields by name, whatever order the map holds them in" do
+      # On OTP 26 and later a small map's atom keys iterate in atom
+      # creation order, so these are made last name first.
+      suffix = System.unique_integer([:positive])
+
+      [later, earlier] =
+        for name <- ~w(zz_filler aa_filler), do: String.to_atom("#{name}_#{suffix}")
+
+      content = %{later => "Your card", earlier => "Your cards"}
+      section = %{key: "plain", content: %{value: content}, children: []}
+
+      assert [%{message: message}] = Filler.warnings([section])
+      assert message =~ "“Your cards”"
+    end
+
     test "looks inside two columns" do
       columns = section("pair", :columns, %{}, [section("left", :details)])
       assert [%{key: "left"}] = Filler.warnings([columns])

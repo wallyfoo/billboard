@@ -56,7 +56,9 @@ defmodule Billboard.EditorLive.Filler do
 
   @doc """
   A warning for each section, children of Two columns included, that
-  still holds filler. Warnings have the shape of `Billboard.Rule` issues.
+  still holds filler, quoting the first it finds with its fields read by
+  name, at every depth. Warnings have the shape of `Billboard.Rule`
+  issues.
   """
   @spec warnings([map()]) :: [Billboard.Rule.issue()]
   def warnings(sections) do
@@ -75,13 +77,17 @@ defmodule Billboard.EditorLive.Filler do
   defp children(_section), do: []
 
   # Every string in a placeholder, or in a section's content, at any
-  # depth, skipping Ash's own fields (`__meta__` and the like).
+  # depth, skipping Ash's own fields (`__meta__` and the like). A map's
+  # fields are read in key order (by name, for atoms): a map's own order
+  # isn't stable, since on OTP 26 and later a small map's atom keys follow
+  # atom creation order, which moves with what's compiled, and a warning
+  # quotes the first filler found.
   defp strings(text) when is_binary(text), do: [text]
   defp strings(list) when is_list(list), do: Enum.flat_map(list, &strings/1)
   defp strings(%_{} = struct), do: struct |> Map.from_struct() |> strings()
 
   defp strings(map) when is_map(map) do
-    for {key, value} <- map,
+    for {key, value} <- Enum.sort_by(map, &elem(&1, 0)),
         not (is_atom(key) and String.starts_with?(Atom.to_string(key), "__")),
         text <- strings(value),
         do: text
