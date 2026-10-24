@@ -11,7 +11,9 @@ defmodule Billboard.Test.Shop do
   Shared to free and item pages. Its action kinds and context are the
   test site's (`Billboard.Test.Actions` and `Billboard.Test.Context`),
   its reviews and news are a test's own (`Billboard.Test.Data`), and its
-  chrome is `Billboard.Test.Layout`. Its pages: a free home page and
+  chrome is `Billboard.Test.Layout`. It names a filter's event as its
+  pages' own (`page_events:`), as a site with a filter on a page would.
+  Its pages: a free home page and
   about page, an item page whose kind takes no Two columns, a fixed
   terms page, and the library.
   """
@@ -48,6 +50,7 @@ defmodule Billboard.Test.Shop do
     context: Test.Context,
     data: Test.Data,
     layout: Test.Layout,
+    page_events: ~w(filter),
     kinds: [
       hero: [:free, :item, :fixed],
       band: [:free, :library],

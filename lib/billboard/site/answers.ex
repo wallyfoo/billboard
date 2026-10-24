@@ -40,6 +40,7 @@ defmodule Billboard.Site.Answers do
     context: [type: :atom],
     data: [type: :atom],
     layout: [type: :atom],
+    page_events: [type: {:list, :string}, default: []],
     kinds: [type: {:custom, __MODULE__, :check_kinds, []}, default: []],
     palette: [
       type: :keyword_list,

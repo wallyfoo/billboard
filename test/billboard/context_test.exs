@@ -1,5 +1,8 @@
 defmodule Billboard.ContextTest do
-  @moduledoc "What a site's pages are about: the bindings a hero may take, and pickers' choices."
+  @moduledoc """
+  What a site's pages are about: the bindings a hero may take, pickers'
+  choices, and what the editor draws a page about, at what address.
+  """
   use ExUnit.Case, async: false
 
   import Billboard.Test.Env
@@ -50,5 +53,30 @@ defmodule Billboard.ContextTest do
     assert_raise ArgumentError,
                  ~r/offers no choices called :gone. List :gone in the choice_sets\/0/,
                  fn -> Context.choices(:gone) end
+  end
+
+  describe "the editor's sample" do
+    defp page(pattern), do: %{pattern: pattern}
+
+    test "is the site's, at the address the site gives" do
+      put_site!(context: Billboard.Test.Context)
+
+      assert %{bindings: %{product: %{heading: "Shoes"}}, scope: "shoes"} =
+               sample = Context.sample(page("/items/:slug"))
+
+      assert Context.path(page("/items/:slug"), sample) == "/items/shoes"
+      assert Context.sample(page("/")) == %{}
+      assert Context.path(page("/about"), %{}) == "/about"
+      assert Context.path(page(nil), %{}) == nil
+    end
+
+    test "is nothing in particular for a site that gives none, at the page's own address" do
+      put_site!(context: nil)
+
+      assert Context.sample(page("/items/:slug")) == %{}
+      assert Context.path(page("/about"), %{}) == "/about"
+      assert Context.path(page("/items/:slug"), %{}) == nil
+      assert Context.path(page(nil), %{}) == nil
+    end
   end
 end

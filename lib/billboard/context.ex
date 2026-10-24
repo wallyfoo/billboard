@@ -37,6 +37,14 @@ defmodule Billboard.Context do
       to choose from yet, and for a value that has gone, as in
       "shoes (not an aisle now)". Billboard's own picker is `:scope`, a
       detail's "Shows on".
+    * `sample/1`, what the page editor draws a page about, as its
+      visitors' pages are, such as the first product for a product's
+      page: a context, as the site's LiveViews build for that page.
+      Without it, every page is drawn about nothing in particular.
+    * `path/2`, the address that draws a page about a context, such as
+      `"/items/shoes"`, which the editor hands the site's layout as the
+      address drawn. Without it, a page's address is its pattern, and a
+      page whose route has a parameter, and the library, have none.
 
   A module that gives `choices/1` gives `choice_sets/0` too, which
   `use Billboard.Site` checks:
@@ -77,7 +85,13 @@ defmodule Billboard.Context do
   @doc "The set of choices called `name`, one of `choice_sets/0`. See the moduledoc."
   @callback choices(atom()) :: choices()
 
-  @optional_callbacks bindings: 0, choice_sets: 0, choices: 1
+  @doc "What the editor draws `page` about. See the moduledoc."
+  @callback sample(page :: Billboard.Directory.Page.t()) :: map()
+
+  @doc "The address that draws `page` about `context`, or nil. See the moduledoc."
+  @callback path(page :: Billboard.Directory.Page.t(), context :: map()) :: String.t() | nil
+
+  @optional_callbacks bindings: 0, choice_sets: 0, choices: 1, sample: 1, path: 2
 
   @doc "The bindings a hero may take, or none for a site that names none."
   @spec bindings() :: keyword(keyword())
@@ -127,6 +141,26 @@ defmodule Billboard.Context do
     sets = choice_sets()
     for name <- names, name in sets, into: %{}, do: {name, choices(name)}
   end
+
+  @doc """
+  What the page editor draws `page` about: the site's sample
+  (`sample/1`), or nothing in particular for a site that gives none.
+  """
+  @spec sample(Billboard.Directory.Page.t()) :: map()
+  def sample(page), do: call(:sample, [page], %{})
+
+  @doc """
+  The address that draws `page` about `context`: the site's (`path/2`),
+  or, for a site that gives none, the page's pattern, unless it has a
+  parameter. The library has none.
+  """
+  @spec path(Billboard.Directory.Page.t(), map()) :: String.t() | nil
+  def path(page, context), do: call(:path, [page, context], own_path(page))
+
+  defp own_path(%{pattern: nil}), do: nil
+
+  defp own_path(%{pattern: pattern}),
+    do: if(String.contains?(pattern, ":"), do: nil, else: pattern)
 
   defp call(name, args, default) do
     module = Billboard.Site.context()

@@ -27,6 +27,7 @@ defmodule Billboard.Site do
           context: MySite.Pages.Context,
           data: MySite.Pages.Data,
           layout: MySiteWeb.Layouts,
+          page_events: ~w(filter),
           kinds: [faq: [:free, :service]],
           palette: [hints: [faq: "Questions, each with its answer."], categories: [content: "Words"]],
           example_path: "/about"
@@ -84,6 +85,10 @@ defmodule Billboard.Site do
     * `layout` names its `Billboard.Layout`: the site's chrome, its
       header and footer, which the page (`Billboard.Sections.page/1`) and
       the editor draw round every page, and the site's own data for it.
+    * `page_events` lists the events the site's own page components
+      send, such as a filter's, which the editor draws them sending and
+      does nothing with. The editor logs a warning for any other event it
+      doesn't know, naming it, so a mistyped one is seen.
     * `kinds` narrows, by component key, the page kinds a component may
       go on, over the component's own `kinds`. A component it leaves out
       keeps its own. See `Billboard.Catalogue`.
@@ -155,8 +160,9 @@ defmodule Billboard.Site do
   they're enough for components, surfaces, and site options. Pages,
   resources, and the engine need the rest, which `use Billboard.Site`
   defines. A hand-written site that leaves out `actions/0`, `context/0`,
-  `data/0`, `layout/0`, `kinds/0`, `palette/0`, or `example_path/0`
-  reads as one that gave none (`actions/0` and the rest below).
+  `data/0`, `layout/0`, `page_events/0`, `kinds/0`, `palette/0`, or
+  `example_path/0` reads as one that gave none (`actions/0` and the rest
+  below).
   """
 
   @typedoc "A surface's name, its `bb-surface-NAME` class, and the label the editor shows."
@@ -227,6 +233,9 @@ defmodule Billboard.Site do
   @doc "The site's chrome round every page (`Billboard.Layout`), or nil."
   @callback layout() :: module() | nil
 
+  @doc "The events the site's own page components send, which the editor does nothing with."
+  @callback page_events() :: [String.t()]
+
   @doc "The page kinds each component the site narrows may go on, by key."
   @callback kinds() :: keyword([atom()])
 
@@ -248,6 +257,7 @@ defmodule Billboard.Site do
                       context: 0,
                       data: 0,
                       layout: 0,
+                      page_events: 0,
                       kinds: 0,
                       palette: 0,
                       example_path: 0
@@ -348,6 +358,9 @@ defmodule Billboard.Site do
       def layout, do: @billboard_answers[:layout]
 
       @impl Billboard.Site
+      def page_events, do: @billboard_answers[:page_events]
+
+      @impl Billboard.Site
       def kinds, do: Billboard.Site.Answers.kinds(@billboard_answers, __billboard_env__())
 
       @impl Billboard.Site
@@ -376,6 +389,7 @@ defmodule Billboard.Site do
                      context: 0,
                      data: 0,
                      layout: 0,
+                     page_events: 0,
                      kinds: 0,
                      palette: 0,
                      example_path: 0
@@ -477,6 +491,10 @@ defmodule Billboard.Site do
   @doc "The site's layout module (`Billboard.Layout`), or nil."
   @spec layout() :: module() | nil
   def layout, do: optional(:layout, nil)
+
+  @doc "The events the site's own page components send (`page_events:`), or none."
+  @spec page_events() :: [String.t()]
+  def page_events, do: optional(:page_events, [])
 
   @doc "The page kinds the site keeps each component it narrows to, by key."
   @spec kinds() :: keyword([atom()])

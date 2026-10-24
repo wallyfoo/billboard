@@ -123,11 +123,20 @@ defmodule Billboard.SiteDslTest do
       assert PlainSite.example_path() == "/terms"
     end
 
+    test "name the events the site's own pages send" do
+      assert Billboard.Test.Shop.page_events() == ["filter"]
+      assert Billboard.Site.page_events() == ["filter"]
+
+      put_site!([])
+      assert Billboard.Site.page_events() == []
+    end
+
     test "default to links alone, no context, and the component's own kinds and words" do
       assert Overriding.actions() == nil
       assert Overriding.context() == nil
       assert Overriding.data() == nil
       assert Overriding.layout() == nil
+      assert Overriding.page_events() == []
       assert Overriding.kinds() == []
       # Spark.Options may not fill a nested default the site never wrote,
       # so read it as the catalogue does.

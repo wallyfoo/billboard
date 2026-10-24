@@ -139,18 +139,21 @@ defmodule Billboard.ThemeCheckTest do
   end
 
   # The editor's corners are its own, fixed ones, so it may round them as
-  # it likes, but not with the theme's corners, which read the site's,
-  # on every side or one (`rounded-t-bb-card`). It
-  # sets its own type, so Tailwind's weights are its to use. Its motion is
-  # its own too, so it takes neither the theme's easing nor its type
-  # roles, and an arbitrary value may read only the editor's tokens. The
-  # old, unprefixed names of the theme and of the editor's own utilities
-  # are out too, so they can't come back.
+  # it likes, but not with the theme's corners, which read the site's, on
+  # every side or one (`rounded-t-bb-card`). It sets its own type, so
+  # Tailwind's weights are its to use. Its motion is its own too, so it
+  # takes neither the theme's easing nor its type roles, and an arbitrary
+  # value may read only the editor's tokens. The one exception is
+  # `bb-wrap`, which reads the page's content width and gutter, so the
+  # page's issue strip lines up with the page, as the gutter exception in
+  # the editor's stylesheet does. The old, unprefixed names of the theme
+  # and of the editor's own utilities are out too, so they can't come
+  # back.
   defp editor_offence?(class) do
     (site_class?(class) and not String.starts_with?(class, "rounded")) or
       ClassWords.colour?(class, ClassWords.theme_colours()) or
       String.starts_with?(class, "bb-type-") or Regex.match?(~r/^rounded(-[a-z]+)?-bb-/, class) or
-      class in ClassWords.theme_utilities() or
+      (class in ClassWords.theme_utilities() and class != "bb-wrap") or
       ClassWords.old_theme_name?(class) or ClassWords.old_editor_name?(class) or
       (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-edit-"))
   end

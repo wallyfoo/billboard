@@ -135,7 +135,13 @@ defmodule Billboard.EditorLive.Palette do
 
   defp glyph(type, _sections, _library), do: sample(type, placeholder(type), [])
 
-  defp column_type do
+  @doc """
+  The component Two columns arrive holding, and are drawn holding in the
+  palette: Details, or, on a site without it, the first component that
+  fits in a column (`column? true`), or nil.
+  """
+  @spec column_type() :: atom() | nil
+  def column_type do
     entries = Catalogue.entries()
 
     if Enum.any?(entries, &(&1.key == :details)),

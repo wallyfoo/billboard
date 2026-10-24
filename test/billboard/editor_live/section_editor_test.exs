@@ -7,129 +7,14 @@ defmodule Billboard.EditorLive.SectionEditorTest do
   alias Billboard.Test.{SectionEditorHost, Shop}
   alias Billboard.Uploads
 
+  import Billboard.Test.ShopPages
+
   @opts [authorize?: false]
 
   # A PNG signature, enough for `Uploads.store_image/1`.
   @png <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, "IHDR">>
 
   setup :preserve_cache
-
-  ## The shop's pages, put live as a commit would
-
-  # The home page: a hero with a photograph and no actions, text and
-  # image with an action, and words.
-  defp home! do
-    make_live("/", [
-      {"hero", :hero, %{heading: "Everything for the shop", photo: %{label: "The shop floor"}}},
-      {"range", :text_media,
-       %{variant: :text_only, head: %{heading: "Our range"}, actions: [%{kind: :call}]}},
-      {"welcome", :text, %{body: "Come in."}, anchor: "welcome"}
-    ])
-  end
-
-  # The home page again, as a shop front: a hero with three actions, and
-  # text and image whose heading has one.
-  defp storefront! do
-    make_live("/", [
-      {"hero", :hero,
-       %{
-         heading: "Everything for the shop",
-         actions: [
-           %{kind: :call},
-           %{label: "Our story", path: "/about"},
-           %{label: "Delivery", path: "/terms"}
-         ]
-       }},
-      {"range", :text_media,
-       %{
-         variant: :text_only,
-         head: %{heading: "Our range", action: %{label: "See all", path: "/about"}}
-       }}
-    ])
-  end
-
-  # The about page: two Points, the first with a link on its first point,
-  # What's on, a quote band, the library's band shared, and Two columns.
-  defp about! do
-    make_live("/about", [
-      {"hero", :hero, %{heading: "About us"}},
-      {"also-here", :points,
-       %{
-         columns: 2,
-         points: [
-           %{
-             title: "Step-free",
-             body: "A ramp at the door.",
-             link: %{label: "Getting here", path: "/terms"}
-           },
-           %{title: "Quiet hours", body: "Every morning."}
-         ]
-       }, anchor: "also-here"},
-      {"story", :points, %{points: [%{title: "Founded"}, %{title: "Grown"}, %{title: "Here"}]},
-       anchor: "story"},
-      {"whats-on", :news, %{head: %{heading: "What's on"}}},
-      {"late-opening", :band,
-       %{variant: :quote_left, quote: %{body: "Open till eight."}, body: "On Thursdays."}},
-      {"visit", :columns, %{},
-       children: [
-         {"where", :details, %{items: [%{label: "Where", body: "On the high street."}]}},
-         {"when", :text, %{body: "Open every day."}}
-       ]},
-      {"promo-here", :shared, %{key: "promo"}}
-    ])
-  end
-
-  # An item page, whose hero takes its words from the product, and its
-  # details, one shown only in an aisle the shop no longer has.
-  defp item! do
-    make_live("/items/:slug", [
-      {"hero", :hero, %{heading: "An item", bind: :product}},
-      {"details", :details,
-       %{
-         items: [
-           %{label: "Delivery", body: "Free over fifty."},
-           %{label: "Sizing", body: "Runs small.", only_for_group: "socks"},
-           %{label: "Returns", body: "Within thirty days."}
-         ]
-       }}
-    ])
-  end
-
-  # The terms page, whose hero is bound to a visit, which keeps its words.
-  defp visit! do
-    make_live("/terms", [
-      {"hero", :hero, %{heading: "Terms", bind: :visit}},
-      {"terms", :text, %{body: "Be kind."}}
-    ])
-  end
-
-  defp make_live(pattern, sections) do
-    {:ok, page} = Shop.Pages.ensure_page(pattern, @opts)
-    live = Ash.Seed.seed!(Shop.Version, %{page_id: page.id, status: :live})
-    place(live, sections, nil)
-    Billboard.Cache.refresh()
-    :ok
-  end
-
-  defp place(live, sections, parent_id) do
-    for {section, position} <- Enum.with_index(sections) do
-      {key, type, attrs, opts} =
-        case section do
-          {key, type, attrs} -> {key, type, attrs, []}
-          {key, type, attrs, opts} -> {key, type, attrs, opts}
-        end
-
-      seeded =
-        seed_section_fixture(live, type, attrs, %{
-          key: key,
-          position: position,
-          parent_id: parent_id,
-          anchor: opts[:anchor]
-        })
-
-      place(live, Keyword.get(opts, :children, []), seeded.id)
-    end
-  end
 
   ## Helpers
 
@@ -1571,25 +1456,10 @@ defmodule Billboard.EditorLive.SectionEditorTest do
   end
 
   describe "the ground" do
-    # Widening the offer changes application env, which every test that
-    # saves a section reads through `Billboard.Section.Validations.SurfaceOffered`.
-    # This module isn't async, so no other test sees it, and each test puts
-    # it back, through `put_shop!/1`.
-    #
-    # A shop of its own surfaces, offering `page` to page sections and
-    # `stand_out` to bands. A site that names its surfaces names every
-    # offer it makes.
-    defp offer(page, stand_out \\ ["loud"]) do
-      put_shop!(
-        surfaces: [
-          %{name: "plain", label: "Plain"},
-          %{name: "linen", label: "Linen"},
-          %{name: "mist", label: "Mist"},
-          %{name: "loud", label: "Loud"}
-        ],
-        offered: [page: page, stand_out: stand_out, card: []]
-      )
-    end
+    # `offer/2` (`Billboard.Test.ShopPages`) changes application env,
+    # which every test that saves a section reads through
+    # `Billboard.Section.Validations.SurfaceOffered`. This module isn't
+    # async, so no other test sees it, and each test puts it back.
 
     defp ground?(lv), do: has_element?(lv, "#section-setting-surface")
 
@@ -1733,16 +1603,10 @@ defmodule Billboard.EditorLive.SectionEditorTest do
   end
 
   describe "Points' look, and its cards' grounds" do
-    # Narrowing the options and widening the surfaces changes application
-    # env, which every test that saves a section reads through the change
-    # billboard adds to every component. This module isn't async, so no
-    # other test sees it, and each test puts it back, through `put_shop!/1`.
-    #
-    # A shop that offers the cards look, and its surfaces to cards.
-    defp offer_cards(card \\ ["plain", "loud"]) do
-      put_shop!(options: [points: [look: [:rows, :cards]]])
-      put_shop!(offered: [page: ["plain"], stand_out: ["loud"], card: card])
-    end
+    # `offer_cards/1` (`Billboard.Test.ShopPages`) narrows the options and
+    # widens the surfaces, which every test that saves a section reads
+    # through the change billboard adds to every component. This module
+    # isn't async, so no other test sees it, and each test puts it back.
 
     defp points_content, do: content("/about", "also-here")
 
