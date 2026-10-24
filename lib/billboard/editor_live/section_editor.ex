@@ -64,9 +64,9 @@ defmodule Billboard.EditorLive.SectionEditor do
        waits in `refused_words`, by path, until those words save. Words
        held back only by a control's change (`waiting_words`) go again
        once a change saves (`words:retry`).
-    2. Otherwise `Billboard.Pages.change_draft/3` makes the page's draft if this is
-       its first change, and the same change is made to the draft's
-       section, found by key, and saved.
+    2. Otherwise `Billboard.Pages.change_draft/3` makes the page's
+       draft if this is its first change, and the same change is made
+       to the draft's section, found by key, and saved.
     3. The editor takes the saved section and tells the page editor
        (`{:section_saved, key}`), which reads the page again.
 
@@ -263,14 +263,15 @@ defmodule Billboard.EditorLive.SectionEditor do
 
   # A list takes no more than its most. The new item takes the focus, in
   # its first words, selected to be typed over, as a new section does.
-  def handle_event("add_item", %{"path" => path}, socket) do
+  def handle_event("add_item", %{"path" => path}, socket) when is_binary(path) do
     {:noreply, added} = add_item(socket, path)
     {:noreply, focus_added(added, length(items_at(socket, path)), path)}
   end
 
   # A click can arrive after its item has gone, as when two clicks race;
   # it then changes nothing.
-  def handle_event("remove_item", %{"path" => path, "index" => index}, socket) do
+  def handle_event("remove_item", %{"path" => path, "index" => index}, socket)
+      when is_binary(path) and (is_binary(index) or is_integer(index)) do
     with {index, ""} <- Integer.parse(to_string(index)) do
       change_at(socket, path, :list, fn field_path, _spec ->
         fn form ->
@@ -289,7 +290,7 @@ defmodule Billboard.EditorLive.SectionEditor do
   # A moved item's tools are drawn again where it went, so the focus goes
   # with it, to the button that moved it, or the other one at an end.
   def handle_event("move_item", %{"path" => path, "index" => index, "dir" => dir}, socket)
-      when dir in ~w(up down) do
+      when is_binary(path) and (is_binary(index) or is_integer(index)) and dir in ~w(up down) do
     with {index, ""} <- Integer.parse(to_string(index)) do
       by = if dir == "up", do: -1, else: 1
       other = if dir == "up", do: "down", else: "up"
@@ -309,7 +310,7 @@ defmodule Billboard.EditorLive.SectionEditor do
   # A part is added only where there's none, and taken only where there's
   # one the section can do without: one whose spec says `optional`. A
   # forged drop of any other part changes nothing.
-  def handle_event("add_part", %{"path" => path}, socket) do
+  def handle_event("add_part", %{"path" => path}, socket) when is_binary(path) do
     change_at(socket, path, :part, fn field_path, spec ->
       if not part?(socket.assigns.form, field_path) do
         &AshPhoenix.Form.add_form(&1, [:content | field_path], params: Parts.blank(spec[:part]))
@@ -317,13 +318,19 @@ defmodule Billboard.EditorLive.SectionEditor do
     end)
   end
 
-  def handle_event("drop_part", %{"path" => path}, socket) do
+  def handle_event("drop_part", %{"path" => path}, socket) when is_binary(path) do
     change_at(socket, path, :part, fn field_path, spec ->
       if Keyword.get(spec, :optional, false) and part?(socket.assigns.form, field_path) do
         &AshPhoenix.Form.remove_form(&1, [:content | field_path])
       end
     end)
   end
+
+  # A list's or a part's change sent without a path, or with an index or
+  # direction it can't use, changes nothing.
+  def handle_event(event, _params, socket)
+      when event in ~w(add_item remove_item move_item add_part drop_part),
+      do: {:noreply, socket}
 
   # A button, an action or a point's link, opens its popover under the
   # header, if the section has one there.

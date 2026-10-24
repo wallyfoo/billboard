@@ -497,6 +497,31 @@ defmodule Billboard.EditorLive.SectionEditorTest do
     end
   end
 
+  describe "a malformed change to a list or a part" do
+    test "changes nothing, and the editor stays open" do
+      about!()
+      lv = open("/about", "story")
+
+      for {event, params} <- [
+            {"add_item", %{}},
+            {"add_item", %{"path" => %{"x" => "y"}}},
+            {"remove_item", %{"path" => "points"}},
+            {"remove_item", %{"path" => "points", "index" => %{"x" => "y"}}},
+            {"remove_item", %{"path" => ["points"], "index" => "0"}},
+            {"move_item", %{"path" => "points", "index" => "0"}},
+            {"move_item", %{"path" => "points", "index" => ["0"], "dir" => "down"}},
+            {"move_item", %{"path" => "points", "index" => "0", "dir" => "sideways"}},
+            {"add_part", %{"path" => 1}},
+            {"drop_part", %{}}
+          ] do
+        send_editor(lv, event, params)
+
+        assert no_draft?("/about"), "#{event} #{inspect(params)}"
+        assert has_element?(lv, "#section-editor[data-section='story']")
+      end
+    end
+  end
+
   describe "a button's popover" do
     defp edit_action(lv, path), do: send_editor(lv, "edit_action", %{"path" => path})
 
