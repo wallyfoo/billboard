@@ -289,9 +289,47 @@ defmodule Billboard.Sections.EditorFieldsTest do
     end
   end
 
+  defmodule Shelf do
+    @moduledoc "A site's own part that picks from a set of choices."
+    use Billboard.Part
+
+    editor do
+      field :aisle, as: :choice, from: :aisles, label: "Aisle"
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :aisle, :string, public?: true
+    end
+
+    actions do
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+  end
+
+  defmodule Shelves do
+    @moduledoc "A component whose list holds the site's own part."
+    use Billboard.Component
+
+    component do
+      key :shelves
+      label "Shelves"
+      hint "Shelves, each in an aisle."
+      category :content
+      parts :shelves, Shelf
+    end
+
+    editor do
+      field :shelves, as: :list, part: Shelf, item_label: "shelf"
+    end
+  end
+
   test "names every set of choices the site's components and parts pick from" do
     put_site!(components: [Billboard.Test.Faq])
     assert EditorFields.choice_names() == [:scope]
+
+    put_site!(components: [Billboard.Test.Faq, Shelves])
+    assert EditorFields.choice_names() == [:scope, :aisles]
   end
 
   describe "hidden_at?/3" do

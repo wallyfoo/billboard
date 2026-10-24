@@ -116,7 +116,7 @@ defmodule Billboard.Component.Dsl do
             type: :atom,
             doc:
               "The part a part or list edits: `:action`, `:link`, `:head`, `:quote`, " <>
-                "`:point`, or `:detail`."
+                "`:point`, or `:detail`, or a site's own part's module (`Billboard.Part`)."
           ],
           except: [
             type: {:list, :atom},
@@ -270,6 +270,10 @@ defmodule Billboard.Component.Dsl do
       ]
     ]
   }
+
+  @doc false
+  # The `editor` section, which a site's part declares too (`Billboard.Part`).
+  def editor_section, do: @editor
 
   use Spark.Dsl.Extension,
     sections: [@component, @editor],

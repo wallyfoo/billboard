@@ -3,7 +3,8 @@ defmodule Billboard.EditorLive.Filler do
   Finds sections that still hold the filler a new section arrives with
   (each component's placeholder, `Billboard.Catalogue.placeholder/1`),
   such as "Your heading", or that a part added in the editor arrives
-  with (`Billboard.Sections.Parts.blank/1`), such as "Your link".
+  with (`Billboard.Sections.Parts.blank/1`), such as "Your link", or a
+  site's own part's words (`Billboard.Part`), such as "Your question".
   Committing them is allowed, but visitors would read it, so the page
   editor warns about them.
 
@@ -24,7 +25,7 @@ defmodule Billboard.EditorLive.Filler do
   @doc """
   The filler: the words of every placeholder whose component's
   placeholder is filler (`filler?`, true unless it says), and of every
-  part's blank, in the catalogue's order.
+  part's blank, billboard's and the site's own, in the catalogue's order.
   """
   @spec texts() :: [String.t()]
   def texts do
@@ -40,7 +41,17 @@ defmodule Billboard.EditorLive.Filler do
           field in @part_words,
           do: text
 
-    Enum.uniq(placeholders ++ blanks)
+    # A site's own part says which of its fields are words, in its editor.
+    site_blanks =
+      for part <- Parts.site_parts(),
+          blank = Billboard.Part.Info.blank(part),
+          {field, spec} <- Billboard.Part.Info.editor_fields(part),
+          spec[:as] in [:text, :markdown],
+          text = blank[to_string(field)],
+          is_binary(text),
+          do: text
+
+    Enum.uniq(placeholders ++ blanks ++ site_blanks)
   end
 
   @doc """

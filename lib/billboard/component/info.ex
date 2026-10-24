@@ -22,9 +22,13 @@ defmodule Billboard.Component.Info do
   section has none.
   """
   @spec editor_fields(module() | map()) :: keyword(keyword())
-  def editor_fields(component) do
-    for entry <- editor(component), do: {entry.name, spec(entry)}
-  end
+  def editor_fields(component), do: component |> editor() |> specs()
+
+  @doc false
+  # Editor entries in the editor's shape, from any module with an
+  # `editor` section: a component's or a site part's.
+  @spec specs([struct()]) :: keyword(keyword())
+  def specs(entries), do: for(entry <- entries, do: {entry.name, spec(entry)})
 
   defp spec(entry) do
     entry

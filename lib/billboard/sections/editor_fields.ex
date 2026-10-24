@@ -63,15 +63,15 @@ defmodule Billboard.Sections.EditorFields do
     do: type |> Billboard.Site.component!() |> Billboard.Component.Info.editor_fields()
 
   @doc """
-  The names of every set of choices the site's components and the parts
-  pick from (`from:`), for the editor to read once (`Billboard.Context.choices_for/1`).
+  The names of every set of choices the site's components and the parts,
+  billboard's and the site's own, pick from (`from:`), for the editor to read once (`Billboard.Context.choices_for/1`).
   """
   @spec choice_names() :: [atom()]
   def choice_names do
     components =
       Enum.flat_map(Billboard.Site.components(), &Billboard.Component.Info.editor_fields/1)
 
-    parts = Enum.flat_map(Parts.parts(), &Parts.editor_fields/1)
+    parts = Enum.flat_map(Parts.parts() ++ Parts.site_parts(), &Parts.editor_fields/1)
 
     for {_field, spec} <- components ++ parts, from = spec[:from], uniq: true, do: from
   end

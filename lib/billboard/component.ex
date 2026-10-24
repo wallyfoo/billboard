@@ -175,6 +175,9 @@ defmodule Billboard.Component do
     * `:shared`: one of the shared library's sections.
 
   A part or list's `item_label` names one of it, as in "Add a point".
+  Its `part` names a stock part by its name (`:point`), or a site's own
+  part by its module (`MySite.Sections.Faq.Question`, which does
+  `use Billboard.Part` and declares its own editor fields and blank).
 
   Every entry takes `label`, `hint`, `hide_when: [field: values]`, which
   leaves it out while the named field holds one of `values`,

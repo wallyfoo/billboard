@@ -7,6 +7,8 @@ defmodule Billboard.EditorLive.FillerTest do
   # env.
   use ExUnit.Case, async: false
 
+  import Billboard.Test.Env
+
   alias Billboard.Catalogue
   alias Billboard.EditorLive.Filler
   alias Billboard.Sections.Parts
@@ -39,6 +41,11 @@ defmodule Billboard.EditorLive.FillerTest do
 
     test "leaves out the placeholder of a component whose placeholder is fit to keep" do
       refute "What's on" in Filler.texts()
+    end
+
+    test "a site's part left as its blank is filler" do
+      put_site!(components: [Billboard.Test.Notes])
+      assert "Your question" in Filler.texts()
     end
   end
 

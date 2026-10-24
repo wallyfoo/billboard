@@ -24,7 +24,8 @@ defmodule Billboard.MixProject do
 
   def application, do: [extra_applications: [:logger]]
 
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  # The guides' worked examples are compiled and tested with the library.
+  defp elixirc_paths(:test), do: ["lib", "test/support", "guides/examples/lib"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do

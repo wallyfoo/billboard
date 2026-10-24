@@ -3,7 +3,8 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   Checks the `editor` section: each entry edits one of the component's
   attributes, but a note, which edits nothing, and no two edit the same
   one; `hide_when` names attributes; words edit a string; a part edits a
-  part, and a list a list of parts, each naming its part; a choice names
+  part, and a list a list of parts, each naming its part, by a stock
+  part's name or a site's part (`Billboard.Part`); a choice names
   its set; several choices edit a list of strings, and there's at most
   one set of them (`:choices`), since the editor keeps one a section, in
   the order it was ticked; a select's options and the variants' layouts
@@ -169,6 +170,26 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
       "`#{inspect(name)}` is a #{as} in `editor` but names no part. Add `part: :detail`, " <>
         "or the part it holds (`Billboard.Sections.Parts.editor_fields/1`)"
     ]
+
+  # A part named by its module must be a site's part, whose editor fields
+  # and blank the editor reads; any other module has neither.
+  defp part(%Field{as: as, part: part, name: name})
+       when as in [:part, :list] and is_atom(part) do
+    cond do
+      part in Billboard.Sections.Parts.parts() ->
+        []
+
+      match?({:module, _}, Code.ensure_compiled(part)) and Billboard.Part.Info.part?(part) ->
+        []
+
+      true ->
+        [
+          "`#{inspect(name)}` is a #{as} in `editor` whose part, #{inspect(part)}, isn't one " <>
+            "the editor knows. Name it by its stock name, as `part: :detail`, or give " <>
+            "#{inspect(part)} `use Billboard.Part`"
+        ]
+    end
+  end
 
   defp part(_entry), do: []
 

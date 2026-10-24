@@ -24,6 +24,10 @@ defmodule Billboard.Sections.Parts do
   page's hero block, a point's and a detail's in their sections, the
   quote and a news post's title here, a button's and a link's in
   `Billboard.Sections.Buttons`, and the rest in `Billboard.Sections.Blocks`.
+
+  A site's own part (`Billboard.Part`) is named by its module where a
+  stock part is named by its name, and `editor_fields/1` and `blank/1`
+  read its own fields and blank.
   """
   use Phoenix.Component
 
@@ -429,7 +433,9 @@ defmodule Billboard.Sections.Parts do
   How the admin edits a part, as `Billboard.Sections.EditorFields` takes
   it. `:link` is an action that can only be a link, as a point's is.
   `{part, except: fields}` is the part without some of its fields, as a
-  component's `editor` section may name it.
+  component's `editor` section may name it. A site's own part
+  (`Billboard.Part`) is named by its module, and its own `editor`
+  section is read.
   """
   def editor_fields({part, except: fields}), do: Keyword.drop(editor_fields(part), fields)
 
@@ -517,11 +523,15 @@ defmodule Billboard.Sections.Parts do
     ]
   end
 
+  def editor_fields(part) when is_atom(part),
+    do: part |> site_part!() |> Billboard.Part.Info.editor_fields()
+
   @doc """
   What a part holds when the admin adds one, as form params: enough to
   pass its validations, for the admin to write over. The page editor
   warns about any of it left on a page. A part with fields left out
-  starts as the part does.
+  starts as the part does. A site's own part (`Billboard.Part`) starts
+  as its `blank`.
   """
   def blank({part, _opts}), do: blank(part)
 
@@ -535,9 +545,52 @@ defmodule Billboard.Sections.Parts do
   def blank(:photo), do: %{"label" => "What the photograph shows"}
 
   def blank(:detail), do: %{"label" => "Your label", "body" => "What a visitor should know."}
+  def blank(part) when is_atom(part), do: part |> site_part!() |> Billboard.Part.Info.blank()
 
-  @doc "The parts `blank/1` knows."
+  @doc "Billboard's own parts, by the names `editor_fields/1` and `blank/1` know them."
   def parts, do: ~w(action link head quote point photo detail)a
+
+  @doc """
+  The site's own parts (`Billboard.Part`) that its components' editors
+  name, and those their editors name in turn, in the order first named.
+  """
+  @spec site_parts() :: [module()]
+  def site_parts do
+    Billboard.Site.components()
+    |> Enum.flat_map(&Billboard.Component.Info.editor_fields/1)
+    |> named_parts([])
+    |> Enum.reverse()
+  end
+
+  defp named_parts(specs, found) do
+    Enum.reduce(specs, found, fn {_field, spec}, found ->
+      case part_module(spec[:part]) do
+        nil ->
+          found
+
+        part ->
+          if part in found, do: found, else: named_parts(editor_fields(part), [part | found])
+      end
+    end)
+  end
+
+  defp part_module({part, _opts}), do: part_module(part)
+
+  defp part_module(part) when is_atom(part) and not is_nil(part),
+    do: if(part in parts(), do: nil, else: part)
+
+  defp part_module(_none), do: nil
+
+  defp site_part!(part) do
+    if Billboard.Part.Info.part?(part) do
+      part
+    else
+      raise ArgumentError,
+            "#{inspect(part)} isn't a part billboard knows. Name one of billboard's parts " <>
+              "(#{Enum.map_join(parts(), ", ", &inspect/1)}), or give #{inspect(part)} " <>
+              "`use Billboard.Part`"
+    end
+  end
 
   # An address's hint, with an address on the site.
   defp path_hint, do: "A page on this site, such as #{Billboard.Site.example_path()}"

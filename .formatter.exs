@@ -11,6 +11,7 @@ locals_without_parens = [
   surface_kind: 1,
   surface_from: 1,
   placeholder: 1,
+  blank: 1,
   renderer: 1,
   filler?: 1,
   context: 1,
@@ -37,7 +38,11 @@ locals_without_parens = [
 [
   import_deps: [:ash, :ash_postgres, :spark, :phoenix],
   plugins: [Phoenix.LiveView.HTMLFormatter],
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{heex,ex,exs}"],
+  inputs: [
+    "{mix,.formatter}.exs",
+    "{config,lib,test}/**/*.{heex,ex,exs}",
+    "guides/examples/**/*.{heex,ex,exs}"
+  ],
   locals_without_parens: locals_without_parens,
   export: [locals_without_parens: locals_without_parens]
 ]
