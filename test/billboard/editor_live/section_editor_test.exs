@@ -918,6 +918,41 @@ defmodule Billboard.EditorLive.SectionEditorTest do
 
       assert content(nil, band.key) == kept
     end
+
+    test "a band that leads with its heading takes no forged change or part edit to its quote" do
+      band = section_of(nil, :band)
+      lv = open(nil, band.key)
+
+      pick_variant(lv, "quote_right")
+      pick_variant(lv, "heading")
+      kept = content(nil, band.key)
+
+      change(lv, %{"content" => %{"quote" => %{"body" => "Forged quote"}}})
+      assert content(nil, band.key) == kept
+
+      send_editor(lv, "edit_part", %{
+        "path" => "quote",
+        "section" => %{"content" => %{"quote" => %{"body" => "Forged quote", "name" => "Eve"}}}
+      })
+
+      assert content(nil, band.key) == kept
+    end
+
+    test "a layout without a photograph takes no change to the one it keeps" do
+      home!()
+      hero = section_of("/", :hero)
+      lv = open("/", hero.key)
+
+      pick_variant(lv, "text_only")
+      kept = content(hero.key)
+      assert %{label: "The shop floor"} = kept.photo
+
+      send_editor(lv, "photo_change", %{"photo" => %{"label" => "Forged", "alt" => "x"}})
+      send_editor(lv, "photo_save", %{"photo" => %{"label" => "Forged", "alt" => "x"}})
+      send_editor(lv, "remove_photo", %{})
+
+      assert content(hero.key) == kept
+    end
   end
 
   describe "words typed in place" do
@@ -1248,6 +1283,19 @@ defmodule Billboard.EditorLive.SectionEditorTest do
       for field <- ~w(eyebrow heading lede), do: edit_words(lv, field, "Forged")
 
       assert no_draft?("/items/:slug")
+    end
+
+    test "a hero bound to a product takes no forged change to the words the product's replace" do
+      item!()
+      hero = section_of("/items/:slug", :hero)
+      lv = open("/items/:slug", hero.key)
+
+      change(lv, %{
+        "content" => %{"eyebrow" => "Forged", "heading" => "Forged", "lede" => "Forged"}
+      })
+
+      # The header's change may make a draft; the hero's own words stay.
+      assert %{eyebrow: nil, heading: "An item", lede: nil} = content("/items/:slug", hero.key)
     end
 
     test "a hero bound to a visit takes its own words" do

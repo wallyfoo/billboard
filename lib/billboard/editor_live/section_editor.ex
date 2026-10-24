@@ -333,7 +333,9 @@ defmodule Billboard.EditorLive.SectionEditor do
   # The popover's fields, a detail's scope, or a card's ground: the fields
   # of the part or list item at `path` that its specs offer, sent under the
   # section's names for them (`section[content][actions][1][label]`). Only
-  # they change.
+  # they change, and only those the editor shows now
+  # (`EditorFields.hidden_at?/3`): a part the layout leaves out, or words a
+  # binding replaces, take nothing.
   def handle_event("edit_part", %{"path" => path} = params, socket) when is_binary(path) do
     with {:ok, at, part} <- part_at(socket, path),
          %{} = sent <- dig(params, ["section", "content" | String.split(path, ".")]),
@@ -427,12 +429,15 @@ defmodule Billboard.EditorLive.SectionEditor do
 
   def handle_event("count", _params, socket), do: {:noreply, socket}
 
+  # The photograph's events, and an upload's arrival, change it only while
+  # the section shows one (`photo?/1`), as Describe opens only then: a
+  # layout without one keeps the photograph it holds, untouched.
   def handle_event("photo_change", params, socket) do
     photo = Map.get(params, "photo", %{})
     socket = assign(socket, photo_params: photo, photo_error: nil)
 
     # A photograph on its way waits for the form to be sent, words and all.
-    if socket.assigns.uploads.photo.entries == [] do
+    if socket.assigns.uploads.photo.entries == [] and photo?(socket) do
       save(socket, &AshPhoenix.Form.validate(&1, photo_params(socket, photo, :keep)))
     else
       {:noreply, socket}
@@ -443,8 +448,12 @@ defmodule Billboard.EditorLive.SectionEditor do
   def handle_event("photo_save", params, socket) do
     photo = Map.get(params, "photo", %{})
     socket = socket |> assign(photo_params: photo, photo_error: nil) |> close_popover([])
+    shown? = photo?(socket)
 
     case uploaded_entries(socket, :photo) do
+      _any when not shown? ->
+        {:noreply, socket}
+
       {[], []} ->
         save(socket, &AshPhoenix.Form.validate(&1, photo_params(socket, photo, :keep)))
 
@@ -463,14 +472,18 @@ defmodule Billboard.EditorLive.SectionEditor do
   # Takes the photograph away from the section, keeping what it shows for
   # the placeholder. The file stays: the live page may still show it.
   def handle_event("remove_photo", _params, socket) do
-    photo = %{"label" => photo_value(socket.assigns.form, :label), "alt" => ""}
-    save(socket, &AshPhoenix.Form.validate(&1, photo_params(socket, photo, "")))
+    if photo?(socket) do
+      photo = %{"label" => photo_value(socket.assigns.form, :label), "alt" => ""}
+      save(socket, &AshPhoenix.Form.validate(&1, photo_params(socket, photo, "")))
+    else
+      {:noreply, socket}
+    end
   end
 
   # A photograph saves as soon as it has arrived, with the words Describe
   # last sent.
   defp photo_progress(:photo, entry, socket) do
-    if entry.done?,
+    if entry.done? and photo?(socket),
       do: save_upload(socket, socket.assigns.photo_params || %{}),
       else: {:noreply, socket}
   end
@@ -609,12 +622,16 @@ defmodule Billboard.EditorLive.SectionEditor do
   # content's fields its specs name, part by part and item by item, with
   # AshPhoenix's own keys (`_touched` and the like) and each part's `id`.
   # The content stays its own component. Anything else, such as a hero's
-  # `bind`, or a photograph sent around its own form, is dropped.
-  defp allowed(params, specs, %{section: section, parent: parent}, target) do
+  # `bind`, or a photograph sent around its own form, is dropped, and so
+  # is a field the editor leaves out now (`EditorFields.hidden?/2`, read
+  # on its holder's form), such as words a binding replaces, or a part
+  # the layout leaves out: the header never draws them, so it never sends
+  # them, and they keep what they hold.
+  defp allowed(params, specs, %{section: section, parent: parent, form: form}, target) do
     content =
       params
       |> Map.get("content", %{})
-      |> only(specs)
+      |> only(specs, EditorFields.content_form(form))
       |> Map.put("_union_type", Atom.to_string(section.content.type))
 
     params
@@ -662,42 +679,63 @@ defmodule Billboard.EditorLive.SectionEditor do
     end
   end
 
-  defp only(params, specs) when is_map(params) do
-    fields = Map.new(specs, fn {field, spec} -> {Atom.to_string(field), spec} end)
+  # `form` is the holder's form, as the editor draws it, or nil for a part
+  # or list item the section hasn't got yet.
+  defp only(params, specs, form) when is_map(params) do
+    fields = Map.new(specs, fn {field, spec} -> {Atom.to_string(field), {field, spec}} end)
 
     Enum.reduce(params, %{}, fn {key, value}, kept ->
-      case keep(key, value, fields[key]) do
+      case keep(key, value, fields[key], form) do
         :drop -> kept
         value -> Map.put(kept, key, value)
       end
     end)
   end
 
-  defp only(_params, _specs), do: %{}
+  defp only(_params, _specs, _form), do: %{}
 
-  defp keep(key, value, _spec) when key == "id" or binary_part(key, 0, 1) == "_", do: value
-  defp keep(_key, _value, nil), do: :drop
+  defp keep(key, value, _field, _form) when key == "id" or binary_part(key, 0, 1) == "_",
+    do: value
+
+  defp keep(_key, _value, nil, _form), do: :drop
+
+  defp keep(key, value, {field, spec}, form) do
+    if form && EditorFields.hidden?(form, spec),
+      do: :drop,
+      else: keep_shown(key, value, field, spec, form)
+  end
 
   # A card's surface is dropped here, as a photo is: it saves only through
   # its own Ground, by `edit_part`, which checks that Ground is what
   # changed. Kept from the header's change, it would save a surface sent
   # with another setting's change, which nobody chose.
-  defp keep(_key, value, spec) do
+  defp keep_shown(_key, value, field, spec, form) do
+    part_specs = spec[:part] && Parts.editor_fields(spec[:part])
+
     case Keyword.get(spec, :as, :text) do
       as when as in [:photo, :note, :binding_note, :variants, :surface] ->
         :drop
 
       :part ->
-        only(value, Parts.editor_fields(spec[:part]))
+        only(value, part_specs, form && EditorFields.sub_form(form, [field]))
 
       :list when is_map(value) ->
-        Map.new(value, fn {i, item} -> {i, only(item, Parts.editor_fields(spec[:part]))} end)
+        Map.new(value, fn {i, item} -> {i, only(item, part_specs, item_form(form, field, i))} end)
 
       :list ->
         :drop
 
       _field ->
         value
+    end
+  end
+
+  defp item_form(nil, _field, _i), do: nil
+
+  defp item_form(form, field, i) do
+    case Integer.parse(i) do
+      {index, ""} when index >= 0 -> EditorFields.sub_form(form, [field, index])
+      _not_an_index -> nil
     end
   end
 
@@ -835,8 +873,16 @@ defmodule Billboard.EditorLive.SectionEditor do
           into: %{},
           do: {Atom.to_string(field), {Keyword.get(spec, :as, :text), spec[:from]}}
 
+    content_form = EditorFields.content_form(socket.assigns.form)
+    section_specs = specs(socket)
+
     for {field, value} <- Map.take(sent, Map.keys(offered)),
         is_binary(value),
+        not EditorFields.hidden_at?(
+          content_form,
+          section_specs,
+          at ++ [String.to_existing_atom(field)]
+        ),
         part_value?(offered[field], value, socket, form, field),
         into: %{},
         do: {field, value}
