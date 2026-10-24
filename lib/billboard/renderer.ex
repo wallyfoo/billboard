@@ -32,6 +32,16 @@ defmodule Billboard.Renderer do
   "Nothing to show yet:", as in "there are no published reviews.".
   `Billboard.Sections.page/1` asks both.
 
+  The hero component's renderer draws the page's hero block instead of a
+  section in `<main>`: its `render/1` draws the block's inside, given
+  `section`, `content`, `anchor`, `ctx`, `heading`, and `lede`, and the
+  page keeps the `<section id="page-hero">` round it, with the editor's
+  marks, so the hero opens, shows its issues, and holds its editor as
+  any section does. A site's own `:hero` therefore draws its own block.
+  If the site's layout has a skip link to `#main`, its hero keeps an
+  element with `id="main"` and `tabindex="-1"` for it, as the stock one
+  does on the H1's column.
+
   A stock renderer draws only through billboard's theme (`theme.css`):
   its colours, type, corners, and measures. A site's may use any class.
   """

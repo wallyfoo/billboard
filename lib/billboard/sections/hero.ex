@@ -1,7 +1,9 @@
 defmodule Billboard.Sections.Hero do
   @moduledoc """
-  The hero, drawn into the page's hero block rather than in `<main>`,
-  slot by slot, as the page asks.
+  The stock hero's renderer. Its `render/1` draws the inside of the
+  page's hero block, which `Billboard.Sections.page/1` draws in the
+  layout's hero slot, never in `<main>`, from the slots below: the
+  heading, eyebrow, lede, size, actions, and photograph.
 
   The content's own words are Markdown. A bound hero takes its words
   from its binding (`ctx.context.bindings`, by the hero's `bind`,
@@ -22,8 +24,79 @@ defmodule Billboard.Sections.Hero do
   alias Billboard.{Context, Markdown}
   alias Billboard.Components.Hero
 
-  @doc "The hero never renders in `<main>`."
-  def render(assigns), do: ~H""
+  @doc """
+  The inside of the page's hero block, which `Billboard.Sections.page/1`
+  draws in the layout's hero slot, never in `<main>`, inside the
+  `<section id="page-hero">` it keeps for the editor's marks: the
+  eyebrow, the H1, the lede, and the actions, in `#main`, and the
+  photograph beside them (`media/2`).
+
+  It's given the hero as `section`, its `content` as it's drawn, and
+  `ctx`, or, for a version with no hero, as the shared library has, a
+  nil `section` and the page's `heading` and `lede`, which it draws in
+  the hero's place.
+  """
+  def render(assigns) do
+    %{section: section, ctx: ctx} = assigns
+    # Drawn with what the site offers; the editor's marks, round it,
+    # keep the section as it's stored.
+    hero = section && put_in(section.content.value, assigns.content)
+
+    assigns =
+      assign(assigns,
+        hero: hero,
+        hero_heading: if(section, do: heading(hero, ctx), else: assigns[:heading]),
+        hero_eyebrow: eyebrow(hero, ctx),
+        hero_size: size(hero, ctx),
+        hero_lede: if(section, do: lede(hero, ctx), else: assigns[:lede]),
+        hero_media: media(hero, ctx)
+      )
+
+    ~H"""
+    <div
+      data-hero-media={@hero_media}
+      class={[
+        "bb-wrap grid items-center gap-12 md:gap-18",
+        @hero_media == "right" && "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]",
+        @hero_media == "left" && "md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
+      ]}
+    >
+      <%!-- The skip link lands on the H1, so keyboard users skip the
+      nav but still hear what page they are on; it stays on the text
+      column when the hero is mirrored. --%>
+      <div id="main" tabindex="-1" class="outline-none">
+        <%!-- Kept from the formatter: with its hook, this tag passes the
+        line length, and the formatter would put the eyebrow's words on a
+        line of their own, with whitespace round them that would become
+        part of its text. --%>
+        <p :if={@hero_eyebrow} class="bb-eyebrow bb-type-eyebrow mb-6" phx-no-format>{@hero_eyebrow}</p>
+        <h1 class={[
+          "bb-title bb-measure-title text-bb-title",
+          if(@hero_size == "display", do: "bb-type-display", else: "bb-type-title")
+        ]}>
+          {@hero_heading}
+        </h1>
+        <div :if={@hero_lede} class="bb-type-lead bb-measure mt-6 text-bb-ink">
+          {@hero_lede}
+        </div>
+        <div
+          :if={actions?(@hero, @ctx)}
+          class="mt-12 flex flex-wrap items-center gap-4"
+        >
+          <.actions section={@hero} ctx={@ctx} />
+        </div>
+      </div>
+      <div :if={@hero_media != "none"} {aside_attrs(@hero_media)}>
+        <.media_slot section={@hero} ctx={@ctx} />
+      </div>
+    </div>
+    """
+  end
+
+  # A mirrored hero puts its aside first on wide screens. Otherwise the
+  # aside takes no class at all, as it always has.
+  defp aside_attrs("left"), do: [class: "md:order-first"]
+  defp aside_attrs(_media), do: []
 
   @doc """
   The hero's glyph: a dark block with two lines of words, and a

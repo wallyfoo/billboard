@@ -673,6 +673,9 @@ defmodule Billboard.SectionsTest do
 
       refute has?(render_page(sections, edit_ctx()), "#b.bb-joined")
       assert has?(render_page(sections), "#b.bb-joined")
+      # Its renderer draws the hero block, so it draws nothing in `<main>`.
+      refute has?(render_page(sections), "main #main")
+      refute has?(render_page(sections, edit_ctx()), "#edit-h2 #main")
     end
 
     test "a shared section whose library section has gone is a stand-in on plain, and joins" do

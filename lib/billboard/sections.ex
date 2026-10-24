@@ -1,8 +1,9 @@
 defmodule Billboard.Sections do
   @moduledoc """
   Draws a version as a page, in the site's layout (`Billboard.Layout`):
-  the hero section as the hero block, in the layout's hero slot, and
-  every other section in order in its inner block, in `<main>`.
+  the hero section as the hero block, in the layout's hero slot, drawn
+  by the hero component's renderer, and every other section in order in
+  its inner block, in `<main>`.
 
   Each component names its renderer (`Billboard.Renderer`) in its
   `component` section, with `render/1` (the section) and `glyph/1` (a
@@ -49,14 +50,14 @@ defmodule Billboard.Sections do
   clicks to open it (`#edit-<key>`, with `data-edit-section`), which
   marks a section with an issue and, while it's open, holds its editor
   (`Billboard.EditorLive.SectionEditor`). The hero gets the same from
-  `page/1`, on the hero's own `<section>`, which it draws. A section
-  that would draw nothing, such as reviews with none published, is drawn
-  in the editor as a stand-in saying so (its renderer's
-  `nothing_to_show/2`), so it can still be opened. A Shared section's
-  library section is drawn as a visitor sees it, inside the Shared
-  section's wrapper: it is edited in the library. Between the sections
-  in `<main>`, `page/1` draws the places a section can be added, each
-  opening the palette there.
+  `page/1`, on the `<section id="page-hero">` it draws round the hero
+  block. A section that would draw nothing, such as reviews with none
+  published, is drawn in the editor as a stand-in saying so (its
+  renderer's `nothing_to_show/2`), so it can still be opened. A Shared
+  section's library section is drawn as a visitor sees it, inside the
+  Shared section's wrapper: it is edited in the library. Between the
+  sections in `<main>`, `page/1` draws the places a section can be
+  added, each opening the palette there.
 
   The renderers draw a section's words through
   `Billboard.Sections.Words.text/4`, with each field's words path
@@ -127,9 +128,13 @@ defmodule Billboard.Sections do
     do: SiteOptions.resolved(type, content)
 
   @doc """
-  The page: the version's hero, drawn here as the hero block, and its
-  other sections, handed to the site's layout (`Billboard.Layout`'s
-  `page/1`) as its hero slot and its inner block.
+  The page: the version's hero, drawn as the hero block, and its other
+  sections, handed to the site's layout (`Billboard.Layout`'s `page/1`)
+  as its hero slot and its inner block. The page draws the block's
+  `<section id="page-hero">`, with the editor's marks, and the hero
+  component's renderer draws what's inside it (`Billboard.Renderer`), so
+  a site's own `:hero` draws its own. A hero anywhere but first draws
+  nothing.
 
   `site` is the site's own data, which the layout draws from, and its
   own sections read as `ctx.site`. `ctx` holds the page's `:context` and
@@ -143,7 +148,7 @@ defmodule Billboard.Sections do
   sit over the page, since the editor draws its own bar and messages.
 
   A version with no hero, as the shared library has, draws `heading` and
-  `lede` in the hero's place, if given.
+  `lede` in the stock hero's place, if given, whatever the site's hero.
   """
   attr :version, :map, required: true
   attr :data, :map, default: %{}
@@ -178,10 +183,6 @@ defmodule Billboard.Sections do
       )
       |> put_shared(assigns.library)
 
-    hero_ctx = put_section(ctx, hero)
-    # The hero's slots draw what the site offers; its editor marks keep
-    # the section as it's stored.
-    drawn_hero = hero && put_in(hero.content.value, drawn_content(hero))
     edit = ctx[:edit]
     body = Enum.zip(body, joins(body, ctx, edit != nil))
 
@@ -193,61 +194,29 @@ defmodule Billboard.Sections do
         hero: hero,
         body: body,
         ctx: ctx,
-        hero_ctx: hero_ctx,
-        drawn_hero: drawn_hero,
-        hero_heading: if(hero, do: Hero.heading(drawn_hero, hero_ctx), else: assigns.heading),
-        hero_eyebrow: Hero.eyebrow(drawn_hero, hero_ctx),
-        hero_size: Hero.size(drawn_hero, hero_ctx),
-        hero_lede: if(hero, do: Hero.lede(drawn_hero, hero_ctx), else: assigns.lede),
+        hero_ctx: put_section(ctx, hero),
+        # The hero's renderer draws what the site offers; the editor's
+        # marks keep the section as it's stored.
+        hero_content: hero && drawn_content(hero),
         add: edit && edit[:add],
         # Where a section added before the first in `<main>` goes: after
         # the hero.
-        first_at: if(hero, do: 1, else: 0),
-        hero_media: Hero.media(drawn_hero, hero_ctx)
+        first_at: if(hero, do: 1, else: 0)
       )
 
     ~H"""
     <.site_layout flash={@flash} site={@site} current_path={@current_path} editing={@editing}>
       <:hero>
-        <%!-- The skip link lands on the H1, so keyboard users skip the
-        nav but still hear what page they are on; it stays on the text
-        column when the hero is mirrored. --%>
         <section id="page-hero" class="bb-section-pad" {@hero_attrs}>
           <.edit_marks :if={@edit && @hero} section={@hero} edit={@edit} />
-          <div
-            data-hero-media={@hero_media}
-            class={[
-              "bb-wrap grid items-center gap-12 md:gap-18",
-              @hero_media == "right" && "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]",
-              @hero_media == "left" && "md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
-            ]}
-          >
-            <div id="main" tabindex="-1" class="outline-none">
-              <%!-- Kept from the formatter: with its hook, this tag passes the
-              line length, and the formatter would put the eyebrow's words on a
-              line of their own, with whitespace round them that would become
-              part of its text. --%>
-              <p :if={@hero_eyebrow} class="bb-eyebrow bb-type-eyebrow mb-6" phx-no-format>{@hero_eyebrow}</p>
-              <h1 class={[
-                "bb-title bb-measure-title text-bb-title",
-                if(@hero_size == "display", do: "bb-type-display", else: "bb-type-title")
-              ]}>
-                {@hero_heading}
-              </h1>
-              <div :if={@hero_lede} class="bb-type-lead bb-measure mt-6 text-bb-ink">
-                {@hero_lede}
-              </div>
-              <div
-                :if={Hero.actions?(@drawn_hero, @hero_ctx)}
-                class="mt-12 flex flex-wrap items-center gap-4"
-              >
-                <Hero.actions section={@drawn_hero} ctx={@hero_ctx} />
-              </div>
-            </div>
-            <div :if={@hero_media != "none"} {aside_attrs(@hero_media)}>
-              <Hero.media_slot section={@drawn_hero} ctx={@hero_ctx} />
-            </div>
-          </div>
+          <.hero_block
+            section={@hero}
+            content={@hero_content}
+            anchor="page-hero"
+            ctx={@hero_ctx}
+            heading={@heading}
+            lede={@lede}
+          />
         </section>
       </:hero>
 
@@ -264,6 +233,12 @@ defmodule Billboard.Sections do
     """
   end
 
+  # The inside of the hero block: the hero component's renderer draws
+  # it, so a site's own `:hero` draws its own. A version with no hero, as
+  # the library is, draws its heading and lede in the stock block.
+  defp hero_block(%{section: nil} = assigns), do: Hero.render(assigns)
+  defp hero_block(assigns), do: Renderer.for!(:hero).render(assigns)
+
   # The site's layout (`Billboard.Layout`), called through a function
   # component of this module's, so HEEx hands it the slots this template
   # writes and the assigns as they are, with what changed. Change
@@ -271,11 +246,6 @@ defmodule Billboard.Sections do
   # layout's header. Assigns built afresh, without `__changed__`, would
   # redraw the whole layout on every change.
   defp site_layout(assigns), do: Billboard.Layout.module!().page(assigns)
-
-  # A mirrored hero puts its aside first on wide screens. Otherwise the
-  # aside takes no class at all, as it always has.
-  defp aside_attrs("left"), do: [class: "md:order-first"]
-  defp aside_attrs(_media), do: []
 
   # Whether each of the body's sections is on the same surface as the
   # section drawn before it in `<main>`, so it shares its padding. A
@@ -373,10 +343,15 @@ defmodule Billboard.Sections do
       |> assign(:ctx, ctx)
 
     case assigns.ctx[:edit] do
-      nil -> module.render(assigns)
+      nil -> draw(assigns, module)
       edit -> editable(assigns, module, edit)
     end
   end
+
+  # The hero's renderer draws the page's hero block (`page/1`), never a
+  # section in `<main>`: a hero anywhere but first draws nothing there.
+  defp draw(%{section: %{content: %{type: :hero}}} = assigns, _module), do: ~H""
+  defp draw(assigns, module), do: module.render(assigns)
 
   # The section in its wrapper. A section with nothing to show for its
   # data is drawn as a stand-in, with its head and introduction, so it can
@@ -396,7 +371,7 @@ defmodule Billboard.Sections do
     assigns =
       assign(assigns,
         holds_open?: holds_open?,
-        inner: if(!nothing?, do: module.render(assigns)),
+        inner: if(!nothing?, do: draw(assigns, module)),
         nothing: if(nothing?, do: nothing_to_show(module, assigns.content, ctx)),
         label: Catalogue.label(type),
         edit: edit,

@@ -86,8 +86,8 @@ defmodule Billboard.Sections.StockTest do
     end
   end
 
-  # The hero draws nothing in `<main>`: the page's hero block asks it
-  # for each slot (`Billboard.Sections.Hero`).
+  # The hero draws the inside of the page's hero block, never a section
+  # in `<main>` (`Billboard.Sections.Hero`).
   test "the hero draws its words into the page's hero block, for a visitor and open" do
     section =
       section(:hero, %{
@@ -100,7 +100,12 @@ defmodule Billboard.Sections.StockTest do
 
     open = %{edit: %{open: "s1", issues: %{}, editor: %{choices: %{}}}, section: section}
 
-    assert visitor(section) == ""
+    block = visitor(section)
+    assert block =~ ~s(<div id="main")
+    assert block =~ "Come by"
+    assert block =~ "<em>daily</em>"
+    refute block =~ "contenteditable"
+    assert open(section) =~ "bb-inline-words"
     assert words(Hero.heading(section, %{})) == "Come by"
     refute words(Hero.heading(section, %{})) =~ "contenteditable"
     assert words(Hero.lede(section, %{})) =~ "<em>daily</em>"
