@@ -30,6 +30,8 @@ defmodule Billboard.Part.Dsl do
     sections: [@part, Billboard.Component.Dsl.editor_section()],
     verifiers: [
       Billboard.Component.Verifiers.VerifyEditor,
+      Billboard.Part.Verifiers.VerifyEditorKinds,
+      Billboard.Part.Verifiers.VerifyActions,
       Billboard.Part.Verifiers.VerifyBlank
     ]
 end

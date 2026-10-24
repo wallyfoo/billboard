@@ -5,8 +5,8 @@ defmodule Billboard.Test.Shop do
   A test overrides its surfaces, offers, options, rules, kinds, and
   palette with `Billboard.Test.Env.put_shop!/1`.
 
-  It's on billboard's stock components, with two of its own, Cards and
-  Text. Its `kinds:` keep the hero off the library, the band and the
+  It's on billboard's stock components, with three of its own, Cards,
+  Text, and Notes, whose items are a site's own part. Its `kinds:` keep the hero off the library, the band and the
   points to free pages and the library, Two columns to free pages, and
   Shared to free and item pages. Its action kinds and context are the
   test site's (`Billboard.Test.Actions` and `Billboard.Test.Context`),
@@ -35,6 +35,7 @@ defmodule Billboard.Test.Shop do
       Billboard.Components.Band,
       Test.Cards,
       Test.Text,
+      Test.Notes,
       Billboard.Components.Points,
       Billboard.Components.TextMedia,
       Billboard.Components.Details,

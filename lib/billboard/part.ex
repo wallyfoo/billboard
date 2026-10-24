@@ -41,7 +41,14 @@ defmodule Billboard.Part do
   checked as the part compiles. Its words are filler the editor warns
   about until they're written over (`Billboard.EditorLive.Filler`).
 
-  A part in a list needs an id and a primary destroy action, as
+  An item's tools change words, selects, toggles, numbers, a choice, a
+  surface, and a part, and show notes; the rest of what a component's
+  `editor` takes (a photograph, variants, a list, several choices,
+  `bound:`) belongs to a section, and the part's checks refuse it.
+
+  A part needs a primary read, create, and update action, which its
+  `defaults` give, and its checks refuse one without them. A part in a
+  list needs an id and a primary destroy action too, as
   `Billboard.Component` explains. `use Billboard.Part` sets
   `data_layer: :embedded` itself, and adds nothing else.
   """

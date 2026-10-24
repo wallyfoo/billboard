@@ -9,9 +9,17 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   one set of them (`:choices`), since the editor keeps one a section, in
   the order it was ticked; a select's options and the variants' layouts
   are given, and are among the attribute's `one_of` values when it has
-  them; and a select's `only_on` names its options. Each message names
-  the fix, and a misspelt name is met with the attribute it most likely
-  meant. Its errors are compile warnings, as every Spark verifier's are.
+  them; and a select's `only_on` names its options. A part or list
+  naming a site's part by its module edits an attribute of that part,
+  and a component's `:action` or `:actions`, which billboard reads as
+  the section's actions (`Billboard.Rules.actions_of/1`), holds
+  `:action` or `:link` parts.
+
+  It checks a site's part's `editor` too (`Billboard.Part`), whose
+  fixes are worded for a part, which holds its own parts in attributes.
+  Each message names the fix, and a misspelt name is met with the
+  attribute it most likely meant. Its errors are compile warnings, as
+  every Spark verifier's are.
   """
   use Spark.Dsl.Verifier
 
@@ -20,16 +28,22 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
   @notes [:note, :binding_note]
 
+  # What billboard reads as a section's actions, by its attribute's name.
+  @actions [:action, :actions]
+
   @impl true
   def verify(dsl_state) do
     module = Verifier.get_persisted(dsl_state, :module)
     attributes = Map.new(Ash.Resource.Info.attributes(dsl_state), &{&1.name, &1})
     entries = Verifier.get_entities(dsl_state, [:editor])
+    # A site's part has no `component` section, so a fix names its own
+    # attributes instead.
+    owner = if site_part?(dsl_state), do: :part, else: :component
 
     messages =
       for(
         {entry, earlier} <- Enum.zip(entries, earlier_names(entries)),
-        message <- problems(entry, attributes, module) ++ twice(entry, earlier),
+        message <- problems(entry, attributes, module, owner) ++ twice(entry, earlier),
         do: {entry, message}
       ) ++ second_choices(entries)
 
@@ -45,6 +59,9 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
     if errors == [], do: :ok, else: {:error, errors}
   end
+
+  defp site_part?(dsl_state),
+    do: Billboard.Part.Dsl in (Verifier.get_persisted(dsl_state, :spark_extensions) || [])
 
   # The names of the entries before each one.
   defp earlier_names(entries) do
@@ -77,24 +94,25 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
   defp choices(entries), do: Enum.filter(entries, &match?(%Field{as: :choices}, &1))
 
-  defp problems(%Field{as: as} = entry, attributes, module) when as in @notes,
+  defp problems(%Field{as: as} = entry, attributes, module, _owner) when as in @notes,
     do: hide_when(entry, attributes, module)
 
-  defp problems(entry, attributes, module) do
+  defp problems(entry, attributes, module, owner) do
     name = entry.name
 
     case Map.fetch(attributes, name) do
       :error ->
         [
           "`#{inspect(name)}` is in `editor` but isn't an attribute of #{inspect(module)}" <>
-            "#{did_you_mean(name, attributes)}. Add #{needs(entry)}, or take it out of `editor`"
+            "#{did_you_mean(name, attributes)}. Add #{needs(entry, owner)}, or take it out of `editor`"
         ]
 
       {:ok, attribute} ->
         hide_when(entry, attributes, module) ++
           words(entry, attribute) ++
           part(entry) ++
-          part_attribute(entry, attribute) ++
+          part_attribute(entry, attribute, owner) ++
+          actions(entry, owner) ++
           from(entry) ++
           options(entry) ++
           one_of(entry, attribute) ++
@@ -103,15 +121,22 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
     end
   end
 
-  # What an entry needs, by what it is, for a message that names the fix.
-  defp needs(%Field{as: :part, name: name}),
+  # What an entry needs, by what it is, for a message that names the fix:
+  # a component holds a part by its `component` section, and a site's
+  # part by an attribute.
+  defp needs(%Field{as: :part, name: name}, :component),
     do: "`part #{inspect(name)}, MySite.Parts.Name` to `component`"
 
-  defp needs(%Field{as: :list, name: name}),
+  defp needs(%Field{as: :list, name: name}, :component),
     do: "`parts #{inspect(name)}, MySite.Parts.Name` to `component`"
 
-  defp needs(%Field{as: :photo, name: name}),
+  defp needs(%Field{as: :photo, name: name}, :component),
     do: "`part #{inspect(name)}, MySite.Parts.Photo` to `component`"
+
+  defp needs(%Field{as: as, name: name}, :part) when as in [:part, :list, :photo],
+    do: "`#{held(as, name)}` to its `attributes`"
+
+  defp needs(entry, _owner), do: needs(entry)
 
   defp needs(%Field{as: :choices, name: name}),
     do: "`attribute #{inspect(name)}, {:array, :string}`"
@@ -193,27 +218,78 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
   defp part(_entry), do: []
 
-  defp part_attribute(%Field{as: :part, name: name}, %{type: type}) do
-    if part?(type),
-      do: [],
-      else: [
-        "`#{inspect(name)}` is a part in `editor`, but it isn't a part. Add " <>
-          "`part #{inspect(name)}, MySite.Parts.Name` to `component` in place of its " <>
-          "attribute, or make it another kind of entry"
-      ]
+  defp part_attribute(%Field{as: :part, name: name} = entry, %{type: type}, owner) do
+    cond do
+      not part?(type) ->
+        [
+          "`#{inspect(name)}` is a part in `editor`, but it isn't a part. " <>
+            "#{in_place(:part, name, owner)}, or make it another kind of entry"
+        ]
+
+      named_module?(entry) and entry.part != type ->
+        [held_other(entry, type)]
+
+      true ->
+        []
+    end
   end
 
-  defp part_attribute(%Field{as: :list, name: name}, %{type: type}) do
-    if match?({:array, item} when is_atom(item), type) and part?(elem(type, 1)),
-      do: [],
-      else: [
-        "`#{inspect(name)}` is a list in `editor`, but it isn't a list of parts. Add " <>
-          "`parts #{inspect(name)}, MySite.Parts.Name` to `component` in place of its " <>
-          "attribute, or make it another kind of entry"
-      ]
+  defp part_attribute(%Field{as: :list, name: name} = entry, %{type: type}, owner) do
+    cond do
+      not (match?({:array, item} when is_atom(item), type) and part?(elem(type, 1))) ->
+        [
+          "`#{inspect(name)}` is a list in `editor`, but it isn't a list of parts. " <>
+            "#{in_place(:list, name, owner)}, or make it another kind of entry"
+        ]
+
+      named_module?(entry) and entry.part != elem(type, 1) ->
+        [held_other(entry, elem(type, 1))]
+
+      true ->
+        []
+    end
   end
 
-  defp part_attribute(_entry, _attribute), do: []
+  defp part_attribute(_entry, _attribute, _owner), do: []
+
+  defp in_place(as, name, :component),
+    do:
+      "Add `#{if as == :list, do: "parts", else: "part"} #{inspect(name)}, MySite.Parts.Name` " <>
+        "to `component` in place of its attribute"
+
+  defp in_place(as, name, :part), do: "Make its attribute `#{held(as, name)}`"
+
+  defp held(:list, name),
+    do: "attribute #{inspect(name)}, {:array, MySite.Parts.Name}, public?: true"
+
+  defp held(:photo, name), do: "attribute #{inspect(name)}, Billboard.Parts.Photo, public?: true"
+  defp held(_as, name), do: "attribute #{inspect(name)}, MySite.Parts.Name, public?: true"
+
+  # A part named by its module, not by a stock part's name.
+  defp named_module?(%Field{part: part}),
+    do: is_atom(part) and not is_nil(part) and part not in Billboard.Sections.Parts.parts()
+
+  # The editor reads a site's part's fields and blank from the module
+  # `part:` names, so it must be the one the attribute holds.
+  defp held_other(%Field{as: as, name: name, part: part}, held) do
+    "`#{inspect(name)}` is a #{as} of #{inspect(part)} in `editor`, but its attribute holds " <>
+      "#{inspect(held)}. Name the part it holds, as `part: #{inspect(held)}`, or make the " <>
+      "attribute hold #{inspect(part)}"
+  end
+
+  # Billboard reads a section's `:action` and `:actions` as its actions,
+  # by their kind and style (`Billboard.Rules.actions_of/1`), so they must
+  # hold billboard's action part.
+  defp actions(%Field{as: as, name: name, part: part}, :component)
+       when as in [:part, :list] and name in @actions and part not in [nil, :action, :link] do
+    [
+      "`#{inspect(name)}` is a #{as} of #{inspect(part)} in `editor`, but billboard reads a " <>
+        "section's `#{inspect(name)}` as its actions (`Billboard.Parts.Action`). Make it " <>
+        "`part: :action`, or give the attribute another name"
+    ]
+  end
+
+  defp actions(_entry, _owner), do: []
 
   # A part is an Ash resource; `Billboard.Component.Verifiers.VerifyParts`
   # checks the rest of what it must be.

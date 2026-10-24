@@ -38,7 +38,7 @@ defmodule Billboard.CatalogueTest do
 
   test "lists the site's components in its order, the palette's" do
     assert Catalogue.keys() ==
-             ~w(hero band cards text points text_media details reviews news columns shared)a
+             ~w(hero band cards text notes points text_media details reviews news columns shared)a
 
     assert Enum.map(Catalogue.entries(), & &1.key) == Catalogue.keys()
   end

@@ -1,13 +1,16 @@
 defmodule Billboard.Part.Verifiers.VerifyBlank do
   @moduledoc """
-  Checks that every key of a site part's blank is one the part's primary
-  create accepts, so a new item, which is built through create, never
-  starts with a field it can't hold. The message names the fix: add the
-  attribute, make it public, or add it to a hand-written create's
-  `accept`. Its error is a compile warning, as every Spark verifier's is.
+  Checks that every top-level key of a site part's blank is one the
+  part's primary create accepts, so a new item, which is built through
+  create, never starts with a field it can't hold. The message names the
+  fix: add the attribute, make it public, or add it to a hand-written
+  create's `accept`. Its error is a compile warning, as every Spark
+  verifier's is.
 
-  A part with no primary create is left alone: `Billboard.Component`'s
-  checks on the component holding it name what a part needs.
+  It checks the top-level keys only: what a nested part's map holds is
+  left to that part's create, when a new item is built. A part with no
+  primary create is left to `Billboard.Part.Verifiers.VerifyActions`,
+  which refuses it.
   """
   use Spark.Dsl.Verifier
 

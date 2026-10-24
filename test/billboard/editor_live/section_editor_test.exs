@@ -1472,6 +1472,31 @@ defmodule Billboard.EditorLive.SectionEditorTest do
     end
   end
 
+  describe "a site's own part" do
+    # The shop's Notes holds the guides' question (`Billboard.Part`).
+    defp notes! do
+      make_live("/", [
+        {"hero", :hero, %{heading: "Everything for the shop"}},
+        {"notes", :notes, %{items: [%{title: "Where are you?", body: "On the high street."}]}}
+      ])
+    end
+
+    test "adds an item from the part's own blank, and types into its words" do
+      notes!()
+      lv = open("/", "notes")
+
+      lv |> element("#section-add-items", "Add a question") |> render_click() |> settled(lv)
+
+      assert [%{title: "Where are you?"}, %{title: "Your question", body: nil}] =
+               content("/", "notes").items
+
+      edit_words(lv, "items.1.body", "Every day but Sunday.")
+
+      assert [_, %{title: "Your question", body: "Every day but Sunday."}] =
+               content("/", "notes").items
+    end
+  end
+
   describe "a Shared section" do
     test "links to the library with it open, by the editor's address" do
       about!()
