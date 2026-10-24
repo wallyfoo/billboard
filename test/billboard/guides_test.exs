@@ -61,6 +61,44 @@ defmodule Billboard.GuidesTest do
     assert length(sketches) <= 4
   end
 
+  describe "the parts guide" do
+    # Each stock part's section has a table of its fields, whose first
+    # column is each field in backticks, and a table of what the editor
+    # shows, whose first column is plain words, so the scan sees only the
+    # fields.
+    test "lists each stock part's fields, and only those" do
+      text = File.read!("guides/parts.md")
+
+      # Six modules: `:link`, among `Parts.parts/0`, is an action.
+      alias Billboard.Parts.{Action, Detail, Head, Photo, Point, Quote}
+
+      for module <- [Head, Action, Photo, Point, Detail, Quote] do
+        section = Guides.section(text, inspect(module))
+
+        assert section,
+               "guides/parts.md has no section naming #{inspect(module)}. Give it a heading " <>
+                 "that names `#{inspect(module)}`"
+
+        fields =
+          for %{name: name, public?: true} <- Ash.Resource.Info.attributes(module),
+              name != :id,
+              do: to_string(name)
+
+        for field <- fields do
+          assert section =~ "| `#{field}` |",
+                 "guides/parts.md leaves out #{inspect(module)}'s `#{field}`. Add a row for it " <>
+                   "to the fields table"
+        end
+
+        named = for [_, field] <- Regex.scan(~r/^\| `([a-z_]+)` \|/m, section), do: field
+
+        assert Enum.sort(named) == Enum.sort(fields),
+               "guides/parts.md names fields #{inspect(module)} hasn't got, or names one twice: " <>
+                 "#{inspect(named -- fields)}"
+      end
+    end
+  end
+
   # The checks, on guides written here, so each is seen to pass what's
   # right and fail what isn't before any guide leans on it.
   describe "the check itself" do
@@ -303,6 +341,35 @@ defmodule Billboard.GuidesTest do
       assert_raise ExUnit.AssertionError, ~r/guides\/a.md:1 is a sketch that isn't Elixir/, fn ->
         assert_sketch(block(:sketch, "precommit: [1]"))
       end
+    end
+
+    test "reads the section a heading names, to the next heading as high" do
+      guide = """
+      # A guide
+
+      ## Head (`Billboard.Parts.Head`)
+
+      | `heading` | text |
+
+      ```elixir
+      # Not a heading.
+      ```
+
+      ### Within it
+
+      ## Action (`Billboard.Parts.Action`)
+
+      The next one.
+      """
+
+      section = Guides.section(guide, "Billboard.Parts.Head")
+
+      assert section =~ ~r/\A## Head/
+      assert section =~ "# Not a heading."
+      assert section =~ "### Within it"
+      refute section =~ "Action"
+      assert Guides.section(guide, "Billboard.Parts.Action") =~ "The next one."
+      assert Guides.section(guide, "Billboard.Parts.Quote") == nil
     end
 
     test "names a link to the source at another version, or at a path that isn't there" do

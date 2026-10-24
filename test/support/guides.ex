@@ -110,15 +110,13 @@ defmodule Billboard.Test.Guides do
   # A fenced block's lines, until the fence that closes it: the same
   # character, at least as many times, alone on its line.
   defp fenced(lines, fence) do
-    char = String.first(fence)
-
-    {body, rest} =
-      Enum.split_while(lines, fn {line, _n} ->
-        not (String.trim(line)
-             |> String.match?(~r/^#{Regex.escape(char)}{#{byte_size(fence)},}$/))
-      end)
-
+    {body, rest} = Enum.split_while(lines, fn {line, _n} -> not closing_fence?(line, fence) end)
     {Enum.map(body, &elem(&1, 0)), Enum.drop(rest, 1)}
+  end
+
+  defp closing_fence?(line, fence) do
+    char = String.first(fence)
+    String.trim(line) =~ ~r/^#{Regex.escape(char)}{#{byte_size(fence)},}$/
   end
 
   # An indented block's lines: while each is blank or four spaces in,
@@ -209,6 +207,42 @@ defmodule Billboard.Test.Guides do
       |> Enum.min(fn -> 0 end)
 
     Enum.map(lines, &String.slice(&1, indent..-1//1))
+  end
+
+  @doc """
+  The part of a guide's `text` that a heading naming `name` in backticks
+  starts, to the next heading of the same level or higher, or nil when no
+  heading names it. A line in a fenced block is never a heading, so an
+  Elixir comment there doesn't end the section.
+  """
+  def section(text, name) do
+    {lines, _fence} =
+      text
+      |> String.split("\n")
+      |> Enum.map_reduce(nil, fn line, fence ->
+        cond do
+          fence && closing_fence?(line, fence) -> {{line, nil}, nil}
+          fence -> {{line, nil}, fence}
+          open = opening_fence(line) -> {{line, nil}, open}
+          true -> {{line, heading_level(line)}, nil}
+        end
+      end)
+
+    case Enum.drop_while(lines, fn {line, level} -> !(level && line =~ "`#{name}`") end) do
+      [] ->
+        nil
+
+      [{_heading, level} = start | rest] ->
+        body = Enum.take_while(rest, fn {_line, other} -> is_nil(other) or other > level end)
+        Enum.map_join([start | body], "\n", &elem(&1, 0))
+    end
+  end
+
+  defp heading_level(line) do
+    case Regex.run(~r/^(\#{1,6})\s/, line) do
+      [_, hashes] -> byte_size(hashes)
+      nil -> nil
+    end
   end
 
   @doc "The `mix` tasks a guide's `run` blocks may name that aren't billboard's."
