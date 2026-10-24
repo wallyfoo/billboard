@@ -52,6 +52,9 @@ defmodule Billboard.MixProject do
       {:plug, "~> 1.15"},
       # Uploads are named with `Ecto.UUID`.
       {:ecto, "~> 3.14"},
+      # `Billboard.ComponentCase` checks out the site's repo in the SQL
+      # sandbox. AshPostgres brings it to every site already.
+      {:ecto_sql, "~> 3.13"},
       {:lazy_html, "~> 0.1", only: :test},
       # The generators (`mix billboard.install` and
       # `mix billboard.gen.component`) are Igniter tasks. A site has

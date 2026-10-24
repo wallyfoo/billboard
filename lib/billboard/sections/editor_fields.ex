@@ -170,6 +170,18 @@ defmodule Billboard.Sections.EditorFields do
   def more?(spec), do: Keyword.get(spec, :more, false)
 
   @doc """
+  Whether the controls header draws this setting: a `:select` or
+  `:variants` only with two options or more left (`narrowed/1`), since
+  one is a choice the site has made; any other field, always.
+  """
+  @spec drawn?(keyword()) :: boolean()
+  def drawn?(spec) do
+    if Keyword.get(spec, :as) in [:select, :variants],
+      do: match?([_, _ | _], spec[:options]),
+      else: true
+  end
+
+  @doc """
   The field a path names (`["points", "1", "link"]`), as the form path
   under the content (`[:points, 1, :link]`), with its spec. Only a `:part`
   or `:list` field resolves, and only through the specs, so a path from

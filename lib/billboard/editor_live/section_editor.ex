@@ -1247,7 +1247,7 @@ defmodule Billboard.EditorLive.SectionEditor do
         # with one option is.
         variants:
           Enum.find_value(shown, fn {_field, spec} ->
-            as.(spec) == :variants && match?([_, _ | _], spec[:options]) && spec[:options]
+            as.(spec) == :variants && EditorFields.drawn?(spec) && spec[:options]
           end),
         variant: to_string(content_form[:variant].value),
         ground: ground,
@@ -1256,7 +1256,7 @@ defmodule Billboard.EditorLive.SectionEditor do
           for(
             {field, spec} <- shown,
             as.(spec) in @setting_kinds,
-            as.(spec) != :select or match?([_, _ | _], spec[:options]),
+            EditorFields.drawn?(spec),
             do:
               {field,
                if(as.(spec) == :shared, do: [label: "Swap for another"] ++ spec, else: spec)}

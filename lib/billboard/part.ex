@@ -38,8 +38,9 @@ defmodule Billboard.Part do
   typed in place, at the item's path, such as `questions.0.title`, and
   its other fields are drawn in the item's tools. `blank` must pass the
   part's validations, since a new item is built from it; its keys are
-  checked as the part compiles. Its words are filler the editor warns
-  about until they're written over (`Billboard.EditorLive.Filler`).
+  checked as the part compiles, and `Billboard.ComponentCase` builds it.
+  Its words are filler the editor warns about until they're written over
+  (`Billboard.EditorLive.Filler`).
 
   An item's tools change words, selects, toggles, numbers, a choice, a
   surface, and a part, and show notes; the rest of what a component's

@@ -8,7 +8,7 @@ defmodule Billboard.ContentTest do
     types = Shop.Content.subtype_constraints()[:types]
 
     assert Keyword.keys(types) ==
-             ~w(hero band cards text notes points text_media details faq reviews news columns shared)a
+             ~w(hero band cards text notes points text_media details faq reviews news columns shared unwritten)a
 
     for {key, module} <- [
           hero: Billboard.Components.Hero,

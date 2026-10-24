@@ -62,6 +62,18 @@ defmodule Billboard.Sections.EditorFieldsTest do
     end
   end
 
+  describe "drawn?/1" do
+    test "leaves out a select or variants with fewer than two options, and draws the rest" do
+      assert EditorFields.drawn?(as: :select, options: [{"Rows", :rows}, {"Cards", :cards}])
+      refute EditorFields.drawn?(as: :select, options: [{"Rows", :rows}])
+      refute EditorFields.drawn?(as: :select, options: [])
+      assert EditorFields.drawn?(as: :variants, options: [:media_left, :media_right])
+      refute EditorFields.drawn?(as: :variants, options: [:media_left])
+      assert EditorFields.drawn?(as: :toggle, label: "Show")
+      assert EditorFields.drawn?(as: :number, label: "Count")
+    end
+  end
+
   describe "fields/1" do
     defp doc(html), do: LazyHTML.from_fragment(html)
 

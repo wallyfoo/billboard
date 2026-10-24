@@ -5,12 +5,14 @@ defmodule Billboard.Test.Shop do
   A test overrides its surfaces, offers, options, rules, kinds, and
   palette with `Billboard.Test.Env.put_shop!/1`.
 
-  It's on billboard's stock components, with three of its own, Cards,
-  Text, and Notes, whose items are a site's own part, and the guides'
-  FAQ (`MySite.Sections.Faq`). Its `kinds:` keep the hero off the
-  library, the band and the points to free pages and the library, Two
-  columns to free pages, and Shared to free and item pages. Its action
-  kinds and context are the test site's (`Billboard.Test.Actions` and
+  It's on billboard's stock components, with four of its own: Cards,
+  Text, Notes, whose items are a site's own part, and Unwritten, which
+  draws a words entry as plain text, for `Billboard.ComponentCase` to
+  name; and the guides' FAQ (`MySite.Sections.Faq`). Its `kinds:` keep
+  the hero off the library, the band and the points to free pages and
+  the library, Two columns to free pages, Shared to free and item pages,
+  and Unwritten off every page's palette. Its action kinds and context
+  are the test site's (`Billboard.Test.Actions` and
   `Billboard.Test.Context`), its reviews and news are a test's own
   (`Billboard.Test.Data`), and its chrome is `Billboard.Test.Layout`. It
   names a filter's event as its pages' own (`page_events:`), as a site
@@ -44,7 +46,8 @@ defmodule Billboard.Test.Shop do
       Billboard.Components.Reviews,
       Billboard.Components.News,
       Billboard.Components.Columns,
-      Billboard.Components.Shared
+      Billboard.Components.Shared,
+      Test.Unwritten
     ],
     surfaces: [%{name: "plain", label: "Plain"}, %{name: "loud", label: "Loud"}],
     offered: [page: ["plain"], stand_out: ["loud"], card: []],
@@ -59,7 +62,8 @@ defmodule Billboard.Test.Shop do
       band: [:free, :library],
       points: [:free, :library],
       columns: [:free],
-      shared: [:free, :item]
+      shared: [:free, :item],
+      unwritten: []
     ],
     reserved_ids: [
       ids: ~w(shop-header),
