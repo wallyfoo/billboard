@@ -1,10 +1,12 @@
 defmodule Billboard.MixProject do
   use Mix.Project
 
+  @version "0.4.0"
+
   def project do
     [
       app: :billboard,
-      version: "0.4.0",
+      version: @version,
       elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Colocated hooks reach a site's bundle only if billboard runs
@@ -13,7 +15,10 @@ defmodule Billboard.MixProject do
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :test,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      name: "Billboard",
+      source_url: "https://github.com/wallyfoo/billboard",
+      docs: docs()
     ]
   end
 
@@ -47,7 +52,33 @@ defmodule Billboard.MixProject do
       # Uploads are named with `Ecto.UUID`.
       {:ecto, "~> 3.14"},
       {:lazy_html, "~> 0.1", only: :test},
-      {:sourceror, "~> 1.8", only: [:dev, :test]}
+      # The generators (`mix billboard.install` and
+      # `mix billboard.gen.component`) are Igniter tasks. A site has
+      # Igniter in dev and test; without it, the tasks say how to add it.
+      {:igniter, "~> 0.8.4", optional: true},
+      # The generators' tests build a Phoenix project in memory.
+      {:phx_new, "~> 1.8", only: :test},
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      # Spark's formatter uses Sourceror, and Igniter needs it in every
+      # env, so it can't be dev-and-test only here. Optional, so a site
+      # gets it only with Igniter, which brings its own.
+      {:sourceror, "~> 1.8", optional: true}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "getting-started",
+      source_ref: "v#{@version}",
+      extras: [
+        "guides/getting-started.md",
+        "guides/writing-a-component.md",
+        "guides/parts.md",
+        "guides/theming.md",
+        "guides/page-kinds-and-bound-sections.md",
+        "guides/why-the-rules-exist.md"
+      ],
+      groups_for_extras: [Guides: ~r{guides/}]
     ]
   end
 

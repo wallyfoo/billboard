@@ -14,5 +14,5 @@
     name: Billboard.Test.Supervisor
   )
 
-ExUnit.start()
+ExUnit.start(exclude: [:integration])
 Ecto.Adapters.SQL.Sandbox.mode(Billboard.Test.Repo, :manual)
