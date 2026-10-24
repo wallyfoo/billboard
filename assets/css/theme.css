@@ -8,15 +8,19 @@
    with a name the site already has, such as daisyUI's card. */
 
 /* A site imports this after its own tokens, and lets Tailwind read the
-   stock sections' classes, through the link `mix billboard.assets`
+   classes billboard draws, through the link `mix billboard.assets`
    makes:
 
      @import "../vendor/billboard/assets/css/theme.css";
      @source "../vendor/billboard/lib/billboard/sections";
+     @source "../vendor/billboard/lib/billboard/sections.ex";
+     @source "../vendor/billboard/lib/billboard/editor_live.ex";
+     @source "../vendor/billboard/lib/billboard/editor_live";
+     @source "../vendor/billboard/lib/billboard/editor";
 
-   Every class billboard draws is in its sections, so Tailwind reads only
-   them: the words in the rest of its code would build utilities no page
-   uses, such as table and shrink.
+   Every class billboard draws is in its sections, the page, and the
+   editor, so Tailwind reads only them: the words in the rest of its code
+   would build utilities no page uses, such as table and shrink.
 
    A site that clears Tailwind's colours (--color-*: initial) does so
    before this file, or it clears the theme's too. */

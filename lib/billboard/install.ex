@@ -109,12 +109,20 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    @doc "`priv/templates/DIR/NAME`, rendered with `assigns`."
+    @doc """
+    `priv/templates/DIR/NAME`, rendered with `assigns`, less the lines
+    that mark the regions billboard's guides quote (`/* guide:paper */`
+    and `/* guide:end */`, or `# guide:NAME`), which mean nothing to a
+    site.
+    """
     def template(dir, name, assigns) do
       :billboard
       |> :code.priv_dir()
       |> Path.join("templates/#{dir}/#{name}")
       |> EEx.eval_file(assigns: Map.to_list(assigns))
+      |> String.split("\n")
+      |> Enum.reject(&(String.trim(&1) =~ ~r{^(?:/\* guide:\S+ \*/|# guide:\S+)$}))
+      |> Enum.join("\n")
     end
 
     @doc """

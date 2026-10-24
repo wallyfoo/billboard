@@ -598,6 +598,26 @@ defmodule Mix.Tasks.Billboard.InstallTest do
                              assets/css/billboard-tokens.css .gitignore))
     end
 
+    # The template marks the regions the theming guide quotes; a site's
+    # file is the template without those lines, and nothing else changed.
+    test "writes the tokens file without the lines that mark the guides' regions" do
+      written = project() |> install() |> content("assets/css/billboard-tokens.css")
+
+      template =
+        File.read!(
+          Path.expand("../../../priv/templates/billboard.install/billboard-tokens.css", __DIR__)
+        )
+
+      assert template =~ "/* guide:paper */"
+      refute written =~ "guide:"
+
+      assert written ==
+               template
+               |> String.split("\n")
+               |> Enum.reject(&(&1 =~ ~r{^/\* guide:\S+ \*/$}))
+               |> Enum.join("\n")
+    end
+
     test "leaves alone a tokens file the site has, though nothing has read it yet" do
       path = "assets/css/billboard-tokens.css"
 
@@ -714,6 +734,11 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       # file.
       assert vendored.(readme) == written
       assert vendored.(assets_doc) == written
+
+      # The theme's own header names its import and every source line.
+      theme = vendored.(File.read!(Path.expand("../../../assets/css/theme.css", __DIR__)))
+      assert MapSet.subset?(theme, written)
+      assert MapSet.subset?(MapSet.new(Billboard.Install.sources()), theme)
 
       for line <- written do
         [_, path] = Regex.run(~r/"\.\.\/vendor\/billboard\/([^"]+)"/, line)

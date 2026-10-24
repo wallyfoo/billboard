@@ -11,6 +11,7 @@
    A token set here that a surface doesn't change is the same on that
    surface, since custom properties inherit. */
 
+/* guide:paper */
 :root,
 .bb-surface-paper {
   /* Ink, on whatever ground a section sits on. */
@@ -40,6 +41,7 @@
   --bb-on-action-2: #ffffff;       /* its ink when it fills on hover */
   /* --bb-on-action-hover: falls back to --bb-on-action */
 }
+/* guide:end */
 
 :root {
   /* The photograph stand-in, and its pattern. The nine noise tokens have
@@ -156,7 +158,9 @@
    light value on the dark page: one taken out of its comment there, such
    as --bb-title, --bb-subheading, --bb-eyebrow, or --bb-link-hover,
    needs a line in each. The band stays near-black, so it still stands
-   out from the page. A site with one theme can delete both. */
+   out from the page; to give it another ground in the dark theme, set
+   --band-ground in both. A site with one theme can delete both. */
+/* guide:dark */
 [data-theme=dark],
 [data-theme=dark] .bb-surface-paper {
   --bb-ink: #e6e8eb;
@@ -182,6 +186,7 @@
      sets a white one for the light theme, is dark too. */
   --paper-ground: var(--color-base-100, #292f37);
 }
+/* guide:end */
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]),
@@ -211,6 +216,7 @@
   }
 }
 
+/* guide:surfaces */
 /* Sections name their surface in their data, so no source file names
    these classes for Tailwind to find. This keeps both in the build. */
 @source inline("bb-surface-{paper,band}");
@@ -223,10 +229,12 @@
   color: var(--bb-ink);
 }
 
-/* The stand-out band: the hero, and any Band section. It redefines the
-   ink, line, focus, and action tokens for everything inside it. */
+/* The stand-out band: the hero, and any Band section. Its ground is
+   --band-ground, near-black unless the site sets it, as it may on :root
+   and in each theme. It redefines the ink, line, focus, and action
+   tokens for everything inside it. */
 @utility bb-surface-band {
-  background-color: #1c1c1c;
+  background-color: var(--band-ground, #1c1c1c);
   color: #ffffff;
   --bb-ink: #e8e8e8;
   --bb-ink-soft: #b8b8b8;
@@ -246,3 +254,4 @@
   --bb-on-action-2: #1c1c1c;
   --paper-ground: #ffffff;
 }
+/* guide:end */

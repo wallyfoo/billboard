@@ -31,6 +31,18 @@ defmodule Billboard.Test.Theme do
   end
 
   @doc """
+  Every `--bb-*` token `paths` (one or a list) read in a `var(…)` or set
+  as `--bb-x: …`, sorted and unique: what a file reads, and what it
+  declares, as `editor.css` declares its own tokens on `:root`.
+  """
+  def read_or_set_tokens(paths) do
+    set =
+      for [_, token] <- Regex.scan(~r/(?<![\w-])(--bb-[a-z0-9-]+)\s*:/, read(paths)), do: token
+
+    Enum.sort(Enum.uniq(tokens(paths) ++ set))
+  end
+
+  @doc """
   The tokens `paths` (one or a list) read at least once with no
   fallback, as `var(--bb-x)`, and never set themselves: a site must set
   each.

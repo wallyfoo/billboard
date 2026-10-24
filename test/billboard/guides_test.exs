@@ -8,7 +8,7 @@ defmodule Billboard.GuidesTest do
   # The failing examples compile modules, and purge them after.
   use ExUnit.Case, async: false
 
-  alias Billboard.Test.Guides
+  alias Billboard.Test.{Guides, Theme}
 
   @version Mix.Project.config()[:version]
 
@@ -95,6 +95,46 @@ defmodule Billboard.GuidesTest do
         assert Enum.sort(named) == Enum.sort(fields),
                "guides/parts.md names fields #{inspect(module)} hasn't got, or names one twice: " <>
                  "#{inspect(named -- fields)}"
+      end
+    end
+  end
+
+  describe "the theming guide" do
+    # Every token a site sets for billboard: those the theme, the
+    # sections, and the buttons read, and the nine noise tokens, which the
+    # placeholder reads through inline styles that name them by number.
+    test "names every token the theme reads, and no token it doesn't" do
+      text = File.read!("guides/theming.md")
+      noise = for n <- 1..9, do: "--bb-noise-#{n}"
+
+      for token <- Theme.site_tokens() ++ noise do
+        assert text =~ ~r/`#{Regex.escape(token)}(?![a-z0-9-])/,
+               "guides/theming.md leaves out #{token}. Name it, in backticks, with what it's " <>
+                 "for and its fallback"
+      end
+
+      # What billboard reads or sets: the site's tokens, and the editor's
+      # own, which editor.css sets on :root. A family, such as
+      # `--bb-edit-*`, must name the start of some token.
+      known = Theme.read_or_set_tokens(Theme.site_reads()) ++ noise
+      named = for [_, t] <- Regex.scan(~r/`(--bb-[a-z0-9-]*[a-z0-9])(?![a-z0-9-])/, text), do: t
+      stray = Enum.uniq(named) -- known
+
+      assert stray == [],
+             "guides/theming.md names tokens billboard doesn't read: #{Enum.join(stray, ", ")}"
+
+      for [_, family] <- Regex.scan(~r/`(--bb-[a-z0-9-]+-)\*`/, text) do
+        assert Enum.any?(known, &String.starts_with?(&1, family)),
+               "guides/theming.md names the family #{family}*, which no token is in"
+      end
+    end
+
+    test "names every hook class" do
+      text = File.read!("guides/theming.md")
+
+      for hook <- ~w(bb-title bb-eyebrow bb-heading bb-section-head bb-point bb-detail
+                     bb-item-title bb-quote bb-photo bb-button bb-link) do
+        assert text =~ "| `#{hook}` |", "guides/theming.md's table of hooks leaves out #{hook}"
       end
     end
   end

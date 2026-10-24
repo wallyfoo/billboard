@@ -94,6 +94,18 @@ defmodule Billboard.TokensTemplateTest do
     refute "--bb-placeholder-chip" in set_tokens(band)
   end
 
+  # Near-black unless the site sets --band-ground, which it may set for
+  # each theme, as it sets paper's tokens. The band never sets it, so a
+  # value set on :root or in the dark blocks reaches it.
+  test "paints the band --band-ground, which falls back to near-black" do
+    template = File.read!(@template)
+    [_, band] = Regex.run(~r/@utility bb-surface-band\s*\{(.*?)\n\}/s, template)
+
+    assert band =~ ~r/^\s*background-color: var\(--band-ground, #1c1c1c\);$/m
+    refute "--band-ground" in set_tokens(band)
+    refute template =~ ~r/^\s*--band-ground:/m
+  end
+
   defp set_tokens(block),
     do: for([_, token] <- Regex.scan(~r/^\s*(--[a-z0-9-]+):/m, block), do: token)
 
