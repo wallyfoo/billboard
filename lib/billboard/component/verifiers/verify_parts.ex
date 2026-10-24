@@ -9,6 +9,11 @@ defmodule Billboard.Component.Verifiers.VerifyParts do
     * In a `parts` list, it must have an `:id` primary key, because a list
       item without one is rebuilt from its params alone.
 
+  And whatever declares them, a `part`, a `parts` list, or a plain
+  attribute, a component's `:action` must hold `Billboard.Parts.Action`
+  and its `:actions` a list of them, since billboard's rules read a
+  section's buttons there (`Billboard.Rules.actions_of/1`).
+
   Its errors are compile warnings, as every Spark verifier's are.
   """
   use Spark.Dsl.Verifier
@@ -16,27 +21,50 @@ defmodule Billboard.Component.Verifiers.VerifyParts do
   alias Billboard.Component.Parts
   alias Spark.Dsl.Verifier
 
+  # The attributes billboard's rules read a section's buttons from, and
+  # the type each must have.
+  @actions [
+    action: {Billboard.Parts.Action, "button", "Billboard.Parts.Action", "part"},
+    actions:
+      {{:array, Billboard.Parts.Action}, "buttons", "a list of Billboard.Parts.Action", "parts"}
+  ]
+
   @impl true
   def verify(dsl_state) do
     module = Verifier.get_persisted(dsl_state, :module)
 
-    dsl_state
-    |> Verifier.get_entities([:component])
-    |> Enum.find_value(:ok, fn part ->
-      case problem(part) do
-        nil ->
-          nil
+    parts =
+      dsl_state
+      |> Verifier.get_entities([:component])
+      |> Enum.map(&{[:component, &1.name], &1, problem(&1)})
 
-        message ->
-          {:error,
-           Spark.Error.DslError.exception(
-             module: module,
-             path: [:component, part.name],
-             location: Spark.Dsl.Entity.anno(part),
-             message: message
-           )}
-      end
+    actions =
+      for {name, expected} <- @actions,
+          attribute = Ash.Resource.Info.attribute(dsl_state, name),
+          do: {[:attributes, name], attribute, action_problem(name, attribute, expected)}
+
+    Enum.find_value(parts ++ actions, :ok, fn
+      {_path, _entity, nil} ->
+        nil
+
+      {path, entity, message} ->
+        {:error,
+         Spark.Error.DslError.exception(
+           module: module,
+           path: path,
+           location: Spark.Dsl.Entity.anno(entity),
+           message: message
+         )}
     end)
+  end
+
+  defp action_problem(name, attribute, {type, what, holding, entity}) do
+    if Ash.Type.get_type(attribute.type) == type,
+      do: nil,
+      else:
+        "`#{inspect(name)}` is where billboard's rules read a section's #{what}, so it must " <>
+          "hold #{holding}, as `#{entity} #{inspect(name)}, Billboard.Parts.Action` does. " <>
+          "Rename it, or hold `Billboard.Parts.Action`."
   end
 
   defp problem(part) do

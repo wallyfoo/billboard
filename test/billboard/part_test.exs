@@ -387,7 +387,35 @@ defmodule Billboard.PartTest do
         end
 
       assert messages(errors) == [
-               "`:actions` is a list of MySite.Sections.Faq.Question in `editor`, but " <>
+               "`:actions` is where billboard's rules read a section's buttons, so it must " <>
+                 "hold a list of Billboard.Parts.Action, as " <>
+                 "`parts :actions, Billboard.Parts.Action` does. " <>
+                 "Rename it, or hold `Billboard.Parts.Action`."
+             ]
+    end
+
+    test "refuse a section's actions edited as anything but billboard's actions" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.PartTest.AsksAsPoints do
+            use Billboard.Component
+
+            component do
+              key :asks_as_points
+              label "Asks"
+              hint "x"
+              category :content
+              parts :actions, Billboard.Parts.Action
+            end
+
+            editor do
+              field :actions, as: :list, part: :point
+            end
+          end
+        end
+
+      assert messages(errors) == [
+               "`:actions` is a list of :point in `editor`, but " <>
                  "billboard reads a section's `:actions` as its actions " <>
                  "(`Billboard.Parts.Action`). Make it `part: :action`, or give the attribute " <>
                  "another name"

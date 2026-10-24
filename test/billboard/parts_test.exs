@@ -131,6 +131,48 @@ defmodule Billboard.PartsTest do
                  "`defaults [:read, :destroy, create: :*, update: :*]` to its actions."
     end
 
+    test "refuses an `:action` that isn't billboard's action, which the rules read" do
+      assert error_message(fn ->
+               defmodule Elixir.Billboard.PartsTest.OtherAction do
+                 use Billboard.Component
+
+                 component do
+                   key :x
+                   label "X"
+                   hint "x"
+                   category :paper
+                   part :action, Billboard.Test.Title
+                 end
+               end
+             end) ==
+               "`:action` is where billboard's rules read a section's button, so it must " <>
+                 "hold Billboard.Parts.Action, as `part :action, Billboard.Parts.Action` does. " <>
+                 "Rename it, or hold `Billboard.Parts.Action`."
+    end
+
+    test "refuses `:actions` that aren't billboard's actions, even as a plain attribute" do
+      assert error_message(fn ->
+               defmodule Elixir.Billboard.PartsTest.OtherActions do
+                 use Billboard.Component
+
+                 component do
+                   key :x
+                   label "X"
+                   hint "x"
+                   category :paper
+                 end
+
+                 attributes do
+                   attribute :actions, {:array, :string}, public?: true
+                 end
+               end
+             end) ==
+               "`:actions` is where billboard's rules read a section's buttons, so it must " <>
+                 "hold a list of Billboard.Parts.Action, as " <>
+                 "`parts :actions, Billboard.Parts.Action` does. " <>
+                 "Rename it, or hold `Billboard.Parts.Action`."
+    end
+
     test "refuses a part that isn't an Ash resource" do
       assert error_message(fn ->
                defmodule Elixir.Billboard.PartsTest.NotResourcePart do

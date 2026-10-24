@@ -7,16 +7,16 @@ defmodule Billboard.Test.Shop do
 
   It's on billboard's stock components, with three of its own, Cards,
   Text, and Notes, whose items are a site's own part, and the guides'
-  FAQ (`MySite.Sections.Faq`). Its `kinds:` keep the hero off the library, the band and the
-  points to free pages and the library, Two columns to free pages, and
-  Shared to free and item pages. Its action kinds and context are the
-  test site's (`Billboard.Test.Actions` and `Billboard.Test.Context`),
-  its reviews and news are a test's own (`Billboard.Test.Data`), and its
-  chrome is `Billboard.Test.Layout`. It names a filter's event as its
-  pages' own (`page_events:`), as a site with a filter on a page would.
-  Its pages: a free home page and
-  about page, an item page whose kind takes no Two columns, a fixed
-  terms page, and the library.
+  FAQ (`MySite.Sections.Faq`). Its `kinds:` keep the hero off the
+  library, the band and the points to free pages and the library, Two
+  columns to free pages, and Shared to free and item pages. Its action
+  kinds and context are the test site's (`Billboard.Test.Actions` and
+  `Billboard.Test.Context`), its reviews and news are a test's own
+  (`Billboard.Test.Data`), and its chrome is `Billboard.Test.Layout`. It
+  names a filter's event as its pages' own (`page_events:`), as a site
+  with a filter on a page would. Its pages: a free home page and about
+  page, an item page whose kind takes no Two columns, a fixed terms
+  page, and the library.
   """
   alias Billboard.Test
 

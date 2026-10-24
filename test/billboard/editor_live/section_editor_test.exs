@@ -1481,7 +1481,7 @@ defmodule Billboard.EditorLive.SectionEditorTest do
       ])
     end
 
-    test "adds an item from the part's own blank, and types into its words" do
+    test "adds an item from the part's own blank, and saves words sent to its path" do
       notes!()
       lv = open("/", "notes")
 

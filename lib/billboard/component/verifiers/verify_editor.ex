@@ -12,8 +12,8 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   them; and a select's `only_on` names its options. A part or list
   naming a site's part by its module edits an attribute of that part,
   and a component's `:action` or `:actions`, which billboard reads as
-  the section's actions (`Billboard.Rules.actions_of/1`), holds
-  `:action` or `:link` parts.
+  the section's actions (`Billboard.Rules.actions_of/1`), is edited as
+  `:action` or `:link` parts (`VerifyParts` checks that it holds them).
 
   It checks a site's part's `editor` too (`Billboard.Part`), whose
   fixes are worded for a part, which holds its own parts in attributes.
@@ -112,7 +112,7 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
           words(entry, attribute) ++
           part(entry) ++
           part_attribute(entry, attribute, owner) ++
-          actions(entry, owner) ++
+          actions(entry, attribute, owner) ++
           from(entry) ++
           options(entry) ++
           one_of(entry, attribute) ++
@@ -279,17 +279,29 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
 
   # Billboard reads a section's `:action` and `:actions` as its actions,
   # by their kind and style (`Billboard.Rules.actions_of/1`), so they must
-  # hold billboard's action part.
-  defp actions(%Field{as: as, name: name, part: part}, :component)
+  # hold billboard's action part, and be edited as one. An attribute that
+  # holds something else is `VerifyParts`' to refuse, once.
+  defp actions(%Field{as: as, name: name, part: part}, attribute, :component)
        when as in [:part, :list] and name in @actions and part not in [nil, :action, :link] do
+    if holds_action?(attribute), do: actions_message(as, name, part), else: []
+  end
+
+  defp actions(_entry, _attribute, _owner), do: []
+
+  defp holds_action?(attribute),
+    do:
+      Ash.Type.get_type(attribute.type) in [
+        Billboard.Parts.Action,
+        {:array, Billboard.Parts.Action}
+      ]
+
+  defp actions_message(as, name, part) do
     [
       "`#{inspect(name)}` is a #{as} of #{inspect(part)} in `editor`, but billboard reads a " <>
         "section's `#{inspect(name)}` as its actions (`Billboard.Parts.Action`). Make it " <>
         "`part: :action`, or give the attribute another name"
     ]
   end
-
-  defp actions(_entry, _owner), do: []
 
   # A part is an Ash resource; `Billboard.Component.Verifiers.VerifyParts`
   # checks the rest of what it must be.
