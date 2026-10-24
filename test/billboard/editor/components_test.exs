@@ -255,7 +255,9 @@ defmodule Billboard.Editor.ComponentsTest do
 
     # Tailwind sorts a variant's rule after a plain one, so a field with a
     # problem names no other underline, which would outweigh its own.
-    test "keeps a field's error underline, focused or holding words" do
+    # Focused, it thickens its red underline by a shadow, which takes no
+    # room, so nothing moves.
+    test "keeps a field's error underline, focused or holding words, and thickens it focused" do
       for type <- ~w(text select textarea) do
         html =
           render_component(&Components.input/1,
@@ -269,6 +271,12 @@ defmodule Billboard.Editor.ComponentsTest do
 
         doc = doc(html)
         assert has?(doc, "#heading.border-bb-edit-error.focus-visible\\:outline-none"), type
+
+        assert has?(
+                 doc,
+                 "#heading.focus\\:shadow-\\[0_1px_0_var\\(--bb-edit-error\\)\\]"
+               ),
+               type
 
         assert html |> ClassWords.words() |> Enum.filter(&String.contains?(&1, "border-bb-")) ==
                  ["border-bb-edit-error"],

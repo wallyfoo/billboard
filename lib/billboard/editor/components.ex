@@ -295,12 +295,13 @@ defmodule Billboard.Editor.Components do
   # The underline: faint while it's empty, the editor's ink once it holds
   # words (or always, for a field with no placeholder), and the editor's
   # blue while it's focused, which Tailwind sorts after the ink. A field
-  # with a problem keeps the error colour throughout, so it names neither
-  # variant, which would outweigh it.
+  # with a problem keeps the error colour throughout, so it names no
+  # other border colour, which would outweigh it; focused, its underline
+  # thickens instead, by a shadow under the border, which moves nothing.
   defp underline([]),
     do: "border-bb-edit-faint not-placeholder-shown:border-bb-edit-ink focus:border-bb-edit"
 
-  defp underline(_errors), do: "border-bb-edit-error"
+  defp underline(_errors), do: "border-bb-edit-error focus:shadow-[0_1px_0_var(--bb-edit-error)]"
 
   attr :hint, :string, default: nil
   attr :errors, :list, default: []
