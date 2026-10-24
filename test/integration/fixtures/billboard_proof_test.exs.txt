@@ -1,0 +1,42 @@
+defmodule MySiteWeb.BillboardProofTest do
+  @moduledoc """
+  Written into the site by billboard's integration check: the home
+  page's heading is typed in place, published, and read by a visitor,
+  and a visitor can't open the editor.
+  """
+  use MySiteWeb.ConnCase, async: false
+
+  import Phoenix.LiveViewTest
+
+  setup :register_and_log_in_user
+
+  # A publish puts its page in billboard's cache, outside the sandbox.
+  setup do
+    snapshot = Billboard.Cache.snapshot()
+    on_exit(fn -> Billboard.Cache.put(snapshot) end)
+  end
+
+  test "the home page is written in place, published, and seen", %{conn: conn} do
+    {:ok, editor, _html} = live(conn, "/admin/pages?page=%2F")
+
+    render_click(editor, "open_section", %{"key" => "hero"})
+
+    editor
+    |> with_target("#section-editor")
+    |> render_hook("edit_words", %{"path" => "heading", "text" => "Written in place"})
+
+    render(editor)
+
+    MySite.Pages.subscribe()
+    editor |> element("#commit-changes") |> render_click()
+    assert has_element?(editor, "#flash-info", "Published.")
+    assert_receive {:pages_updated, _node, _snapshot}
+
+    {:ok, _visitor, html} = live(build_conn(), "/")
+    assert html =~ "Written in place"
+  end
+
+  test "a visitor can't open the editor" do
+    assert {:error, {:redirect, %{to: "/users/log-in"}}} = live(build_conn(), "/admin/pages")
+  end
+end

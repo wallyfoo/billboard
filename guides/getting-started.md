@@ -91,8 +91,15 @@ destructive. It drops nothing.
 
 `--home` routes `/` to billboard in place of phx.new's home page, so
 phx.new's test of that page fails, as the installer's notice says.
-Delete `test/my_site_web/controllers/page_controller_test.exs`, and
-`PageController` once nothing else uses it.
+Delete it:
+
+<!-- run -->
+```bash
+rm test/my_site_web/controllers/page_controller_test.exs
+```
+
+and `PageController`, `PageHTML`, and `page_html/home.html.heex`, which
+nothing uses now.
 
 The rest of this section is what the installer wrote, file by file. It
 leaves alone anything that's there already, so it's safe to run again.
@@ -495,6 +502,12 @@ through the link from then on, and a switch to or from `BILLBOARD_PATH`
 would otherwise leave it pointing at the billboard no longer in use.
 `/assets/vendor/billboard` is in `.gitignore`, since the link points
 where Mix found billboard on this machine.
+
+On a Mac, if `mix assets.build` or the development server stops with
+"`mix tailwind my_site` exited with 137", macOS has killed the Tailwind
+binary Mix downloaded, because the download's signature doesn't check
+out. Sign it again for this machine, with
+`codesign --force --sign - _build/tailwind-*`, and build once more.
 
 ### The dark theme
 

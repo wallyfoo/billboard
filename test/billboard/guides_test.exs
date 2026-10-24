@@ -573,9 +573,9 @@ defmodule Billboard.GuidesTest do
 
   defp assert_run(block) do
     for line <- String.split(block.text, "\n"), line != "" do
-      assert line =~ ~r/^cd [\w.\/-]+$/ or task_known?(line),
+      assert line =~ ~r/^(cd|rm) [\w.\/-]+$/ or task_known?(line),
              "#{block.guide}:#{block.line} runs `#{line}`, which the integration check can't. " <>
-               "A `run` block holds `cd DIR` and `mix` tasks it knows (Guides.outside_tasks/0), " <>
+               "A `run` block holds `cd DIR`, `rm FILE`, and `mix` tasks it knows (Guides.outside_tasks/0), " <>
                "one to a line, with no shell operators (`&&`, `;`, `|`, `>`, or backticks), " <>
                "since each line runs as a list of arguments, not through a shell"
     end
