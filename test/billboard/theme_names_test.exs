@@ -15,7 +15,7 @@ defmodule Billboard.ThemeNamesTest do
            Path.wildcard(Path.join(@root, "assets/js/**/*.js")) ++
            Path.wildcard(Path.join(@root, "assets/css/**/*.css"))
 
-  test "it reads the stock sections and the CSS" do
+  test "it reads the stock sections, the editor's hooks, and the CSS" do
     files = Enum.map(@files, &Path.relative_to(&1, @root))
 
     for file <- ~w(lib/billboard/sections/buttons.ex
@@ -34,7 +34,11 @@ defmodule Billboard.ThemeNamesTest do
                    lib/billboard/sections/shared.ex
                    lib/billboard/sections.ex
                    lib/billboard/editor_live/palette.ex
-                   assets/css/theme.css) do
+                   assets/js/billboard.js
+                   assets/js/edit_canvas.js
+                   assets/js/inline_words.js
+                   assets/css/theme.css
+                   assets/css/editor.css) do
       assert file in files
     end
   end

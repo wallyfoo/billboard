@@ -1,0 +1,635 @@
+/* The page editor's chrome: its bar, outlines, labels, gaps, counter,
+   and "!" marks, and the palette's glyphs, drawn only from its own
+   --bb-edit-* tokens, never the site's, so it looks the same on every
+   site, and scoped under .bb-editor, the editor's container
+   (Billboard.Editor.Router), so it touches nothing outside the editor.
+   The one exception is the page's gutter and section padding, which it
+   reads to line up with the page. Its values are its defaults; a site
+   may change --bb-edit-accent. Its type names Work Sans, and its
+   glyphs Cormorant Garamond, where it reads them, falling back to the
+   system's faces: the editor ships no font files, so a site that loads
+   these faces gets them, and another its own fallbacks. */
+
+:root {
+  --bb-edit-accent: #2f6fde;
+  --bb-edit-on-accent: #ffffff;
+  --bb-edit-ink: #4a2340;
+  --bb-edit-soft: #665a68;
+  --bb-edit-faint: #d8c6d4;
+  --bb-edit-line: #e7e1e5;
+  --bb-edit-ground: #ffffff;
+  --bb-edit-ground-alt: #f4eff2;
+  --bb-edit-paper: #faf8f5;
+  --bb-edit-error: #a8462c;
+  --bb-edit-warn: #85600f;
+  --bb-edit-warn-on-ink: #e8b84b;
+  --bb-edit-disabled: #8b8290;
+  --bb-edit-ink-strong: #2e1428;
+  --bb-edit-secondary: #85600f;
+  --bb-edit-ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --bb-edit-duration: 120ms;
+  --bb-edit-duration-ui: 200ms;
+
+  /* The palette's glyphs: small sketches of each section. */
+  --bb-edit-glyph-ink: #4a2340;
+  --bb-edit-glyph-soft: #665a68;
+  --bb-edit-glyph-faint: #d8c6d4;
+  --bb-edit-glyph-paper: #faf8f5;
+  --bb-edit-glyph-accent: #85600f;
+  --bb-edit-glyph-accent-on-ink: #e8b84b;
+  --bb-edit-glyph-line: #e7e1e5;
+}
+
+/* The editor's tokens as Tailwind utilities, for the editor's templates:
+   its colours, with the editor's blue (bb-edit) for its outlines and
+   controls, the glyphs' colours, its two typefaces, and its easing. Each
+   carries the bb- prefix, as in text-bb-edit-ink and font-bb-glyph, so
+   none can clash with a name the site already has. Its durations have
+   no Tailwind namespace, so the templates read them with
+   duration-[var(--bb-edit-duration)], for a hover, and
+   duration-[var(--bb-edit-duration-ui)], for a field's focus. */
+@theme inline {
+  --color-bb-edit: var(--bb-edit-accent);
+  --color-bb-edit-on-accent: var(--bb-edit-on-accent);
+  --color-bb-edit-ink: var(--bb-edit-ink);
+  --color-bb-edit-soft: var(--bb-edit-soft);
+  --color-bb-edit-faint: var(--bb-edit-faint);
+  --color-bb-edit-line: var(--bb-edit-line);
+  --color-bb-edit-ground: var(--bb-edit-ground);
+  --color-bb-edit-ground-alt: var(--bb-edit-ground-alt);
+  --color-bb-edit-paper: var(--bb-edit-paper);
+  --color-bb-edit-error: var(--bb-edit-error);
+  --color-bb-edit-warn: var(--bb-edit-warn);
+  --color-bb-edit-warn-on-ink: var(--bb-edit-warn-on-ink);
+  --color-bb-edit-disabled: var(--bb-edit-disabled);
+  --color-bb-edit-ink-strong: var(--bb-edit-ink-strong);
+  --color-bb-edit-secondary: var(--bb-edit-secondary);
+  --color-bb-glyph-ink: var(--bb-edit-glyph-ink);
+  --color-bb-glyph-soft: var(--bb-edit-glyph-soft);
+  --color-bb-glyph-faint: var(--bb-edit-glyph-faint);
+  --color-bb-glyph-paper: var(--bb-edit-glyph-paper);
+  --color-bb-glyph-accent: var(--bb-edit-glyph-accent);
+  --color-bb-glyph-accent-on-ink: var(--bb-edit-glyph-accent-on-ink);
+  --color-bb-glyph-line: var(--bb-edit-glyph-line);
+
+  --font-bb-edit: var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  --font-bb-glyph: var(--bb-edit-glyph-font, "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif);
+
+  --ease-bb-edit: var(--bb-edit-ease);
+}
+
+/* The editor's own type, at its own sizes, whatever the site's are. */
+@utility bb-edit-type-body {
+  font: 450 16px / 1.65 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  @variant md {
+    font-size: 17px;
+  }
+}
+@utility bb-edit-type-small {
+  font: 450 14px / 1.55 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+}
+@utility bb-edit-type-label {
+  font: 600 12px / 1 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+@utility bb-edit-type-button {
+  font: 600 13px / 1 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Words typed in place in the page editor's open section
+   (Billboard.Sections.Words, the InlineWords hook). The hook sets plain
+   attributes, not data-* ones, which LiveView would strip from the
+   ignored span:
+   bb-words-count, bb-words-over, and bb-words-refused. The counter and
+   the refusal are drawn with ::after, so the span gains no elements. */
+.bb-editor .bb-inline-words {
+  position: relative;
+  cursor: text;
+  outline: 1px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color var(--bb-edit-duration) var(--bb-edit-ease);
+}
+@media (hover: hover) {
+  .bb-editor .bb-inline-words:hover {
+    outline-color: var(--bb-edit-accent);
+  }
+}
+.bb-editor .bb-inline-words:focus {
+  outline: 2px solid var(--bb-edit-accent);
+}
+.bb-editor .bb-inline-words:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.5;
+  font-style: italic;
+}
+.bb-editor .bb-inline-words:focus[bb-words-count]::after,
+.bb-editor .bb-inline-words[bb-words-refused]::after {
+  content: attr(bb-words-count);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  padding: 4px 7px;
+  font: 600 11px / 1 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  background: var(--bb-edit-ink);
+  color: var(--bb-edit-paper);
+}
+/* A little long still saves: the warning colour, not the error's. These match
+   the focused counter's own selector, which would otherwise outweigh
+   them. */
+.bb-editor .bb-inline-words:focus[bb-words-over]::after {
+  background: var(--bb-edit-warn);
+}
+.bb-editor .bb-inline-words[bb-words-refused] {
+  outline: 2px solid var(--bb-edit-error);
+}
+.bb-editor .bb-inline-words[bb-words-refused]::after,
+.bb-editor .bb-inline-words:focus[bb-words-refused]::after {
+  content: attr(bb-words-refused);
+  background: var(--bb-edit-error);
+}
+
+/* In the page editor, messages hang below its bar (--bb-edit-bar-height,
+   kept by the bar), not over its Discard and Publish. */
+.bb-editor .bb-editor-flash [role="alert"] {
+  top: calc(var(--bb-edit-bar-height, 0px) + 16px);
+}
+
+/* The page editor's canvas (Billboard.EditorLive): the page, drawn with
+   each section in a wrapper (Billboard.Sections.section/1) and the hero
+   marked on its own <section>, both with data-edit-section and
+   data-open. A closed section is outlined on hover, with its label, and
+   opens on a click anywhere in it: its overlay takes the click, so the
+   site's links and buttons in it stay still. Two columns let clicks
+   through to their columns. While one section is open, the others fade
+   back. */
+.bb-editor [data-edit-section] {
+  position: relative;
+}
+.bb-editor [data-edit-section][data-open="false"] {
+  cursor: pointer;
+}
+.bb-editor [data-edit-section][data-open="false"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: box-shadow var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor [data-edit-section][data-open="false"]:has([data-edit-section])::after {
+  pointer-events: none;
+}
+/* Above the places to add a section (.bb-edit-gap), so the open section's
+   popovers, which hang past its edges, take their own clicks. */
+.bb-editor [data-edit-section][data-open="true"] {
+  z-index: 25;
+  box-shadow: 0 0 0 2px var(--bb-edit-accent);
+}
+.bb-editor .bb-edit-section-tag {
+  position: absolute;
+  top: 12px;
+  right: var(--bb-gutter);
+  z-index: 6;
+  padding: 5px 10px;
+  font: 600 12px / 1.2 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  background: var(--bb-edit-accent);
+  color: var(--bb-edit-on-accent);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity var(--bb-edit-duration) var(--bb-edit-ease), transform var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-section-tag:focus-visible {
+  opacity: 1;
+  transform: none;
+  outline-color: var(--bb-edit-accent);
+}
+@media (hover: hover) {
+  .bb-editor [data-edit-section][data-open="false"]:hover::after {
+    box-shadow: inset 0 0 0 2px var(--bb-edit-accent);
+  }
+  .bb-editor [data-edit-section][data-open="false"]:hover > .bb-edit-section-tag {
+    opacity: 1;
+    transform: none;
+  }
+  /* Inside Two columns, only the column under the pointer is outlined. */
+  .bb-editor [data-edit-section][data-open="false"]:has([data-edit-section]:hover)::after {
+    box-shadow: inset 0 0 0 2px transparent;
+  }
+  .bb-editor [data-edit-section][data-open="false"]:has([data-edit-section]:hover) > .bb-edit-section-tag {
+    opacity: 0;
+  }
+}
+.bb-editor .bb-edit-section-issue {
+  position: absolute;
+  top: 12px;
+  left: var(--bb-gutter);
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font: 700 13px / 1 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  background: var(--bb-edit-error);
+  color: var(--bb-edit-on-accent);
+  pointer-events: none;
+}
+.bb-editor .bb-edit-section-issue[data-level="warning"] {
+  background: var(--bb-edit-soft);
+}
+@media (min-width: 48rem) {
+  .bb-editor .bb-edit-section-tag {
+    right: var(--bb-gutter-md, var(--bb-gutter));
+  }
+  .bb-editor .bb-edit-section-issue {
+    left: var(--bb-gutter-md, var(--bb-gutter));
+  }
+}
+.bb-editor #edit-canvas[data-has-open]
+  [data-edit-section][data-open="false"]:not(:has([data-open="true"])) {
+  opacity: 0.55;
+  transition: opacity var(--bb-edit-duration) var(--bb-edit-ease);
+}
+@media (hover: hover) {
+  .bb-editor #edit-canvas[data-has-open]
+    [data-edit-section][data-open="false"]:not(:has([data-open="true"])):hover {
+    opacity: 0.85;
+  }
+}
+/* Inside a faded section, Two columns' columns don't fade again. */
+.bb-editor #edit-canvas[data-has-open]
+  [data-edit-section][data-open="false"]:not(:has([data-open="true"]))
+  [data-edit-section] {
+  opacity: 1;
+}
+/* Open Two columns show their columns as they are, unfaded, to be
+   clicked open in turn, hovered or not. */
+.bb-editor #edit-canvas[data-has-open]
+  [data-edit-section][data-open="true"]
+  [data-edit-section][data-open="false"] {
+  opacity: 1;
+}
+/* A column (a section in Two columns) has no page margin or padding of
+   its own: its outline, its label, its "!", and its editor sit a little
+   outside its edges, in the gutter, so they don't cover its words. */
+.bb-editor [data-edit-section] [data-edit-section] {
+  --bb-edit-outset: 16px;
+  /* Keeps its editor's margin, which reaches up to the outline, its own. */
+  display: flow-root;
+}
+.bb-editor [data-edit-section] [data-edit-section][data-open="false"]::after {
+  inset: calc(-1 * var(--bb-edit-outset));
+}
+.bb-editor [data-edit-section] [data-edit-section][data-open="true"] {
+  box-shadow: none;
+  outline: 2px solid var(--bb-edit-accent);
+  outline-offset: var(--bb-edit-outset);
+}
+/* The band between an open column and its outline is the column's: a
+   click there stays in it, rather than opening the pair around it. */
+.bb-editor [data-edit-section] [data-edit-section][data-open="true"]::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--bb-edit-outset));
+  z-index: -1;
+}
+.bb-editor [data-edit-section] [data-edit-section] > .bb-edit-section-tag {
+  top: calc(-1 * var(--bb-edit-outset));
+  right: calc(-1 * var(--bb-edit-outset));
+}
+/* On the outline's corner, or, on phones, where the page margin is
+   narrow, along its top from the corner. */
+.bb-editor [data-edit-section] [data-edit-section] > .bb-edit-section-issue {
+  top: calc(-1 * var(--bb-edit-outset) - 11px);
+  left: calc(-1 * var(--bb-edit-outset));
+}
+@media (min-width: 48rem) {
+  .bb-editor [data-edit-section] [data-edit-section] > .bb-edit-section-issue {
+    left: calc(-1 * var(--bb-edit-outset) - 11px);
+  }
+}
+.bb-editor [data-edit-section] [data-edit-section] > #section-editor {
+  margin: calc(-1 * var(--bb-edit-outset)) calc(-1 * var(--bb-edit-outset)) var(--bb-edit-outset);
+}
+/* The hero's editor sits flush with the hero's top edge, above the
+   padding its words keep. */
+.bb-editor #page-hero > #section-editor {
+  margin-top: calc(-1 * var(--bb-section-pad));
+  margin-bottom: var(--bb-section-pad);
+}
+@media (min-width: 48rem) {
+  .bb-editor #page-hero > #section-editor {
+    margin-top: calc(-1 * var(--bb-section-pad-md, var(--bb-section-pad)));
+    margin-bottom: var(--bb-section-pad-md, var(--bb-section-pad));
+  }
+}
+/* A place to add a section, between two (Billboard.EditorLive.Palette):
+   a line with no height, whose "+ Add a section" shows when the pointer is
+   near it, or the keyboard on it, and always on a touch screen. Its
+   reach (::before) and its line (::after) straddle the seam; a click on
+   the reach opens the section under it (edit_canvas.js). Beside the open
+   section, which sits above them, they keep off it. The one with the
+   palette open sits over the sections after it. While the open section
+   has a popover or a menu open, they take no clicks at all. */
+.bb-editor .bb-edit-gap {
+  position: relative;
+  z-index: 20;
+  height: 0;
+}
+.bb-editor .bb-edit-gap.is-open {
+  z-index: 40;
+}
+.bb-editor .bb-edit-gap::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -8px;
+  height: 16px;
+}
+.bb-editor .bb-edit-gap[bb-edit-probe],
+.bb-editor #edit-canvas:has(#section-button, #section-photo, #section-more[open], #section-groups[open])
+  .bb-edit-gap {
+  pointer-events: none;
+}
+.bb-editor .bb-edit-gap::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -1px;
+  height: 2px;
+  background: transparent;
+  pointer-events: none;
+  transition: background-color var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-gap-add {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 2rem;
+  padding: 0 14px 0 11px;
+  border-radius: 999px;
+  font: 600 12px / 1 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  white-space: nowrap;
+  background: var(--bb-edit-accent);
+  color: var(--bb-edit-on-accent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--bb-edit-accent) 33%, transparent);
+  cursor: pointer;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity var(--bb-edit-duration) var(--bb-edit-ease), transform var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-gap-add:focus-visible {
+  outline: 2px solid var(--bb-edit-accent);
+  outline-offset: 2px;
+}
+.bb-editor .bb-edit-gap:hover::after,
+.bb-editor .bb-edit-gap:focus-within::after,
+.bb-editor .bb-edit-gap.is-open::after {
+  background: var(--bb-edit-accent);
+}
+.bb-editor .bb-edit-gap:hover .bb-edit-gap-add,
+.bb-editor .bb-edit-gap-add:focus-visible,
+.bb-editor .bb-edit-gap.is-open .bb-edit-gap-add {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+.bb-editor .bb-edit-gap-add:active {
+  transform: translate(-50%, calc(-50% + 1px));
+}
+@media (hover: none), (max-width: 47.99rem) {
+  .bb-editor .bb-edit-gap-add {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+@media (pointer: coarse) {
+  .bb-editor .bb-edit-gap-add {
+    min-height: 2.75rem;
+  }
+}
+.bb-editor .bb-edit-gap:has(+ [data-open="true"])::before,
+.bb-editor #edit-canvas:has(#page-hero[data-open="true"]) main > .bb-edit-gap:first-child::before,
+.bb-editor [data-open="true"] + .bb-edit-gap::before {
+  height: 8px;
+}
+.bb-editor .bb-edit-gap:has(+ [data-open="true"])::before {
+  top: -8px;
+}
+.bb-editor #edit-canvas:has(#page-hero[data-open="true"]) main > .bb-edit-gap:first-child::before,
+.bb-editor [data-open="true"] + .bb-edit-gap::before {
+  top: 0;
+}
+.bb-editor .bb-edit-gap:has(+ [data-open="true"]) .bb-edit-gap-add,
+.bb-editor .bb-edit-gap:has(+ [data-open="true"]) .bb-edit-gap-add:is(:focus-visible, :active) {
+  transform: translate(-50%, calc(-100% - 6px));
+}
+.bb-editor #edit-canvas:has(#page-hero[data-open="true"]) main > .bb-edit-gap:first-child .bb-edit-gap-add,
+.bb-editor [data-open="true"] + .bb-edit-gap .bb-edit-gap-add {
+  transform: translate(-50%, 6px);
+}
+/* The palette arriving: transform, not translate, which centres it. */
+@keyframes bb-edit-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* While the canvas's hook finds the words under a click in a closed
+   section, the overlay lets the pointer through (edit_canvas.js). */
+.bb-editor [data-edit-section][bb-edit-probe]::after {
+  pointer-events: none;
+}
+
+/* What the open section's renderers draw for the editor
+   (Billboard.Sections.Parts): its buttons, marked to open their popover;
+   a way to add one; a list item's tools; and a photograph's. */
+.bb-editor .bb-edit-action {
+  display: contents;
+}
+.bb-editor .bb-edit-action :is(a, button) {
+  cursor: pointer;
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+  transition: outline-color var(--bb-edit-duration) var(--bb-edit-ease);
+}
+@media (hover: hover) {
+  .bb-editor .bb-edit-action :is(a, button):hover {
+    outline-color: currentColor;
+  }
+}
+.bb-editor .bb-edit-add-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 2.75rem;
+  padding: 0 14px;
+  border: 1px dashed currentColor;
+  font: 600 12px / 1.2 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  letter-spacing: 0.04em;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-add-inline:hover,
+.bb-editor .bb-edit-add-inline:focus-visible {
+  opacity: 1;
+}
+.bb-editor .bb-edit-item {
+  position: relative;
+}
+.bb-editor .bb-edit-item.is-elsewhere > dt,
+.bb-editor .bb-edit-item.is-elsewhere .bb-inline-words {
+  opacity: 0.55;
+}
+.bb-editor .bb-edit-item-tools {
+  position: absolute;
+  top: -14px;
+  right: 0;
+  z-index: 7;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-item:hover > .bb-edit-item-tools,
+.bb-editor .bb-edit-item:focus-within > .bb-edit-item-tools,
+.bb-editor .bb-edit-item:hover > dd > .bb-edit-item-tools,
+.bb-editor .bb-edit-item:focus-within > dd > .bb-edit-item-tools {
+  opacity: 1;
+}
+@media (hover: none) {
+  .bb-editor .bb-edit-item-tools {
+    opacity: 1;
+  }
+}
+.bb-editor .bb-edit-item-tools button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bb-edit-ground-alt);
+  color: var(--bb-edit-ink);
+  cursor: pointer;
+  transition: background-color var(--bb-edit-duration) var(--bb-edit-ease), color var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-item-tools button:hover {
+  background: var(--bb-edit-accent);
+  color: var(--bb-edit-on-accent);
+}
+.bb-editor .bb-edit-item-tools button:focus-visible {
+  outline: 2px solid var(--bb-edit-accent);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  .bb-editor .bb-edit-item-tools {
+    top: -22px;
+  }
+  .bb-editor .bb-edit-item-tools button {
+    width: 44px;
+    height: 44px;
+  }
+}
+/* A list item's own small select, drawn in the item: a detail's "Shows
+   on", and a card's Ground. */
+.bb-editor .bb-edit-shows-on,
+.bb-editor .bb-edit-item-ground {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 12px;
+  font: 500 12px / 1.2 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  color: var(--bb-edit-soft);
+}
+.bb-editor .bb-edit-shows-on select,
+.bb-editor .bb-edit-item-ground select {
+  min-height: 2rem;
+  padding: 2px 8px;
+  border: 1px solid var(--bb-edit-line);
+  background: var(--bb-edit-ground);
+  color: var(--bb-edit-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.bb-editor .bb-edit-shows-on select:focus-visible,
+.bb-editor .bb-edit-item-ground select:focus-visible {
+  outline: 2px solid var(--bb-edit-accent);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  .bb-editor .bb-edit-shows-on select,
+  .bb-editor .bb-edit-item-ground select {
+    min-height: 2.75rem;
+  }
+}
+.bb-editor .bb-edit-photo-tools {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.bb-editor .bb-edit-photo-tools button {
+  min-height: 2rem;
+  padding: 6px 11px;
+  border-radius: 6px;
+  background: var(--bb-edit-ground);
+  color: var(--bb-edit-ink);
+  font: 600 12px / 1.2 var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.16);
+  cursor: pointer;
+  transition: background-color var(--bb-edit-duration) var(--bb-edit-ease), color var(--bb-edit-duration) var(--bb-edit-ease);
+}
+.bb-editor .bb-edit-photo-tools button:hover {
+  background: var(--bb-edit-accent);
+  color: var(--bb-edit-on-accent);
+}
+.bb-editor .bb-edit-photo-tools button:focus-visible {
+  outline: 2px solid var(--bb-edit-on-accent);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .bb-editor .bb-edit-photo-tools button {
+    min-height: 2.75rem;
+  }
+}
+
+/* The editor's own focus ring, in its blue, for what names none of its
+   own: the bar, and what the editor marks as its own (data-editor-ui),
+   such as the open section's header and popovers, the palette, the item
+   and photograph tools, and the messages, or an element itself so
+   marked, such as a popover that takes the focus. Not the rest of the
+   page inside .bb-editor, nor a site's button the open section marks to
+   open its popover (.bb-edit-action), which sit on the site's ground
+   and keep the site's ring. Unlike the rules above, it's in the base
+   layer, where the theme's ring is, which it outweighs: so every
+   focus-visible: utility beats it, the text fields keep their
+   underline and no ring (focus-visible:outline-none), and the controls
+   header keeps its own ring on the editor's blue. The rules above that
+   draw a focus of their own, the words, the section tags, and the
+   gap's button, beat it too. */
+@layer base {
+  .bb-editor :is(#editor-bar, [data-editor-ui]:not(.bb-edit-action)) :focus-visible,
+  .bb-editor [data-editor-ui]:focus-visible {
+    outline: 2px solid var(--bb-edit-accent);
+    outline-offset: 2px;
+  }
+}

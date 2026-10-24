@@ -649,7 +649,7 @@ defmodule Billboard.Sections.EditorFields do
         checked={Phoenix.HTML.Form.normalize_value("checkbox", @input.value)}
         aria-invalid={@invalid && "true"}
         aria-errormessage={@invalid && @error_id}
-        class="size-4 cursor-pointer accent-bb-edit-on-accent"
+        class="size-4 cursor-pointer accent-bb-edit-on-accent focus-visible:outline-bb-edit-on-accent"
       />
       {@label}
     </label>

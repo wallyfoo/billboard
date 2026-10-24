@@ -108,6 +108,29 @@ defmodule Billboard.Sections.EditorFieldsTest do
     end
   end
 
+  describe "setting/1" do
+    # The editor's focus rule (editor.css) rings its own UI in its blue,
+    # which a setting on the controls header's blue would lose, so each
+    # setting names its own ring, in the header's ink.
+    test "rings a toggle in the controls header's ink" do
+      html =
+        render_component(&EditorFields.setting/1,
+          form: Phoenix.Component.to_form(%{"open" => "true"}, as: :faq),
+          field: :open,
+          spec: [as: :toggle, label: "Open"],
+          ctx: %{},
+          error_id: "section-setting-open-error"
+        )
+
+      assert html
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query(
+               "input[type='checkbox'][class~='focus-visible:outline-bb-edit-on-accent']"
+             )
+             |> Enum.count() == 1
+    end
+  end
+
   describe "variant_glyph/1" do
     test "draws two columns at Two columns' widths" do
       for {variant, widths} <- [

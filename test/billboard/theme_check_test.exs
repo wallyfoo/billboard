@@ -23,6 +23,76 @@ defmodule Billboard.ThemeCheckTest do
     end
   end
 
+  # The editor's stylesheet draws its chrome from its own tokens, and
+  # reaches the page only inside the editor's container (`.bb-editor`,
+  # which `Billboard.Editor.Router` puts on the LiveView), so it can't
+  # touch the site's own pages.
+  @editor Path.expand("../../assets/css/editor.css", __DIR__)
+
+  @edit_font ~s|var(--bb-edit-font, "Work Sans", "Helvetica Neue", Arial, sans-serif)|
+  @glyph_font ~s|var(--bb-edit-glyph-font, "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif)|
+
+  describe "editor.css" do
+    test "reads only the editor's tokens, and the page's gutter and padding" do
+      allowed = ~r/^(bb-edit-[\w-]+|bb-gutter(-md)?|bb-section-pad(-md)?)$/
+      assert foreign_vars(@editor, allowed) == []
+    end
+
+    test "scopes every rule under .bb-editor" do
+      selectors = @editor |> File.read!() |> rule_selectors()
+
+      assert ".bb-editor .bb-inline-words:hover" in selectors
+      assert Enum.reject(selectors, &String.starts_with?(&1, ".bb-editor ")) == []
+    end
+
+    test "reads every rule's selectors, in @media and @layer too, but not the tokens' blocks" do
+      css = """
+      /* a comment { with braces }, .x { } */
+      :root { --bb-edit-accent: blue; }
+      @theme inline { --color-bb-edit: var(--bb-edit-accent); }
+      @utility bb-edit-type-body { font: 16px; @variant md { font-size: 17px; } }
+      .a, .b:is(.c, .d:not(.e)) > .f { color: red; }
+      @media (hover: none), (max-width: 47.99rem) { .g:hover { color: red; } }
+      @layer base { .h
+        .i { outline: 0; } }
+      @keyframes pop { from { opacity: 0; } }
+      """
+
+      assert rule_selectors(css) == [".a", ".b:is(.c, .d:not(.e)) > .f", ".g:hover", ".h .i"]
+      assert [{["@layer base"], [".h .i"]}] = Enum.filter(rules(css), &(elem(&1, 0) != []))
+    end
+
+    # In the base layer, so every `focus-visible:` utility beats it, and
+    # a text field keeps its underline with no ring. It rings the bar and
+    # what the editor marks as its own, but not a site's button the open
+    # section marks to open its popover (`.bb-edit-action`), which sits
+    # on the site's ground and keeps the site's ring.
+    test "rings the editor's own UI in its blue, in the base layer" do
+      layered = for {["@layer base"], selectors} <- rules(File.read!(@editor)), do: selectors
+
+      assert layered == [
+               [
+                 ".bb-editor :is(#editor-bar, [data-editor-ui]:not(.bb-edit-action)) :focus-visible",
+                 ".bb-editor [data-editor-ui]:focus-visible"
+               ]
+             ]
+    end
+
+    # The editor ships no fonts: a site that loads these faces gets them,
+    # and another its own fallbacks.
+    test "names its faces where it reads them, and sets none on :root" do
+      css = File.read!(@editor)
+
+      refute css =~ ~r/--bb-edit-(glyph-)?font\s*:/
+
+      assert ~r/var\(--bb-edit-(?:glyph-)?font\b[^)]*\)/
+             |> Regex.scan(css)
+             |> List.flatten()
+             |> Enum.uniq()
+             |> Enum.sort() == Enum.sort([@edit_font, @glyph_font])
+    end
+  end
+
   # The stock files, under lib/billboard/sections: the stock renderers,
   # and the parts, blocks, words, buttons, glyphs, noise, and icons
   # they're drawn from, and the page, `lib/billboard/sections.ex`, which
@@ -342,6 +412,68 @@ defmodule Billboard.ThemeCheckTest do
 
   defp colour_function?(value),
     do: Regex.match?(~r/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix|color)\(/i, value)
+
+  # Each selector of each rule in `css`, the rules inside `@media` and
+  # `@layer` blocks read as the others, and the blocks that hold no rule
+  # of the page's dropped: the tokens (`:root`, `@theme`), the utilities
+  # (`@utility`), and the animations (`@keyframes`).
+  defp rule_selectors(css), do: css |> rules() |> Enum.flat_map(&elem(&1, 1))
+
+  # The rules in `css`, as `{layers, selectors}`: the `@layer` blocks
+  # each sits in, outermost first, and its selectors, each on one line.
+  defp rules(css) do
+    css
+    |> String.replace(~r{/\*.*?\*/}s, "")
+    |> rules([])
+  end
+
+  defp rules(css, layers) do
+    css
+    |> blocks("", [])
+    |> Enum.flat_map(fn {prelude, body} ->
+      cond do
+        String.starts_with?(prelude, ["@media", "@supports"]) -> rules(body, layers)
+        String.starts_with?(prelude, "@layer") -> rules(body, layers ++ [prelude])
+        String.starts_with?(prelude, [":root", "@theme", "@utility", "@keyframes"]) -> []
+        true -> [{layers, selectors(prelude)}]
+      end
+    end)
+  end
+
+  # The blocks at the top of `css`, as `{prelude, body}`. A statement
+  # outside every block, such as an `@import`, ends at its `;`.
+  defp blocks("", _prelude, blocks), do: Enum.reverse(blocks)
+  defp blocks(";" <> rest, _prelude, blocks), do: blocks(rest, "", blocks)
+
+  defp blocks("{" <> rest, prelude, blocks) do
+    {body, rest} = body(rest, 0, "")
+    blocks(rest, "", [{String.trim(prelude), body} | blocks])
+  end
+
+  defp blocks(<<char::utf8, rest::binary>>, prelude, blocks),
+    do: blocks(rest, prelude <> <<char::utf8>>, blocks)
+
+  defp body("", _depth, _body), do: flunk("editor.css has a block it doesn't close")
+  defp body("}" <> rest, 0, body), do: {body, rest}
+  defp body("}" <> rest, depth, body), do: body(rest, depth - 1, body <> "}")
+  defp body("{" <> rest, depth, body), do: body(rest, depth + 1, body <> "{")
+
+  defp body(<<char::utf8, rest::binary>>, depth, body),
+    do: body(rest, depth, body <> <<char::utf8>>)
+
+  # A selector list's selectors, split at its commas but not at those
+  # inside `:is(…)` or `:has(…)`.
+  defp selectors(prelude) do
+    {selectors, last, 0} =
+      for <<char::utf8 <- prelude>>, reduce: {[], "", 0} do
+        {selectors, selector, 0} when char == ?, -> {[selector | selectors], "", 0}
+        {selectors, selector, depth} when char == ?( -> {selectors, selector <> "(", depth + 1}
+        {selectors, selector, depth} when char == ?) -> {selectors, selector <> ")", depth - 1}
+        {selectors, selector, depth} -> {selectors, selector <> <<char::utf8>>, depth}
+      end
+
+    Enum.map(Enum.reverse([last | selectors]), &(&1 |> String.split() |> Enum.join(" ")))
+  end
 
   defp foreign_vars(path, allowed) do
     ~r/var\(\s*--([\w-]+)/
