@@ -4,9 +4,10 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
   page, version, and section resources must each do the `use` that
   writes that resource, its content must do `use Billboard.Content`, its
   starter must define `version/1`, its actions must be a module that
-  defines `kinds/0` and `action/1` (`Billboard.Actions`), and its
-  context must be a module that, if it gives choices, says which
-  (`Billboard.Context`). It checks only what the site gives, so a site
+  defines `kinds/0` and `action/1` (`Billboard.Actions`), its context
+  must be a module that, if it gives choices, says which
+  (`Billboard.Context`), and its data must be a module that defines
+  `fetch/3` (`Billboard.Data`). It checks only what the site gives, so a site
   that names none of them passes.
 
   Like every Spark verifier, it runs once the module has compiled, and
@@ -31,7 +32,8 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
         content(site, resources[:content]),
         starter(site, answers[:starter]),
         actions(site, answers[:actions]),
-        context(site, answers[:context])
+        context(site, answers[:context]),
+        data(site, answers[:data])
       ]
       |> Enum.reject(&is_nil/1)
 
@@ -132,6 +134,31 @@ defmodule Billboard.Site.Verifiers.VerifyResources do
           "#{inspect(site)}'s `context:` is #{inspect(module)}, which defines choice_sets/0 " <>
             "but not choices/1. Give it a `choices/1` clause for each set choice_sets/0 lists " <>
             "(`Billboard.Context`)."
+        )
+
+      true ->
+        nil
+    end
+  end
+
+  defp data(_site, nil), do: nil
+
+  defp data(site, module) do
+    cond do
+      not match?({:module, _}, Code.ensure_compiled(module)) ->
+        error(
+          site,
+          [:data],
+          "#{inspect(site)}'s `data:` is #{inspect(module)}, which isn't a module. " <>
+            "Name its `Billboard.Data` module."
+        )
+
+      not exports?(module, :fetch, 3) ->
+        error(
+          site,
+          [:data],
+          "#{inspect(site)}'s `data:` is #{inspect(module)}, which doesn't define fetch/3. " <>
+            "Give it `@behaviour Billboard.Data` and its callback."
         )
 
       true ->

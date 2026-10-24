@@ -38,6 +38,7 @@ defmodule Billboard.Site.Answers do
     ],
     actions: [type: :atom],
     context: [type: :atom],
+    data: [type: :atom],
     kinds: [type: {:custom, __MODULE__, :check_kinds, []}, default: []],
     palette: [
       type: :keyword_list,

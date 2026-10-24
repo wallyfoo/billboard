@@ -126,6 +126,7 @@ defmodule Billboard.SiteDslTest do
     test "default to links alone, no context, and the component's own kinds and words" do
       assert Overriding.actions() == nil
       assert Overriding.context() == nil
+      assert Overriding.data() == nil
       assert Overriding.kinds() == []
       # Spark.Options may not fill a nested default the site never wrote,
       # so read it as the catalogue does.
@@ -478,6 +479,34 @@ defmodule Billboard.SiteDslTest do
       assert [{_, [error]}] = errors
 
       assert error.message =~ "defines choices/1 but not choice_sets/0"
+    end
+
+    test "refuse data that isn't a module, or a module without its callback" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoFetch do
+            use Billboard.Site, otp_app: :billboard, data: Billboard.Test.Context
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message ==
+               "Billboard.SiteDslTest.NoFetch's `data:` is Billboard.Test.Context, which " <>
+                 "doesn't define fetch/3. Give it `@behaviour Billboard.Data` and its callback."
+
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.SiteDslTest.NoData do
+            use Billboard.Site, otp_app: :billboard, data: Billboard.SiteDslTest.Nowhere
+          end
+        end
+
+      assert [{_, [error]}] = errors
+
+      assert error.message ==
+               "Billboard.SiteDslTest.NoData's `data:` is Billboard.SiteDslTest.Nowhere, which " <>
+                 "isn't a module. Name its `Billboard.Data` module."
     end
 
     test "pass a site that keeps every rule" do

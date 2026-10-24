@@ -25,6 +25,7 @@ defmodule Billboard.Site do
           reserved_ids: [ids: ~w(site-header site-footer), prefixes: ~w(team-)],
           actions: MySiteWeb.Actions,
           context: MySite.Pages.Context,
+          data: MySite.Pages.Data,
           kinds: [faq: [:free, :service]],
           palette: [hints: [faq: "Questions, each with its answer."], categories: [content: "Words"]],
           example_path: "/about"
@@ -76,6 +77,9 @@ defmodule Billboard.Site do
     * `context` names its `Billboard.Context`: the bindings a hero may
       take, and the choices the editor's pickers offer. Without one,
       there are no bindings and no choices.
+    * `data` names its `Billboard.Data`: what the sections that draw rows
+      from outside the builder, such as reviews and news, read for each
+      page (`Billboard.Resolver`). Without one, they draw none.
     * `kinds` narrows, by component key, the page kinds a component may
       go on, over the component's own `kinds`. A component it leaves out
       keeps its own. See `Billboard.Catalogue`.
@@ -147,8 +151,8 @@ defmodule Billboard.Site do
   they're enough for components, surfaces, and site options. Pages,
   resources, and the engine need the rest, which `use Billboard.Site`
   defines. A hand-written site that leaves out `actions/0`, `context/0`,
-  `kinds/0`, `palette/0`, or `example_path/0` reads as one that gave
-  none (`actions/0` and the rest below).
+  `data/0`, `kinds/0`, `palette/0`, or `example_path/0` reads as one
+  that gave none (`actions/0` and the rest below).
   """
 
   @typedoc "A surface's name, its `bb-surface-NAME` class, and the label the editor shows."
@@ -213,6 +217,9 @@ defmodule Billboard.Site do
   @doc "What the site's pages are about (`Billboard.Context`), or nil."
   @callback context() :: module() | nil
 
+  @doc "What the site reads for the sections that draw rows from outside the builder (`Billboard.Data`), or nil."
+  @callback data() :: module() | nil
+
   @doc "The page kinds each component the site narrows may go on, by key."
   @callback kinds() :: keyword([atom()])
 
@@ -232,6 +239,7 @@ defmodule Billboard.Site do
                       reserved_ids: 0,
                       actions: 0,
                       context: 0,
+                      data: 0,
                       kinds: 0,
                       palette: 0,
                       example_path: 0
@@ -326,6 +334,9 @@ defmodule Billboard.Site do
       def context, do: @billboard_answers[:context]
 
       @impl Billboard.Site
+      def data, do: @billboard_answers[:data]
+
+      @impl Billboard.Site
       def kinds, do: Billboard.Site.Answers.kinds(@billboard_answers, __billboard_env__())
 
       @impl Billboard.Site
@@ -352,6 +363,7 @@ defmodule Billboard.Site do
                      reserved_ids: 0,
                      actions: 0,
                      context: 0,
+                     data: 0,
                      kinds: 0,
                      palette: 0,
                      example_path: 0
@@ -445,6 +457,10 @@ defmodule Billboard.Site do
   @doc "The site's context module (`Billboard.Context`), or nil."
   @spec context() :: module() | nil
   def context, do: optional(:context, nil)
+
+  @doc "The site's data module (`Billboard.Data`), or nil."
+  @spec data() :: module() | nil
+  def data, do: optional(:data, nil)
 
   @doc "The page kinds the site keeps each component it narrows to, by key."
   @spec kinds() :: keyword([atom()])

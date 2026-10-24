@@ -9,7 +9,8 @@ defmodule Billboard.Test.Shop do
   Text, and its own Two columns and Shared. Its `kinds:` keep the hero
   off the library, and the band and the points to free pages and the
   library. Its action kinds and context are the test site's
-  (`Billboard.Test.Actions` and `Billboard.Test.Context`). Its pages: a
+  (`Billboard.Test.Actions` and `Billboard.Test.Context`), and its
+  reviews and news are a test's own (`Billboard.Test.Data`). Its pages: a
   free home page and about page, an item page whose kind takes no Two
   columns, a fixed terms page, and the library.
   """
@@ -44,6 +45,7 @@ defmodule Billboard.Test.Shop do
     starter: Test.Shop.Starter,
     actions: Test.Actions,
     context: Test.Context,
+    data: Test.Data,
     kinds: [hero: [:free, :item, :fixed], band: [:free, :library], points: [:free, :library]],
     reserved_ids: [
       ids: ~w(shop-header),

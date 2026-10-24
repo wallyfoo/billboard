@@ -2,7 +2,7 @@ defmodule Billboard.Test.Site do
   @moduledoc """
   A site written by hand against `Billboard.Site`'s required callbacks,
   and the optional answers components and the editor read (its actions,
-  context, kinds, palette, and example path), for the component unit
+  context, data, kinds, palette, and example path), for the component unit
   tests, which swap them per test.
   `Billboard.Test.Env.put_site!/1` makes it the site for one test; the
   configured site is `Billboard.Test.Shop`.
@@ -17,6 +17,7 @@ defmodule Billboard.Test.Site do
     rules: [],
     actions: nil,
     context: nil,
+    data: nil,
     kinds: [],
     palette: [],
     example_path: "/about"
@@ -42,6 +43,9 @@ defmodule Billboard.Test.Site do
 
   @impl true
   def context, do: get(:context)
+
+  @impl true
+  def data, do: get(:data)
 
   @impl true
   def kinds, do: get(:kinds)
