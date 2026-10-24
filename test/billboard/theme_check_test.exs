@@ -95,9 +95,9 @@ defmodule Billboard.ThemeCheckTest do
   end
 
   # Everything the editor draws: its controls, its section editor, and
-  # the rest under `editor/` and `editor_live/`, found by glob so a new
-  # file joins the check, and the fields it draws that it doesn't type
-  # into on the page. It reads neither a site's classes nor billboard's
+  # the rest under `editor/` and `editor_live/`, and `editor.ex` and
+  # `editor_live.ex` beside them, found by glob so a new file joins the
+  # check, and the fields it draws that it doesn't type into on the page. It reads neither a site's classes nor billboard's
   # theme, only its own tokens: its colours are `bb-edit-*` and
   # `bb-glyph-*`, its type `bb-edit-type-*`, its faces `font-bb-edit` and
   # `font-bb-glyph`, and its easing `ease-bb-edit`. The one colour of its
@@ -109,19 +109,38 @@ defmodule Billboard.ThemeCheckTest do
   @editor_files Enum.sort(
                   Path.wildcard(Path.join(@root, "lib/billboard/editor/**/*.ex")) ++
                     Path.wildcard(Path.join(@root, "lib/billboard/editor_live/**/*.ex")) ++
+                    Path.wildcard(Path.join(@root, "lib/billboard/{editor,editor_live}.ex")) ++
                     [Path.join(@root, "lib/billboard/sections/editor_fields.ex")]
                 )
 
-  for path <- @editor_files do
-    @external_resource path
+  test "the editor's files are found" do
+    files = Enum.map(@editor_files, &Path.relative_to(&1, @root))
 
+    for file <- ~w(lib/billboard/editor/components.ex lib/billboard/editor_live/section_editor.ex
+                   lib/billboard/editor_live/palette.ex lib/billboard/sections/editor_fields.ex) do
+      assert file in files
+    end
+  end
+
+  test "the editor's check refuses the theme's corners, on every side or one" do
+    for class <- ~w(rounded-bb-card rounded-t-bb-card rounded-tl-bb-field rounded-s-bb-button) do
+      assert editor_offence?(class), class
+    end
+
+    for class <- ~w(rounded-full rounded-[6px] rounded-t-md) do
+      refute editor_offence?(class), class
+    end
+  end
+
+  for path <- @editor_files do
     test "#{Path.relative_to(path, @root)} draws only through the editor's tokens" do
       assert offences(unquote(path), &editor_offence?/1) == []
     end
   end
 
   # The editor's corners are its own, fixed ones, so it may round them as
-  # it likes, but not with the theme's corners, which read the site's. It
+  # it likes, but not with the theme's corners, which read the site's,
+  # on every side or one (`rounded-t-bb-card`). It
   # sets its own type, so Tailwind's weights are its to use. Its motion is
   # its own too, so it takes neither the theme's easing nor its type
   # roles, and an arbitrary value may read only the editor's tokens. The
@@ -130,7 +149,7 @@ defmodule Billboard.ThemeCheckTest do
   defp editor_offence?(class) do
     (site_class?(class) and not String.starts_with?(class, "rounded")) or
       ClassWords.colour?(class, ClassWords.theme_colours()) or
-      String.starts_with?(class, ["bb-type-", "rounded-bb-"]) or
+      String.starts_with?(class, "bb-type-") or Regex.match?(~r/^rounded(-[a-z]+)?-bb-/, class) or
       class in ClassWords.theme_utilities() or
       ClassWords.old_theme_name?(class) or ClassWords.old_editor_name?(class) or
       (Regex.match?(~r/^--[a-z]/, class) and not String.starts_with?(class, "--bb-edit-"))
