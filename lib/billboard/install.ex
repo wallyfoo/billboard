@@ -120,6 +120,17 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
+    @doc """
+    Writes `path` from `contents`, unless the site has it already.
+    (`Igniter.create_new_file/4`'s `on_exists: :skip` skips only a file
+    Igniter has read, and writes over one it hasn't.)
+    """
+    def create_file(igniter, path, contents) do
+      if Igniter.exists?(igniter, path),
+        do: igniter,
+        else: Igniter.create_new_file(igniter, path, contents)
+    end
+
     defp ash_postgres_repo?(igniter, repo) do
       case Igniter.Project.Module.find_module(igniter, repo) do
         {:ok, {igniter, _source, zipper}} ->
@@ -513,8 +524,13 @@ if Code.ensure_loaded?(Igniter) do
 
     defp found?(zipper, pred), do: match?({:ok, _}, Common.move_to(zipper, pred))
 
-    @doc "Inserts each of `lines` that `path` lacks, after its first line starting with `after_prefix`."
-    def add_lines(igniter, path, after_prefix, lines) do
+    @doc """
+    Inserts each of `lines` that `path` lacks, together, after its first
+    line starting with `anchor`, or, with `{:last, prefix}`, after its
+    last line starting with `prefix`. With no such line, they go first,
+    or, with `{:last, prefix}`, last.
+    """
+    def add_lines(igniter, path, anchor, lines) do
       if Igniter.exists?(igniter, path) do
         Igniter.update_file(igniter, path, fn source ->
           content = Rewrite.Source.get(source, :content)
@@ -524,18 +540,11 @@ if Code.ensure_loaded?(Igniter) do
               source
 
             missing ->
-              {before, rest} =
-                content
-                |> String.split("\n")
-                |> Enum.split_while(&(not String.starts_with?(&1, after_prefix)))
-
-              lines =
-                case rest do
-                  [anchor | tail] -> before ++ [anchor | missing] ++ tail
-                  [] -> missing ++ before
-                end
-
-              Rewrite.Source.update(source, :content, Enum.join(lines, "\n"))
+              content
+              |> String.split("\n")
+              |> insert_lines(anchor, missing)
+              |> Enum.join("\n")
+              |> then(&Rewrite.Source.update(source, :content, &1))
           end
         end)
       else
@@ -544,6 +553,33 @@ if Code.ensure_loaded?(Igniter) do
           "There's no #{path}. Add these lines to your own:\n\n" <> Enum.join(lines, "\n")
         )
       end
+    end
+
+    defp insert_lines(existing, {:last, prefix}, missing) do
+      case existing
+           |> Enum.reverse()
+           |> Enum.split_while(&(not String.starts_with?(&1, prefix))) do
+        {_after, []} ->
+          {body, trailing} = trailing_blank(existing)
+          body ++ missing ++ trailing
+
+        {after_anchor, [anchor | before]} ->
+          Enum.reverse(before) ++ [anchor | missing] ++ Enum.reverse(after_anchor)
+      end
+    end
+
+    defp insert_lines(existing, prefix, missing) do
+      case Enum.split_while(existing, &(not String.starts_with?(&1, prefix))) do
+        {before, [anchor | tail]} -> before ++ [anchor | missing] ++ tail
+        {before, []} -> missing ++ before
+      end
+    end
+
+    # Splits off the file's trailing blank lines, so lines added at the
+    # end go before its final newline.
+    defp trailing_blank(lines) do
+      {blank, body} = lines |> Enum.reverse() |> Enum.split_while(&(&1 == ""))
+      {Enum.reverse(body), blank}
     end
 
     @doc "Adds `line` to the end of `path`, making it if need be, unless it's there."
@@ -560,6 +596,140 @@ if Code.ensure_loaded?(Igniter) do
               String.trim_trailing(content) <> "\n" <> line <> "\n"
             )
       end)
+    end
+
+    @sources ~w(sections sections.ex editor_live.ex editor_live editor)
+
+    @doc """
+    The `@source` lines that let Tailwind read the files billboard draws
+    classes in, through the link `mix billboard.assets` makes: its
+    sections, the page, and the editor. Never all of billboard, since
+    the words in its other code and docs would build stray utilities.
+    """
+    def sources, do: Enum.map(@sources, &~s|@source "../vendor/billboard/lib/billboard/#{&1}";|)
+
+    @doc """
+    For `Igniter.Project.TaskAliases.modify_existing_alias/3`: puts `task`
+    in an alias's list straight after `"compile"`, or first when the list
+    has no `"compile"`, unless the list names `task` already.
+    """
+    def after_compile(zipper, task) do
+      cond do
+        not IList.list?(zipper) ->
+          :error
+
+        match?({:ok, _}, IList.move_to_list_item(zipper, &Common.nodes_equal?(&1, task))) ->
+          {:ok, zipper}
+
+        true ->
+          case IList.move_to_list_item(zipper, &Common.nodes_equal?(&1, "compile")) do
+            {:ok, compile} -> {:ok, Zipper.insert_right(compile, task)}
+            :error -> IList.prepend_to_list(zipper, task)
+          end
+      end
+    end
+
+    @dev_server ~S"""
+    [
+      # In development, link billboard afresh before the Tailwind watcher
+      # reads it, so a switch between a local checkout and the git
+      # dependency never leaves the link pointing at the one no longer in use.
+      "phx.server": if(Mix.env() == :dev, do: ["billboard.assets", "phx.server"], else: ["phx.server"])
+    ]
+    """
+
+    @doc """
+    Runs `mix billboard.assets` before `mix phx.server` in development,
+    after `assets.deploy` in the aliases, unless the site has a
+    `"phx.server"` alias already.
+    """
+    def add_dev_server_alias(igniter) do
+      {:__block__, _, [[entry]]} = Sourceror.parse_string!(@dev_server)
+
+      Igniter.update_elixir_file(igniter, "mix.exs", fn zipper ->
+        with {:ok, aliases} <- Function.move_to_defp(zipper, :aliases, 0),
+             aliases = Common.rightmost(aliases),
+             true <- IList.list?(aliases) do
+          cond do
+            match?({:ok, _}, Igniter.Code.Keyword.get_key(aliases, :"phx.server")) ->
+              {:ok, zipper}
+
+            match?({:ok, _}, alias_named(aliases, :"assets.deploy")) ->
+              {:ok, deploy} = alias_named(aliases, :"assets.deploy")
+              {:ok, Zipper.insert_right(deploy, entry)}
+
+            true ->
+              IList.append_to_list(aliases, entry)
+          end
+        else
+          _ ->
+            {:warning,
+             "Couldn't find the aliases in mix.exs. To link billboard afresh each time the " <>
+               "development server starts, add this alias: " <>
+               ~s|"phx.server": if(Mix.env() == :dev, do: ["billboard.assets", "phx.server"], | <>
+               ~s|else: ["phx.server"])|}
+        end
+      end)
+    end
+
+    defp alias_named(aliases, name) do
+      IList.move_to_list_item(aliases, fn item ->
+        case Igniter.Code.Tuple.tuple_elem(item, 0) do
+          {:ok, key} -> Common.nodes_equal?(key, name)
+          :error -> false
+        end
+      end)
+    end
+
+    @js_imports ~S"""
+    import {hooks as billboardHooks} from "phoenix-colocated/billboard"
+    import {EditCanvas, InlineWords} from "../vendor/billboard/assets/js/billboard.js"
+    """
+
+    @colocated ~r/^(import \{hooks as colocatedHooks\} from "phoenix-colocated\/[a-z0-9_]+")$/m
+
+    @doc """
+    Imports the editor's hooks into `app.js`, after the site's own
+    colocated hooks, and hands them to the LiveSocket. An `app.js` that
+    imports `phoenix-colocated/billboard` anywhere is left alone, and one
+    that names its hooks some other way gets a warning saying what to add.
+    """
+    def add_hooks(igniter) do
+      path = "assets/js/app.js"
+
+      fix =
+        "Import the editor's hooks in #{path}, and add them to the LiveSocket's hooks:\n\n" <>
+          @js_imports <>
+          "\n    hooks: {...colocatedHooks, ...billboardHooks, EditCanvas, InlineWords}"
+
+      if Igniter.exists?(igniter, path) do
+        Igniter.update_file(igniter, path, fn source ->
+          content = Rewrite.Source.get(source, :content)
+
+          cond do
+            String.contains?(content, "phoenix-colocated/billboard") ->
+              source
+
+            Regex.match?(@colocated, content) and
+                String.contains?(content, "hooks: {...colocatedHooks") ->
+              content
+              |> String.replace(@colocated, "\\1\n" <> String.trim_trailing(@js_imports),
+                global: false
+              )
+              |> String.replace(
+                "hooks: {...colocatedHooks",
+                "hooks: {...colocatedHooks, ...billboardHooks, EditCanvas, InlineWords",
+                global: false
+              )
+              |> then(&Rewrite.Source.update(source, :content, &1))
+
+            true ->
+              {:warning, fix}
+          end
+        end)
+      else
+        Igniter.add_warning(igniter, fix)
+      end
     end
   end
 end

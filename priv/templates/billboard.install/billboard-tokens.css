@@ -1,0 +1,185 @@
+/* The site's values for billboard's tokens, and its surfaces. Billboard's
+   theme (theme.css) turns them into the bb- utilities its sections draw
+   with. Change any value here. A token set to `initial` takes its
+   fallback, which the comment beside it names, and so does a token left
+   in a comment: take it out of the comment to set it.
+
+   The page's own surface, paper, sets its tokens on :root and on
+   .bb-surface-paper together, so paper inside another surface, such as
+   a card on a band, puts them back. Every token another surface
+   changes must be set here too, to its value on paper or to initial.
+   A token set here that a surface doesn't change is the same on that
+   surface, since custom properties inherit. */
+
+:root,
+.bb-surface-paper {
+  /* Ink, on whatever ground a section sits on. */
+  --bb-ink: #1c1c1c;               /* body copy */
+  --bb-ink-soft: #5b5b5b;          /* captions and meta; falls back to --bb-ink */
+  --bb-heading: initial;           /* section headings; falls back to --bb-ink */
+  --bb-accent: #1c1c1c;            /* short rules and marks, and the eyebrow's fallback */
+  --bb-link: initial;              /* text links; falls back to --bb-ink */
+  /* --bb-title: the page headline; falls back to --bb-heading, then --bb-ink */
+  /* --bb-subheading: item and card titles; falls back to --bb-heading, then --bb-ink */
+  /* --bb-eyebrow: falls back to --bb-accent */
+  /* --bb-link-hover: falls back to --bb-link, then --bb-ink */
+
+  /* Lines and fills. */
+  --bb-rule: #d9d9d9;              /* hairlines between related things */
+  --bb-focus: #1c1c1c;             /* the keyboard focus ring; falls back to --bb-ink */
+  --bb-card: #ffffff;              /* a card's fill */
+  --bb-edge: initial;              /* a card's boundary; falls back to --bb-rule */
+
+  /* Actions. */
+  --bb-action: #1c1c1c;            /* the primary button */
+  --bb-on-action: #ffffff;         /* its ink */
+  --bb-action-hover: #3a3a3a;      /* falls back to --bb-action */
+  --bb-action-active: initial;     /* falls back to --bb-action-hover */
+  --bb-on-action-active: initial;  /* falls back to --bb-on-action-hover */
+  --bb-action-2: #1c1c1c;          /* the secondary button's ink and outline */
+  --bb-on-action-2: #ffffff;       /* its ink when it fills on hover */
+  /* --bb-on-action-hover: falls back to --bb-on-action */
+}
+
+:root {
+  /* The photograph stand-in, and its pattern. The nine noise tokens have
+     no fallback, so all nine are needed. */
+  --bb-placeholder: #ececec;
+  --bb-placeholder-ink: #1c1c1c;   /* its label; falls back to --bb-ink */
+  /* --bb-placeholder-chip: the label's ground; falls back to --bb-card */
+  --bb-noise-1: #1c1c1c;
+  --bb-noise-2: #2e2e2e;
+  --bb-noise-3: #424242;
+  --bb-noise-4: #575757;
+  --bb-noise-5: #6e6e6e;
+  --bb-noise-6: #878787;
+  --bb-noise-7: #a3a3a3;
+  --bb-noise-8: #c2c2c2;
+  --bb-noise-9: #e0e0e0;
+
+  /* More lines and fills, with their fallbacks:
+     --bb-rule-width: 1px, the hairline above a head, a point, and a
+       detail; 0 draws none.
+     --bb-rule-gap: 1.5rem, the room between that hairline and what's
+       below it.
+     --bb-card-pad: 1.5rem, the room inside a card. */
+
+  /* A button's geometry and a text link's line, with their fallbacks:
+     --bb-button-height: 2.75rem; --bb-button-pad-x: 1.5rem;
+     --bb-button-border: 1px; --bb-link-decoration: underline;
+     --bb-link-offset: 4px. */
+
+  /* Shape: 0 is square. */
+  --bb-radius-card: 0;
+  --bb-radius-button: 0;
+  --bb-radius-photo: 0;
+  --bb-radius-field: 0;
+
+  /* Type: four faces, then each role's tokens. The label face falls back
+     to the body's, the heading face to the body's, and the display face
+     to the heading's. */
+  --bb-font-display: ui-serif, Georgia, serif;
+  --bb-font-heading: var(--bb-font-display);
+  --bb-font-body: ui-sans-serif, system-ui, sans-serif;
+  --bb-font-label: var(--bb-font-body);
+
+  /* A role's -size has no fallback, so each is set. Its -size-md, from
+     the md breakpoint, falls back to its -size. The rest fall back as
+     each role's comment says. */
+  --bb-display-size: 2.75rem;
+  --bb-display-size-md: 4rem;
+  /* --bb-display-leading: 1.1; --bb-display-weight: 400;
+     --bb-display-tracking: normal; --bb-display-case: none; */
+
+  --bb-title-size: 2.25rem;
+  --bb-title-size-md: 3rem;
+  /* --bb-title-leading: 1.15; --bb-title-weight: 400;
+     --bb-title-tracking: normal; --bb-title-case: none; */
+
+  --bb-heading-size: 1.75rem;
+  --bb-heading-size-md: 2.25rem;
+  /* --bb-heading-leading: 1.2; --bb-heading-weight: 400;
+     --bb-heading-tracking: normal; --bb-heading-case: none; */
+
+  --bb-subheading-size: 1.25rem;
+  --bb-subheading-size-md: 1.5rem;
+  /* --bb-subheading-leading: 1.3; --bb-subheading-weight: 400;
+     --bb-subheading-tracking: normal; --bb-subheading-case: none; */
+
+  --bb-lead-size: 1.125rem;
+  --bb-lead-size-md: 1.25rem;
+  /* --bb-lead-leading: 1.5; --bb-lead-weight: 400;
+     --bb-lead-tracking: normal; --bb-lead-case: none; */
+
+  --bb-body-size: 1rem;
+  /* --bb-body-size-md: --bb-body-size; --bb-body-leading: 1.6; --bb-body-weight: 400;
+     --bb-body-tracking: normal; --bb-body-case: none; */
+
+  --bb-small-size: 0.875rem;
+  /* --bb-small-size-md: --bb-small-size; --bb-small-leading: 1.5; --bb-small-weight: 400;
+     --bb-small-tracking: normal; --bb-small-case: none; */
+
+  --bb-label-size: 0.8125rem;
+  /* --bb-label-size-md: --bb-label-size; --bb-label-leading: 1.2; --bb-label-weight: 600;
+     --bb-label-tracking: normal; --bb-label-case: none; */
+
+  --bb-eyebrow-size: 0.8125rem;
+  /* --bb-eyebrow-size-md: --bb-eyebrow-size; --bb-eyebrow-leading: 1.2; --bb-eyebrow-weight: 600;
+     --bb-eyebrow-tracking: normal; --bb-eyebrow-case: none; */
+
+  --bb-button-size: 0.8125rem;
+  /* --bb-button-size-md: --bb-button-size; --bb-button-leading: 1; --bb-button-weight: 600;
+     --bb-button-tracking: normal; --bb-button-case: none; */
+
+  --bb-quote-size: 1.5rem;
+  --bb-quote-size-md: 2rem;
+  /* --bb-quote-leading: 1.3; --bb-quote-weight: 400;
+     --bb-quote-tracking: normal; --bb-quote-case: none; */
+
+  /* Space and motion. */
+  --bb-content-max: 72rem;         /* the content's width */
+  --bb-gutter: 1.25rem;            /* the page's side margin */
+  --bb-gutter-md: 2.5rem;          /* falls back to --bb-gutter */
+  --bb-section-pad: 3.5rem;        /* the room above and below a section */
+  --bb-section-pad-md: 6rem;       /* falls back to --bb-section-pad */
+  /* --bb-measure: 65ch, the longest line of words */
+  /* --bb-measure-title: falls back to --bb-measure, then 24ch */
+  --bb-ease: cubic-bezier(0.2, 0, 0, 1);   /* falls back to ease */
+  --bb-duration: 150ms;            /* falls back to 150ms */
+}
+
+/* Sections name their surface in their data, so no source file names
+   these classes for Tailwind to find. This keeps both in the build. */
+@source inline("bb-surface-{paper,band}");
+
+/* The page's own surface. The body paints the page, so paper paints no
+   ground of its own, except inside another surface that sets
+   --paper-ground, as the band does. */
+@utility bb-surface-paper {
+  background-color: var(--paper-ground, transparent);
+  color: var(--bb-ink);
+}
+
+/* The stand-out band: the hero, and any Band section. It redefines the
+   ink, line, focus, and action tokens for everything inside it. */
+@utility bb-surface-band {
+  background-color: #1c1c1c;
+  color: #ffffff;
+  --bb-ink: #e8e8e8;
+  --bb-ink-soft: #b8b8b8;
+  --bb-heading: #ffffff;
+  --bb-accent: #ffffff;
+  --bb-link: #ffffff;
+  --bb-rule: rgb(255 255 255 / 0.25);
+  --bb-focus: #ffffff;
+  --bb-card: #2a2a2a;
+  --bb-edge: rgb(255 255 255 / 0.25);
+  --bb-action: #ffffff;
+  --bb-on-action: #1c1c1c;
+  --bb-action-hover: #d9d9d9;
+  --bb-action-active: initial;
+  --bb-on-action-active: initial;
+  --bb-action-2: #ffffff;
+  --bb-on-action-2: #1c1c1c;
+  --paper-ground: #ffffff;
+}

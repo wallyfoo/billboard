@@ -66,6 +66,7 @@ if Code.ensure_loaded?(Igniter) do
         |> home(names, options[:home])
         |> Install.plug_uploads(names)
         |> uploads()
+        |> assets()
         |> Install.add_cache()
         |> notices(names)
       else
@@ -183,6 +184,35 @@ if Code.ensure_loaded?(Igniter) do
             updater: &{:ok, &1}
           )
       end
+    end
+
+    # The site's tokens, billboard's theme and the editor's styles after
+    # them, the files Tailwind reads, the editor's hooks, and the link
+    # to billboard's assets, made before every build and kept out of git.
+    defp assets(igniter) do
+      igniter
+      |> Install.create_file(
+        "assets/css/billboard-tokens.css",
+        Install.template("billboard.install", "billboard-tokens.css", %{})
+      )
+      |> Install.add_lines("assets/css/app.css", ~s|@import "tailwindcss"|, [
+        ~s|@import "./billboard-tokens.css";|,
+        ~s|@import "../vendor/billboard/assets/css/theme.css";|,
+        ~s|@import "../vendor/billboard/assets/css/editor.css";|
+      ])
+      |> Install.add_lines("assets/css/app.css", {:last, "@source "}, Install.sources())
+      |> Install.add_hooks()
+      |> Install.add_line(".gitignore", "/assets/vendor/billboard")
+      |> Install.add_line(".gitignore", "/priv/uploads/")
+      |> Igniter.Project.TaskAliases.modify_existing_alias(
+        "assets.build",
+        &Install.after_compile(&1, "billboard.assets")
+      )
+      |> Igniter.Project.TaskAliases.modify_existing_alias(
+        "assets.deploy",
+        &Igniter.Code.List.prepend_new_to_list(&1, "billboard.assets")
+      )
+      |> Install.add_dev_server_alias()
     end
 
     defp notices(igniter, %{installed?: true} = names) do

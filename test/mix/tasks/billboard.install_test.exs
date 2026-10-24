@@ -326,4 +326,199 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       |> assert_unchanged()
     end
   end
+
+  describe "the assets" do
+    test "writes the tokens file, and imports it, the theme, and the editor's styles" do
+      igniter = project() |> install()
+
+      assert_creates(igniter, "assets/css/billboard-tokens.css")
+      css = content(igniter, "assets/css/app.css")
+
+      imports = [
+        ~s|@import "./billboard-tokens.css";|,
+        ~s|@import "../vendor/billboard/assets/css/theme.css";|,
+        ~s|@import "../vendor/billboard/assets/css/editor.css";|
+      ]
+
+      # Tailwind reads only where billboard draws classes, as
+      # `mix billboard.assets`' moduledoc lists them, after the site's
+      # last @source line (phx.new's colocated CSS).
+      sources =
+        for path <- ~w(sections sections.ex editor_live.ex editor_live editor),
+            do: ~s|@source "../vendor/billboard/lib/billboard/#{path}";|
+
+      assert css =~ ~r/@import "tailwindcss"[^\n]*\n#{Regex.escape(Enum.join(imports, "\n"))}\n/
+
+      assert css =~
+               ~s|@source "../../_build/dev/phoenix-colocated/my_site/*/";\n| <>
+                 Enum.join(sources, "\n") <> "\n"
+
+      refute css =~ ~s|@source "../vendor/billboard/lib";|
+    end
+
+    test "leaves alone the lines a site has already, among its own" do
+      css = """
+      @import "tailwindcss" source(none);
+      @import "./my-palette.css";
+      @import "./billboard-tokens.css";
+      @import "../vendor/billboard/assets/css/theme.css";
+      @import "../vendor/billboard/assets/css/editor.css";
+      @source "../css";
+      @source "../../lib/my_site_web";
+      @source "../vendor/billboard/lib/billboard/sections";
+      @source "../vendor/billboard/lib/billboard/sections.ex";
+      @source "../vendor/billboard/lib/billboard/editor_live.ex";
+      @source "../vendor/billboard/lib/billboard/editor_live";
+      @source "../vendor/billboard/lib/billboard/editor";
+      """
+
+      js = """
+      import {LiveSocket} from "phoenix_live_view"
+      import {hooks as colocatedHooks} from "phoenix-colocated/my_site"
+      import {hooks as billboardHooks} from "phoenix-colocated/billboard"
+      import topbar from "../vendor/topbar"
+      import {EditCanvas, InlineWords} from "../vendor/billboard/assets/js/billboard.js"
+      import {Sortable} from "./sortable"
+
+      const liveSocket = new LiveSocket("/live", Socket, {
+        hooks: {...colocatedHooks, ...billboardHooks, EditCanvas, InlineWords, Sortable},
+      })
+      """
+
+      project(%{
+        "assets/css/app.css" => css,
+        "assets/js/app.js" => js,
+        "assets/css/billboard-tokens.css" => ":root {}\n",
+        ".gitignore" => "/deps/\n/assets/vendor/billboard\n/priv/uploads/\n"
+      })
+      |> install()
+      |> assert_unchanged(~w(assets/css/app.css assets/js/app.js
+                             assets/css/billboard-tokens.css .gitignore))
+    end
+
+    test "leaves alone a tokens file the site has, though nothing has read it yet" do
+      path = "assets/css/billboard-tokens.css"
+
+      # Igniter's test project reads every file up front; a real one reads
+      # a file only when asked, so forget this one, as a real run would.
+      project(%{path => ":root {}\n"})
+      |> Map.update!(:rewrite, fn rewrite ->
+        %{rewrite | sources: Map.delete(rewrite.sources, path)}
+      end)
+      |> install()
+      |> then(&refute Rewrite.has_source?(&1.rewrite, path))
+    end
+
+    test "gives the LiveSocket the editor's hooks" do
+      js = project() |> install() |> content("assets/js/app.js")
+
+      assert js =~
+               ~s|import {hooks as colocatedHooks} from "phoenix-colocated/my_site"\n| <>
+                 ~s|import {hooks as billboardHooks} from "phoenix-colocated/billboard"\n| <>
+                 ~s|import {EditCanvas, InlineWords} from "../vendor/billboard/assets/js/billboard.js"\n|
+
+      assert js =~ "hooks: {...colocatedHooks, ...billboardHooks, EditCanvas, InlineWords}"
+    end
+
+    test "says what to do when app.js names its hooks some other way" do
+      odd =
+        "import {Socket} from \"phoenix\"\nlet liveSocket = new LiveSocket(\"/live\", Socket, {})\n"
+
+      project(%{"assets/js/app.js" => odd})
+      |> install()
+      |> assert_has_warning(&(&1 =~ "phoenix-colocated/billboard" and &1 =~ "EditCanvas"))
+      |> assert_unchanged("assets/js/app.js")
+    end
+
+    test "links billboard's assets before every build, and keeps the link and uploads out of git" do
+      igniter = project() |> install()
+      mix = content(igniter, "mix.exs")
+
+      # After compile in the build, first in the deploy, as the README
+      # has them.
+      assert mix =~ ~r/"assets.build": \[\s*"compile",\s*"billboard.assets",/
+      assert mix =~ ~r/"assets.deploy": \[\s*"billboard.assets",/
+      assert content(igniter, ".gitignore") =~ "\n/assets/vendor/billboard\n"
+      assert content(igniter, ".gitignore") =~ "\n/priv/uploads/\n"
+    end
+
+    test "leaves alone an assets.build that runs billboard.assets anywhere" do
+      mix =
+        project()
+        |> content("mix.exs")
+        |> String.replace(
+          ~s|"assets.build": ["compile", |,
+          ~s|"assets.build": ["billboard.assets", "compile", |
+        )
+
+      assert project(%{"mix.exs" => mix}) |> install() |> content("mix.exs") =~
+               ~s|"assets.build": ["billboard.assets", "compile", "tailwind my_site", "esbuild my_site"]|
+    end
+
+    test "relinks billboard before the dev server's watchers read it" do
+      mix = project() |> install() |> content("mix.exs")
+
+      assert mix =~ "# In development, link billboard afresh"
+
+      assert mix =~
+               ~r/"phx.server":\s+if\(Mix.env\(\) == :dev, do: \["billboard.assets", "phx.server"\], else: \["phx.server"\]\)/
+    end
+
+    test "leaves alone a phx.server alias the site has" do
+      mix =
+        project()
+        |> content("mix.exs")
+        |> String.replace(
+          ~s|precommit: [|,
+          ~s|"phx.server": ["my_site.prepare", "phx.server"],\n      precommit: [|
+        )
+
+      project(%{"mix.exs" => mix})
+      |> install()
+      |> content("mix.exs")
+      |> then(fn mix ->
+        assert mix =~ ~s|"phx.server": ["my_site.prepare", "phx.server"]|
+        refute mix =~ "link billboard afresh"
+      end)
+    end
+
+    test "names the paths the README and mix billboard.assets give" do
+      igniter = project() |> install()
+      installed = content(igniter, "assets/css/app.css") <> content(igniter, "assets/js/app.js")
+      readme = File.read!(Path.expand("../../../README.md", __DIR__))
+
+      {:docs_v1, _, _, _, %{"en" => assets_doc}, _, _} =
+        Code.fetch_docs(Mix.Tasks.Billboard.Assets)
+
+      vendored = fn text ->
+        ~r/^\s*(?:@import|@source|import) .*"\.\.\/vendor\/billboard\/[^"]+".*$/m
+        |> Regex.scan(text)
+        |> Enum.map(fn [line] -> String.trim(line) end)
+        |> MapSet.new()
+      end
+
+      written = vendored.(installed)
+      assert MapSet.subset?(MapSet.new(Billboard.Install.sources()), written)
+
+      # Every billboard path the docs give, the installer writes, and the
+      # reverse, so none can drift when billboard draws classes in a new
+      # file.
+      assert vendored.(readme) == written
+      assert vendored.(assets_doc) == written
+
+      for line <- written do
+        [_, path] = Regex.run(~r/"\.\.\/vendor\/billboard\/([^"]+)"/, line)
+        assert File.exists?(Path.expand("../../../" <> path, __DIR__)), "#{line} names no file"
+      end
+    end
+
+    test "changes nothing the second time, the assets and all" do
+      project()
+      |> install()
+      |> apply_igniter!()
+      |> install()
+      |> assert_unchanged(~w(assets/css/app.css assets/js/app.js assets/css/billboard-tokens.css
+                             .gitignore mix.exs))
+    end
+  end
 end
