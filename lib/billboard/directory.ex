@@ -29,4 +29,20 @@ defmodule Billboard.Directory do
   @spec fetch!(String.t() | nil) :: Page.t()
   def fetch!(pattern),
     do: fetch(pattern) || raise(ArgumentError, "no builder page for #{inspect(pattern)}")
+
+  @doc """
+  The page the editor opens when it's given none: `/`, or else the
+  site's first page that isn't the library. Raises, naming the fix,
+  for a site whose only page is the library.
+  """
+  @spec home!() :: Page.t()
+  def home! do
+    pages = pages()
+
+    Enum.find(pages, &(&1.pattern == "/")) ||
+      Enum.find(pages, &(&1.kind != :library)) ||
+      raise ArgumentError,
+            "#{inspect(Billboard.Site.get!())} has no page for the editor to open. " <>
+              "Declare `page \"/\", …` in the site's `pages do`"
+  end
 end

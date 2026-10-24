@@ -37,8 +37,7 @@ defmodule Billboard.Parts.ActionTest do
 
     assert %Action{path: "/"} = create!(%{label: "Home", path: "/"})
 
-    assert %Action{path: "/academy#courses"} =
-             create!(%{label: "Courses", path: "/academy#courses"})
+    assert %Action{path: "/about#team"} = create!(%{label: "Team", path: "/about#team"})
   end
 
   test "a link needs a label and an address" do

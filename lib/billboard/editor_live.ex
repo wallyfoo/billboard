@@ -719,7 +719,7 @@ defmodule Billboard.EditorLive do
 
   defp page_from_param(_pattern), do: home()
 
-  defp home, do: Directory.fetch!("/")
+  defp home, do: Directory.home!()
 
   # A page's DOM id in the picker: the pattern's words, so
   # `/services/:slug` is `page-tab-services-slug`, and `/` is

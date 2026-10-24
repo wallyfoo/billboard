@@ -6,6 +6,22 @@ defmodule Billboard.DirectoryTest do
   import Billboard.Test.Env
 
   alias Billboard.Directory
+  alias Billboard.Directory.Page
+
+  defmodule NoHomeSite do
+    @moduledoc "A site whose pages have no `/`."
+    def pages,
+      do: [
+        %Page{pattern: nil, label: "Shared sections", kind: :library},
+        %Page{pattern: "/about", label: "About", kind: :free},
+        %Page{pattern: "/terms", label: "Terms", kind: :free}
+      ]
+  end
+
+  defmodule LibraryOnlySite do
+    @moduledoc "A site whose only page is the library."
+    def pages, do: [%Page{pattern: nil, label: "Shared sections", kind: :library}]
+  end
 
   setup do
     put_env_for_test(:billboard, :site, Billboard.Test.PlainSite)
@@ -25,6 +41,26 @@ defmodule Billboard.DirectoryTest do
     assert_raise ArgumentError, ~r/no builder page for "\/nowhere"/, fn ->
       Directory.fetch!("/nowhere")
     end
+  end
+
+  test "home!/0 is the `/` page" do
+    assert Directory.home!().pattern == "/"
+  end
+
+  test "home!/0 is the first page that isn't the library, on a site with no `/`" do
+    put_env_for_test(:billboard, :site, NoHomeSite)
+
+    assert Directory.home!().pattern == "/about"
+  end
+
+  test "home!/0 names the fix on a site whose only page is the library" do
+    put_env_for_test(:billboard, :site, LibraryOnlySite)
+
+    assert_raise ArgumentError,
+                 ~r/LibraryOnlySite has no page for the editor to open. Declare `page "\/", …` in the site's `pages do`/,
+                 fn ->
+                   Directory.home!()
+                 end
   end
 
   test "fixed?/1 is true only for a page with fixed sections" do
