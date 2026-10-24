@@ -17,7 +17,7 @@ defmodule MySiteWeb.Sections.Faq do
         count: length(assigns.content.questions),
         spec:
           if(editing?,
-            do: EditorFields.narrowed(assigns.section.content.type)[:questions],
+            do: EditorFields.narrowed(:faq)[:questions],
             else: []
           )
       )

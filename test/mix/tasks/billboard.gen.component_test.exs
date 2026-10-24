@@ -137,6 +137,73 @@ defmodule Mix.Tasks.Billboard.Gen.ComponentTest do
     end)
   end
 
+  test "refuses a key a listed component has, naming it and the fix, and writes nothing" do
+    installed()
+    |> gen(["MySite.Sections.Band"])
+    |> assert_has_issue(
+      &(&1 =~ "`:band` is Billboard.Components.Band's key, which MySite.Billboard lists" and
+          &1 =~ "Name another with `--key`, or take Billboard.Components.Band out of")
+    )
+    |> refute_creates("lib/my_site/sections/band.ex")
+    |> assert_unchanged("lib/my_site/billboard.ex")
+
+    installed()
+    |> gen(["MySite.Sections.Faq", "--key", "details"])
+    |> assert_has_issue(&(&1 =~ "`:details` is Billboard.Components.Details's key"))
+    |> refute_creates("lib/my_site/sections/faq.ex")
+  end
+
+  test "refuses a key a site's own listed component has, read from its source" do
+    # Not compiled here, unlike the guides' FAQ, so its key is read from
+    # what the generator wrote.
+    refute Code.ensure_loaded?(MySite.Sections.Notices)
+
+    installed()
+    |> gen(["MySite.Sections.Notices"])
+    |> apply_igniter!()
+    |> gen(["MySite.Sections.Other", "--key", "notices"])
+    |> assert_has_issue(&(&1 =~ "`:notices` is MySite.Sections.Notices's key"))
+    |> refute_creates("lib/my_site/sections/other.ex")
+  end
+
+  test "refuses a part or a renderer the site has that isn't one, and writes nothing" do
+    other = fn module -> "defmodule #{module} do\n  @moduledoc false\nend\n" end
+
+    installed()
+    |> Igniter.create_new_file(
+      "lib/my_site/sections/faq/question.ex",
+      other.("MySite.Sections.Faq.Question")
+    )
+    |> apply_igniter!()
+    |> gen(["MySite.Sections.Faq", "--list", "question"])
+    |> assert_has_issue(
+      &(&1 =~ "MySite.Sections.Faq.Question is in the site already, and isn't a billboard part" and
+          &1 =~ "`--list`")
+    )
+    |> refute_creates("lib/my_site/sections/faq.ex")
+
+    installed()
+    |> Igniter.create_new_file(
+      "lib/my_site_web/sections/faq.ex",
+      other.("MySiteWeb.Sections.Faq")
+    )
+    |> apply_igniter!()
+    |> gen(["MySite.Sections.Faq"])
+    |> assert_has_issue(&(&1 =~ "isn't a billboard renderer" and &1 =~ "`--renderer`"))
+    |> assert_unchanged("lib/my_site/billboard.ex")
+  end
+
+  test "says a or an as the component's name needs" do
+    igniter = installed() |> gen(["MySite.Sections.Overview", "--list", "point"])
+
+    assert content(igniter, "lib/my_site/sections/overview.ex") =~ "An Overview section"
+    assert content(igniter, "lib/my_site/sections/overview/point.ex") =~ "in an Overview section"
+    assert content(igniter, "lib/my_site_web/sections/overview.ex") =~ "Draws an Overview section"
+
+    assert content(installed() |> gen(["MySite.Sections.Faq"]), "lib/my_site/sections/faq.ex") =~
+             "A Faq section"
+  end
+
   test "changes nothing the second time" do
     installed()
     |> gen(["MySite.Sections.Faq", "--list", "question"])

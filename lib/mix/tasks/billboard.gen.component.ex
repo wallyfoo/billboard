@@ -15,7 +15,10 @@ if Code.ensure_loaded?(Igniter) do
 
     A module the site has already is never written over: a component is
     left as it is, and still listed, so running it again changes nothing,
-    and a module that isn't a component stops the run.
+    and a module that isn't a component stops the run. So does a part or
+    renderer module the site has that isn't a part or a renderer, and a
+    key that a component `components:` lists already has, such as
+    `:band` for `MySite.Sections.Band` beside `Billboard.Components.Band`.
 
     ## Options
 
@@ -51,7 +54,9 @@ if Code.ensure_loaded?(Igniter) do
       component = Igniter.Project.Module.parse(igniter.args.positional.module)
 
       with {:ok, assigns} <- assigns(names, component, igniter.args.options),
-           {:ok, igniter, exists?} <- existing(igniter, component) do
+           {:ok, igniter, exists?} <- existing(igniter, component),
+           {:ok, igniter} <- free_key(igniter, assigns, exists?),
+           {:ok, igniter} <- own_modules(igniter, assigns, exists?) do
         igniter
         |> write(assigns, exists?)
         |> Install.list_component(assigns.site, component)
@@ -59,6 +64,63 @@ if Code.ensure_loaded?(Igniter) do
         {:issue, message} -> Igniter.add_issue(igniter, message)
         {:error, igniter} -> igniter
       end
+    end
+
+    # A new component's key must be one no listed component has: the
+    # site's content union can't hold two components under one key.
+    defp free_key(igniter, _assigns, true), do: {:ok, igniter}
+
+    defp free_key(igniter, assigns, false) do
+      {igniter, keys} = Install.listed_keys(igniter, assigns.site)
+
+      case Enum.find(keys, fn {key, _module} -> Atom.to_string(key) == assigns.key end) do
+        nil ->
+          {:ok, igniter}
+
+        {key, module} ->
+          {:error,
+           Igniter.add_issue(
+             igniter,
+             "`#{inspect(key)}` is #{inspect(module)}'s key, which #{inspect(assigns.site)} " <>
+               "lists, so nothing was written. Name another with `--key`, or take " <>
+               "#{inspect(module)} out of `components:` to replace it."
+           )}
+      end
+    end
+
+    # A new component's part and renderer, when the site has a module
+    # under either name already, must be a part and a renderer: the
+    # component would name them, and nothing of them is written over.
+    defp own_modules(igniter, _assigns, true), do: {:ok, igniter}
+
+    defp own_modules(igniter, assigns, false) do
+      [
+        {assigns.part, Billboard.Part, "part", "--list"},
+        {assigns.renderer, Billboard.Renderer, "renderer", "--renderer"}
+      ]
+      |> Enum.reject(fn {module, _, _, _} -> is_nil(module) end)
+      |> Enum.reduce_while({:ok, igniter}, fn {module, using, what, option}, {:ok, igniter} ->
+        module = Igniter.Project.Module.parse(module)
+
+        case Igniter.Project.Module.find_module(igniter, module) do
+          {:ok, {igniter, _source, zipper}} ->
+            if uses?(zipper, using) do
+              {:cont, {:ok, igniter}}
+            else
+              {:halt,
+               {:error,
+                Igniter.add_issue(
+                  igniter,
+                  "#{inspect(module)} is in the site already, and isn't a billboard #{what} " <>
+                    "(it has no `use #{inspect(using)}`), so nothing was written. Name " <>
+                    "another with `#{option}`."
+                )}}
+            end
+
+          {:error, igniter} ->
+            {:cont, {:ok, igniter}}
+        end
+      end)
     end
 
     # A component the site has is its own by now: none of its modules is
@@ -113,9 +175,11 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp component?(zipper) do
+    defp component?(zipper), do: uses?(zipper, Billboard.Component)
+
+    defp uses?(zipper, module) do
       with {:ok, body} <- Igniter.Code.Common.move_to_do_block(zipper),
-           {:ok, _use} <- Igniter.Code.Module.move_to_use(body, Billboard.Component) do
+           {:ok, _use} <- Igniter.Code.Module.move_to_use(body, module) do
         true
       else
         _ -> false
@@ -129,12 +193,14 @@ if Code.ensure_loaded?(Igniter) do
            {:ok, list} <- list(opts[:list]),
            {:ok, renderer} <- renderer(names, component, opts[:renderer]) do
         last = component |> Module.split() |> List.last()
+        label = last |> Macro.underscore() |> String.replace("_", " ") |> String.capitalize()
 
         {:ok,
          Map.merge(list, %{
            component: inspect(component),
            key: key,
-           label: last |> Macro.underscore() |> String.replace("_", " ") |> String.capitalize(),
+           label: label,
+           article: if(String.match?(label, ~r/^[AEIOU]/), do: "an", else: "a"),
            renderer: renderer,
            test: inspect(component) <> "Test",
            site: if(opts[:site], do: Igniter.Project.Module.parse(opts[:site]), else: names.site),

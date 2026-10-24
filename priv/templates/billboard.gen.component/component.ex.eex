@@ -1,6 +1,6 @@
 defmodule <%= @component %> do
   @moduledoc """
-  A <%= @label %> section: a title<%= if @part, do: ", and a list of #{@list}", else: ", and some words" %>. Its renderer,
+  <%= String.capitalize(@article) %> <%= @label %> section: a title<%= if @part, do: ", and a list of #{@list}", else: ", and some words" %>. Its renderer,
   `<%= @renderer %>`, draws it.
   """
   use Billboard.Component

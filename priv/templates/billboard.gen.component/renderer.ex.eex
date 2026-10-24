@@ -1,8 +1,8 @@
 defmodule <%= @renderer %> do
   @moduledoc """
-<%= if @part do %>  Draws a <%= @label %> section: its title, then each <%= @item %> with its words.
+<%= if @part do %>  Draws <%= @article %> <%= @label %> section: its title, then each <%= @item %> with its words.
   Open in the editor, each <%= @item %> has its tools, to move or remove it.
-<% else %>  Draws a <%= @label %> section: its title, then its words.
+<% else %>  Draws <%= @article %> <%= @label %> section: its title, then its words.
 <% end %>  """
   use Billboard.Renderer
 
@@ -15,7 +15,7 @@ defmodule <%= @renderer %> do
         count: length(assigns.content.<%= @list %>),
         spec:
           if(editing?,
-            do: EditorFields.narrowed(assigns.section.content.type)[:<%= @list %>],
+            do: EditorFields.narrowed(:<%= @key %>)[:<%= @list %>],
             else: []
           )
       )
@@ -64,15 +64,13 @@ defmodule <%= @renderer %> do
   # Its sketch in the palette.
   def glyph(assigns) do
     ~H"""
-    <span class="grid flex-1 content-center gap-1 px-1">
+<%= if @part do %>    <span class="grid flex-1 content-center gap-1 px-1">
       <span class="h-1.5 w-1/2 bg-bb-glyph-ink"></span>
-<%= if @part do %>      <span :for={_row <- 1..3} class="flex items-center gap-1.5 border-t border-bb-glyph-line pt-1">
+      <span :for={_row <- 1..3} class="flex items-center gap-1.5 border-t border-bb-glyph-line pt-1">
         <span class="h-1 w-2/3 bg-bb-glyph-soft"></span>
       </span>
-<% else %>      <span class="h-1 w-full bg-bb-glyph-soft"></span>
-      <span class="h-1 w-5/6 bg-bb-glyph-soft"></span>
-      <span class="h-1 w-2/3 bg-bb-glyph-soft"></span>
-<% end %>    </span>
-    """
+    </span>
+<% else %>    <Glyph.bars class="flex-1 px-1" rows={4} />
+<% end %>    """
   end
 end

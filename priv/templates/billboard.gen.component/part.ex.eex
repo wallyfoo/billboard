@@ -1,5 +1,5 @@
 defmodule <%= @part %> do
-  @moduledoc "One <%= @item %> in a <%= @label %> section, with a title and some words."
+  @moduledoc "One <%= @item %> in <%= @article %> <%= @label %> section, with a title and some words."
   use Billboard.Part
 
   part do

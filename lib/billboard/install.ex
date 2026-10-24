@@ -179,6 +179,77 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
+    @doc """
+    The key of each component the site module's `components:` lists, with
+    the component, as `{key, module}`: read from the module when it's
+    loaded, as billboard's are, or else from the `key` in its source.
+    A component neither gives is left out.
+    """
+    def listed_keys(igniter, site) do
+      {igniter, listed} = listed_components(igniter, site)
+
+      Enum.reduce(listed, {igniter, []}, fn module, {igniter, keys} ->
+        case component_key(igniter, module) do
+          {igniter, nil} -> {igniter, keys}
+          {igniter, key} -> {igniter, keys ++ [{key, module}]}
+        end
+      end)
+    end
+
+    defp listed_components(igniter, site) do
+      case Igniter.Project.Module.find_module(igniter, site) do
+        {:ok, {igniter, _source, zipper}} ->
+          with {:ok, body} <- Common.move_to_do_block(zipper),
+               {:ok, use} <- Igniter.Code.Module.move_to_use(body, Billboard.Site),
+               {:ok, opts} <- Function.move_to_nth_argument(use, 1),
+               {:ok, list} <- Igniter.Code.Keyword.get_key(opts, :components),
+               true <- IList.list?(list) do
+            {igniter, list_items(list)}
+          else
+            _ -> {igniter, []}
+          end
+
+        {:error, igniter} ->
+          {igniter, []}
+      end
+    end
+
+    defp list_items(list) do
+      list
+      |> Zipper.down()
+      |> Stream.unfold(fn
+        nil -> nil
+        item -> {item, Zipper.right(item)}
+      end)
+      |> Enum.map(&(&1 |> Common.expand_alias() |> module_of()))
+      |> Enum.reject(&is_nil/1)
+    end
+
+    defp component_key(igniter, module) do
+      if Code.ensure_loaded?(module) and Billboard.Component.Info.component?(module) do
+        {igniter, Billboard.Component.Info.component_key!(module)}
+      else
+        source_key(igniter, module)
+      end
+    end
+
+    # The `key :name` in a component's source, for one not yet compiled.
+    defp source_key(igniter, module) do
+      case Igniter.Project.Module.find_module(igniter, module) do
+        {:ok, {igniter, _source, zipper}} ->
+          with {:ok, call} <- Common.move_to(zipper, &Function.function_call?(&1, :key, 1)),
+               {:ok, arg} <- Function.move_to_nth_argument(call, 0),
+               {:ok, key} when is_atom(key) <- Common.expand_literal(arg) do
+            {igniter, key}
+          else
+            _ -> {igniter, nil}
+          end
+
+        {:error, igniter} ->
+          {igniter, nil}
+      end
+    end
+
     defp add_component(answers, component) do
       Igniter.Code.Keyword.set_keyword_key(answers, :components, [component], fn list ->
         IList.append_new_to_list(list, component)

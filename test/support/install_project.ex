@@ -11,6 +11,11 @@ defmodule Billboard.Test.InstallProject do
   Igniter formats a test project without its dependencies' formatter
   rules, so DSL calls come out with parentheses: assert on what's
   written, not on how it's laid out.
+
+  Every test that uses it must stay `async: false`: while Igniter
+  formats, it puts the test project's config, `config :billboard, site:
+  MySite.Billboard` among it, into the application env and restores it
+  after, so two runs at once can leave it set for every test after them.
   """
   import Igniter.Test
 
