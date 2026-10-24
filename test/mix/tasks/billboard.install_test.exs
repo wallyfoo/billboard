@@ -1,6 +1,10 @@
 defmodule Mix.Tasks.Billboard.InstallTest do
   @moduledoc "mix billboard.install: the config, the modules, and the web, written once."
-  use ExUnit.Case, async: true
+  # Not async: while Igniter formats, it puts the test project's config,
+  # `config :billboard, site: MySite.Billboard` among it, into the
+  # application env, and two runs at once can leave it there for every
+  # test after.
+  use ExUnit.Case, async: false
 
   import Igniter.Test
   import Billboard.Test.InstallProject

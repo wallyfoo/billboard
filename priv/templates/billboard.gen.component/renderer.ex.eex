@@ -1,0 +1,78 @@
+defmodule <%= @renderer %> do
+  @moduledoc """
+<%= if @part do %>  Draws a <%= @label %> section: its title, then each <%= @item %> with its words.
+  Open in the editor, each <%= @item %> has its tools, to move or remove it.
+<% else %>  Draws a <%= @label %> section: its title, then its words.
+<% end %>  """
+  use Billboard.Renderer
+
+  def render(assigns) do
+<%= if @part do %>    editing? = Words.editing?(assigns.ctx)
+
+    assigns =
+      assign(assigns,
+        editing?: editing?,
+        count: length(assigns.content.<%= @list %>),
+        spec:
+          if(editing?,
+            do: EditorFields.narrowed(assigns.section.content.type)[:<%= @list %>],
+            else: []
+          )
+      )
+
+    ~H"""
+    <section id={@anchor} data-surface={@ctx.surface} class={Parts.section_class(@ctx)}>
+      <h2 :if={@content.title || @editing?} class="bb-heading bb-type-heading text-bb-heading">
+        {Words.text(@ctx, "title", @content.title)}
+      </h2>
+      <div class="bb-measure mt-8">
+        <div
+          :for={{item, i} <- Enum.with_index(@content.<%= @list %>)}
+          class={["bb-rule-top py-4", @editing? && "bb-edit-item"]}
+        >
+          <h3 class="bb-item-title bb-type-subheading text-bb-subheading">
+            {Words.text(@ctx, "<%= @list %>.#{i}.title", item.title)}
+          </h3>
+          <div :if={item.body || @editing?} class="bb-type-body mt-3 text-bb-ink">
+            {Words.text(@ctx, "<%= @list %>.#{i}.body", item.body)}
+          </div>
+          <Parts.item_tools
+            :if={@editing?}
+            path="<%= @list %>"
+            index={i}
+            count={@count}
+            spec={@spec}
+          />
+        </div>
+      </div>
+    </section>
+    """
+<% else %>    assigns = assign(assigns, editing?: Words.editing?(assigns.ctx))
+
+    ~H"""
+    <section id={@anchor} data-surface={@ctx.surface} class={Parts.section_class(@ctx)}>
+      <h2 :if={@content.title || @editing?} class="bb-heading bb-type-heading text-bb-heading">
+        {Words.text(@ctx, "title", @content.title)}
+      </h2>
+      <div :if={@content.body || @editing?} class="bb-measure bb-type-body mt-8 text-bb-ink">
+        {Words.text(@ctx, "body", @content.body)}
+      </div>
+    </section>
+    """
+<% end %>  end
+
+  # Its sketch in the palette.
+  def glyph(assigns) do
+    ~H"""
+    <span class="grid flex-1 content-center gap-1 px-1">
+      <span class="h-1.5 w-1/2 bg-bb-glyph-ink"></span>
+<%= if @part do %>      <span :for={_row <- 1..3} class="flex items-center gap-1.5 border-t border-bb-glyph-line pt-1">
+        <span class="h-1 w-2/3 bg-bb-glyph-soft"></span>
+      </span>
+<% else %>      <span class="h-1 w-full bg-bb-glyph-soft"></span>
+      <span class="h-1 w-5/6 bg-bb-glyph-soft"></span>
+      <span class="h-1 w-2/3 bg-bb-glyph-soft"></span>
+<% end %>    </span>
+    """
+  end
+end

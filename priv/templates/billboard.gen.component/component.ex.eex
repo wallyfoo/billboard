@@ -1,0 +1,36 @@
+defmodule <%= @component %> do
+  @moduledoc """
+  A <%= @label %> section: a title<%= if @part, do: ", and a list of #{@list}", else: ", and some words" %>. Its renderer,
+  `<%= @renderer %>`, draws it.
+  """
+  use Billboard.Component
+
+  component do
+    key :<%= @key %>
+    label "<%= @label %>"
+    hint "A title<%= if @part, do: ", and a list of #{@list}", else: ", and some words" %>."
+    category :content
+    renderer <%= @renderer %>
+<%= if @part do %>    placeholder %{title: "Your title", <%= @list %>: [%{title: "Your first <%= @item %>"}]}
+
+    parts :<%= @list %>, <%= @part %>, min: 1, max: 12
+<% else %>    placeholder %{title: "Your title"}
+<% end %>  end
+
+  editor do
+    words :title, label: "Title", limit: 60
+<%= if @part do %>
+    field :<%= @list %>,
+      as: :list,
+      part: <%= @part %>,
+      min: 1,
+      max: 12,
+      item_label: "<%= @item %>"
+<% else %>    words :body, as: :markdown, label: "Words", limit: 600
+<% end %>  end
+
+  attributes do
+    attribute :title, :string, public?: true, constraints: [max_length: 120]
+<%= unless @part do %>    attribute :body, :string, public?: true, constraints: [max_length: 1200]
+<% end %>  end
+end

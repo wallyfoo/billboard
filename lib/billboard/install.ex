@@ -146,6 +146,38 @@ if Code.ensure_loaded?(Igniter) do
         else: Igniter.create_new_file(igniter, path, contents)
     end
 
+    @doc """
+    Appends `component` to the `components:` of the site module's
+    `use Billboard.Site`, unless it's there, or says where to add it when
+    there's no site module, or no `use Billboard.Site` in it to read.
+    """
+    def list_component(igniter, site, component) do
+      igniter
+      |> Igniter.Project.Module.find_and_update_module(site, fn zipper ->
+        with {:ok, use} <- Igniter.Code.Module.move_to_use(zipper, Billboard.Site),
+             {:ok, use} <- Function.update_nth_argument(use, 1, &add_component(&1, component)) do
+          {:ok, use}
+        else
+          _ -> {:warning, list_it(site, component)}
+        end
+      end)
+      |> case do
+        {:ok, igniter} -> igniter
+        {:error, igniter} -> Igniter.add_warning(igniter, list_it(site, component))
+      end
+    end
+
+    defp add_component(answers, component) do
+      Igniter.Code.Keyword.set_keyword_key(answers, :components, [component], fn list ->
+        IList.append_new_to_list(list, component)
+      end)
+    end
+
+    defp list_it(site, component),
+      do:
+        "Add #{inspect(component)} to `components:` in #{inspect(site)}'s " <>
+          "`use Billboard.Site`, where the palette should offer it."
+
     defp ash_postgres_repo?(igniter, repo) do
       case Igniter.Project.Module.find_module(igniter, repo) do
         {:ok, {igniter, _source, zipper}} ->

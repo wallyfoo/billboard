@@ -1,0 +1,7 @@
+defmodule <%= @test %> do
+  use Billboard.ComponentCase, endpoint: <%= @endpoint %><%= if @repo, do: ", repo: #{@repo}" %>
+
+  test "the <%= @label %> section works on the page and in the editor" do
+    assert_component_works(<%= @component %>)
+  end
+end
