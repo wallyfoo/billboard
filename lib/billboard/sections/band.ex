@@ -12,6 +12,7 @@ defmodule Billboard.Sections.Band do
   """
   use Billboard.Renderer
 
+  @doc "Draws the band."
   def render(assigns) do
     %{content: band, ctx: ctx} = assigns
     editing? = Words.editing?(ctx)

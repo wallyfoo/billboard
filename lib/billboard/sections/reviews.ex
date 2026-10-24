@@ -14,6 +14,7 @@ defmodule Billboard.Sections.Reviews do
   """
   use Billboard.Renderer
 
+  @doc "Draws the reviews."
   def render(assigns) do
     %{content: content, ctx: ctx} = assigns
 

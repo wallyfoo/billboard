@@ -10,6 +10,7 @@ defmodule Billboard.Sections.TextMedia do
   """
   use Billboard.Renderer
 
+  @doc "Draws the text and image."
   def render(assigns) do
     content = assigns.content
 

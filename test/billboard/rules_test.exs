@@ -213,7 +213,7 @@ defmodule Billboard.RulesTest do
   end
 
   describe "a site rule of the test's own" do
-    # SWAN's rule, with a second stand-out surface so two bands may differ.
+    # The rule of a site with two stand-out surfaces, so two bands may differ.
     setup do
       put_shop!(
         surfaces: [

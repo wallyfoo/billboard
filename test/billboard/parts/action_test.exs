@@ -26,13 +26,13 @@ defmodule Billboard.Parts.ActionTest do
              create!(%{label: "Prices", path: "/price-list"})
 
     assert_raise Ash.Error.Invalid, ~r/starting with \/, such as \/about/, fn ->
-      create!(%{label: "Fresha", path: "https://fresha.com"})
+      create!(%{label: "Elsewhere", path: "https://example.com"})
     end
   end
 
   test "a protocol-relative address isn't on this site" do
     assert_raise Ash.Error.Invalid, ~r/starting with \//, fn ->
-      create!(%{label: "Fresha", path: "//fresha.com/a"})
+      create!(%{label: "Elsewhere", path: "//example.com/a"})
     end
 
     assert %Action{path: "/"} = create!(%{label: "Home", path: "/"})

@@ -32,7 +32,7 @@ defmodule Billboard.MarkdownTest do
 
     test "keeps the text of block syntax, and list markers" do
       assert html("# Heading\n\n- cut\n- colour") == "Heading<br>\n<br>\n• cut<br>\n• colour"
-      assert html("1. Best salon") == "1. Best salon"
+      assert html("1. Best shop") == "1. Best shop"
     end
 
     test "renders nil as nothing" do

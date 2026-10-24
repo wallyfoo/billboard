@@ -13,6 +13,7 @@ defmodule Billboard.Sections.News do
   """
   use Billboard.Renderer
 
+  @doc "Draws what's on."
   def render(assigns) do
     assigns = assign(assigns, :news, assigns.ctx.data[assigns.section.key] || [])
 

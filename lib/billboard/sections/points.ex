@@ -22,6 +22,7 @@ defmodule Billboard.Sections.Points do
 
   alias Billboard.Surfaces
 
+  @doc "Draws the points."
   def render(assigns) do
     editing? = Words.editing?(assigns.ctx)
     cards? = assigns.content.look == :cards

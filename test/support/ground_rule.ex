@@ -1,8 +1,9 @@
 defmodule Billboard.Test.GroundRule do
   @moduledoc """
-  A site rule for `Billboard.RulesTest`, written as SWAN's: two stand-out
-  sections in a row, drawn on the same surface, are an error. A test adds
-  it through `put_shop!(rules: [Billboard.Test.GroundRule])`.
+  A site rule for `Billboard.RulesTest`, written as a site with two
+  stand-out surfaces might: two stand-out sections in a row, drawn on the
+  same surface, are an error. A test adds it through
+  `put_shop!(rules: [Billboard.Test.GroundRule])`.
 
   It compares the surface each section is drawn on, so a `nil` surface,
   or one the site has stopped offering, counts as its kind's default. A

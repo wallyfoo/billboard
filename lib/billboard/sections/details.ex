@@ -15,6 +15,7 @@ defmodule Billboard.Sections.Details do
   """
   use Billboard.Renderer
 
+  @doc "Draws the details."
   def render(assigns) do
     editing? = Words.editing?(assigns.ctx)
 

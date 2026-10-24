@@ -284,11 +284,16 @@ makes the site's `--bb-*` tokens Tailwind utilities, such as
    plug Billboard.Plugs.UploadsStatic
    ```
 
-5. Say where photographs go. In production, set it in
-   `config/runtime.exs`, pointing at a persistent volume:
+5. Say where photographs go, with a default in `config/config.exs` and,
+   in production, `UPLOADS_DIR` in `config/runtime.exs`, on a volume
+   that outlives a deploy:
 
    ```elixir
-   config :billboard, :uploads_dir, System.fetch_env!("UPLOADS_DIR")
+   # config/config.exs
+   config :billboard, uploads_dir: Path.expand("../priv/uploads", __DIR__)
+
+   # config/runtime.exs, for production
+   config :billboard, uploads_dir: System.fetch_env!("UPLOADS_DIR")
    ```
 
 Icons are Heroicons, drawn by the Heroicons Tailwind plugin a Phoenix
