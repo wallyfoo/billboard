@@ -97,13 +97,13 @@ defmodule Billboard.ThemeCheckTest do
   # Everything the editor draws: its controls, its section editor, and
   # the rest under `editor/` and `editor_live/`, and `editor.ex` and
   # `editor_live.ex` beside them, found by glob so a new file joins the
-  # check, and the fields it draws that it doesn't type into on the page. It reads neither a site's classes nor billboard's
-  # theme, only its own tokens: its colours are `bb-edit-*` and
-  # `bb-glyph-*`, its type `bb-edit-type-*`, its faces `font-bb-edit` and
-  # `font-bb-glyph`, and its easing `ease-bb-edit`. The one colour of its
-  # own it names is its popovers' neutral shadow,
-  # `shadow-[0_8px_24px_rgb(0_0_0/0.18)]`, which is no theme's, so the
-  # check lets it be.
+  # check, and the fields it draws that it doesn't type into on the page.
+  # It reads neither a site's classes nor billboard's theme, only its own
+  # tokens: its colours are `bb-edit-*` and `bb-glyph-*`, its type
+  # `bb-edit-type-*`, its faces `font-bb-edit` and `font-bb-glyph`, and
+  # its easing `ease-bb-edit`. The one colour of its own it names is its
+  # popovers' neutral shadow, `shadow-[0_8px_24px_rgb(0_0_0/0.18)]`,
+  # which is no theme's, so the check lets it be.
   @root Path.expand("../..", __DIR__)
 
   @editor_files Enum.sort(

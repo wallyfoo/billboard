@@ -41,9 +41,9 @@ defmodule Billboard.Layout do
 
   Billboard calls `page/1` through a function component of its own,
   which hands it the slots it writes and its assigns with what changed,
-  so a change to the page redraws only what changed, and resends the
-  layout's header or footer only when what they draw has. A layout
-  draws the slots with `render_slot/1` where it puts them.
+  so a change to the page resends the layout's own header or footer only
+  when what they draw has changed. A layout draws the slots with
+  `render_slot/1` where it puts them.
   """
 
   @doc "Draws the site's chrome round the page's hero block and its sections."

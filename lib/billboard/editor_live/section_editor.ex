@@ -488,11 +488,14 @@ defmodule Billboard.EditorLive.SectionEditor do
   end
 
   # A photograph saves as soon as it has arrived, with the words Describe
-  # last sent.
+  # last sent. One still arriving once the section shows none is called
+  # off, so it isn't left waiting for a layout that shows it again.
   defp photo_progress(:photo, entry, socket) do
-    if entry.done? and photo?(socket),
-      do: save_upload(socket, socket.assigns.photo_params || %{}),
-      else: {:noreply, socket}
+    cond do
+      not photo?(socket) -> {:noreply, cancel_upload(socket, :photo, entry.ref)}
+      entry.done? -> save_upload(socket, socket.assigns.photo_params || %{})
+      true -> {:noreply, socket}
+    end
   end
 
   # Checks the words before taking the photograph in. Once taken, it leaves
@@ -686,8 +689,10 @@ defmodule Billboard.EditorLive.SectionEditor do
     end
   end
 
-  # `form` is the holder's form, as the editor draws it, or nil for a part
-  # or list item the section hasn't got yet.
+  # `form` is the holder's form, as the editor draws it. A part or list
+  # item the section hasn't got draws none of its fields, so, as
+  # `EditorFields.hidden_at?/3` reads it, none is shown to change, and
+  # its params go (`keep_shown/5`): a change never adds one.
   defp only(params, specs, form) when is_map(params) do
     fields = Map.new(specs, fn {field, spec} -> {Atom.to_string(field), {field, spec}} end)
 
@@ -707,7 +712,7 @@ defmodule Billboard.EditorLive.SectionEditor do
   defp keep(_key, _value, nil, _form), do: :drop
 
   defp keep(key, value, {field, spec}, form) do
-    if form && EditorFields.hidden?(form, spec),
+    if EditorFields.hidden?(form, spec),
       do: :drop,
       else: keep_shown(key, value, field, spec, form)
   end
@@ -724,10 +729,16 @@ defmodule Billboard.EditorLive.SectionEditor do
         :drop
 
       :part ->
-        only(value, part_specs, form && EditorFields.sub_form(form, [field]))
+        case EditorFields.sub_form(form, [field]) do
+          nil -> :drop
+          part_form -> only(value, part_specs, part_form)
+        end
 
       :list when is_map(value) ->
-        Map.new(value, fn {i, item} -> {i, only(item, part_specs, item_form(form, field, i))} end)
+        for {i, item} <- value,
+            item_form = item_form(form, field, i),
+            into: %{},
+            do: {i, only(item, part_specs, item_form)}
 
       :list ->
         :drop
@@ -736,8 +747,6 @@ defmodule Billboard.EditorLive.SectionEditor do
         value
     end
   end
-
-  defp item_form(nil, _field, _i), do: nil
 
   defp item_form(form, field, i) do
     case Integer.parse(i) do
@@ -1001,11 +1010,15 @@ defmodule Billboard.EditorLive.SectionEditor do
     })
   end
 
-  defp photo?(socket) do
-    content_form = EditorFields.content_form(socket.assigns.form)
+  defp photo?(socket),
+    do: photo_shown?(specs(socket), EditorFields.content_form(socket.assigns.form))
 
-    Enum.any?(specs(socket), fn {_field, spec} ->
-      spec[:as] == :photo and not EditorFields.hidden?(content_form, spec)
+  # Whether the section's layout shows a photograph: one of `specs` is a
+  # photo the content's form doesn't hide. The header draws the
+  # photograph's controls, and its events change it, only then.
+  defp photo_shown?(specs, content_form) do
+    Enum.any?(specs, fn {_field, spec} ->
+      Keyword.get(spec, :as, :text) == :photo and not EditorFields.hidden?(content_form, spec)
     end)
   end
 
@@ -1205,7 +1218,7 @@ defmodule Billboard.EditorLive.SectionEditor do
     end
 
     present? = &part?(assigns.form, [&1])
-    photo? = Enum.any?(shown, fn {_field, spec} -> as.(spec) == :photo end)
+    photo? = photo_shown?(specs, content_form)
 
     # A part the section can do without, other than a button, which is
     # changed where it's drawn.

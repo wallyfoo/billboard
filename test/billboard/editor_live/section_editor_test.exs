@@ -876,6 +876,25 @@ defmodule Billboard.EditorLive.SectionEditorTest do
       assert content(nil, band.key) == kept
     end
 
+    test "a band that leads with its heading takes a change to its heading" do
+      band = section_of(nil, :band)
+      lv = open(nil, band.key)
+
+      pick_variant(lv, "heading")
+      change(lv, %{"content" => %{"heading" => "Visit us today"}})
+
+      assert content(nil, band.key).heading == "Visit us today"
+    end
+
+    test "a section takes no change to a part it hasn't got" do
+      about!()
+      lv = open("/about", "story")
+
+      change(lv, %{"content" => %{"head" => %{"heading" => "Forged"}, "columns" => "2"}})
+
+      assert %{head: nil, columns: 2} = content("/about", "story")
+    end
+
     test "a layout without a photograph takes no change to the one it keeps" do
       home!()
       hero = section_of("/", :hero)
@@ -1244,6 +1263,17 @@ defmodule Billboard.EditorLive.SectionEditorTest do
       edit_words(lv, "heading", "Forged")
 
       assert content("/terms", hero.key).heading == "Forged"
+    end
+
+    test "a hero bound to a visit takes a change to its own words" do
+      visit!()
+      hero = section_of("/terms", :hero)
+      lv = open("/terms", hero.key)
+
+      change(lv, %{"content" => %{"heading" => "Our terms", "lede" => "Read them *once*."}})
+
+      assert %{heading: "Our terms", lede: "Read them *once*."} =
+               content("/terms", hero.key)
     end
 
     test "a setting's change saves" do
