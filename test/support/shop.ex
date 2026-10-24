@@ -6,7 +6,8 @@ defmodule Billboard.Test.Shop do
   palette with `Billboard.Test.Env.put_shop!/1`.
 
   It's on billboard's stock components, with three of its own, Cards,
-  Text, and Notes, whose items are a site's own part. Its `kinds:` keep the hero off the library, the band and the
+  Text, and Notes, whose items are a site's own part, and the guides'
+  FAQ (`MySite.Sections.Faq`). Its `kinds:` keep the hero off the library, the band and the
   points to free pages and the library, Two columns to free pages, and
   Shared to free and item pages. Its action kinds and context are the
   test site's (`Billboard.Test.Actions` and `Billboard.Test.Context`),
@@ -39,6 +40,7 @@ defmodule Billboard.Test.Shop do
       Billboard.Components.Points,
       Billboard.Components.TextMedia,
       Billboard.Components.Details,
+      MySite.Sections.Faq,
       Billboard.Components.Reviews,
       Billboard.Components.News,
       Billboard.Components.Columns,
