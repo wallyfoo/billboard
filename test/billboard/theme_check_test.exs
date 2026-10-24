@@ -92,11 +92,11 @@ defmodule Billboard.ThemeCheckTest do
   end
 
   # The editor's chrome: the fields it draws that it doesn't type into
-  # on the page. It reads neither a site's classes nor
+  # on the page, and its own controls. It reads neither a site's classes nor
   # billboard's theme, only its own tokens: its colours are `bb-edit-*`
   # and `bb-glyph-*`, its type `bb-edit-type-*`, its faces `font-bb-edit`
   # and `font-bb-glyph`, and its easing `ease-bb-edit`.
-  @editor_files ~w(lib/billboard/sections/editor_fields.ex)
+  @editor_files ~w(lib/billboard/sections/editor_fields.ex lib/billboard/editor/components.ex)
 
   for file <- @editor_files do
     test "#{file} draws only through the editor's tokens" do

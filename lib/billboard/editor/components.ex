@@ -4,13 +4,14 @@ defmodule Billboard.Editor.Components do
   and its icon. The editor draws its own controls, from its own
   `--bb-edit-*` tokens (`editor.css`), so they look the same on every
   site and never take on the site's fonts or colours, as the theme's
-  `bb-type-*` roles and `bb-*` colours would.
+  type roles and colours would.
 
   A focused button or checkbox is ringed in the editor's blue
   (`--bb-edit-accent`), not in the theme's focus colour, which the
   surface sets and which can be all but invisible on it, as on a dark
-  hero. A focused text field, select, or textarea is marked by its
-  underline, in the editor's ink, instead.
+  hero. A focused text field, select, or textarea draws no ring: its
+  underline turns the editor's blue instead. A field with a problem
+  keeps its underline in the error colour, focused or not.
   """
   use Phoenix.Component
 
@@ -285,12 +286,21 @@ defmodule Billboard.Editor.Components do
     [
       "bb-edit-type-body w-full rounded-none border-0 border-b bg-transparent px-0 pt-1 pb-3 text-bb-edit-ink",
       "placeholder:text-bb-edit-soft/70 outline-none transition-colors duration-[var(--bb-edit-duration-ui)] ease-bb-edit",
-      "focus:border-bb-edit-ink focus-visible:outline-none",
-      "not-placeholder-shown:border-bb-edit-ink",
+      "focus-visible:outline-none",
       "read-only:text-bb-edit-soft disabled:bg-bb-edit-line disabled:text-bb-edit-disabled",
-      if(errors == [], do: "border-bb-edit-faint", else: "border-bb-edit-error")
+      underline(errors)
     ]
   end
+
+  # The underline: faint while it's empty, the editor's ink once it holds
+  # words (or always, for a field with no placeholder), and the editor's
+  # blue while it's focused, which Tailwind sorts after the ink. A field
+  # with a problem keeps the error colour throughout, so it names neither
+  # variant, which would outweigh it.
+  defp underline([]),
+    do: "border-bb-edit-faint not-placeholder-shown:border-bb-edit-ink focus:border-bb-edit"
+
+  defp underline(_errors), do: "border-bb-edit-error"
 
   attr :hint, :string, default: nil
   attr :errors, :list, default: []

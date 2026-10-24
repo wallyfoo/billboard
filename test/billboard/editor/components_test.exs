@@ -38,17 +38,20 @@ defmodule Billboard.Editor.ComponentsTest do
     }
   end
 
-  # The theme's colours, type roles, corners, and motion, which the site
-  # sets and the editor's controls never draw with: each has an editor
-  # token of its own.
+  # The theme's colours, type roles, corners, measures, wrap, card,
+  # hairline, and custom properties, which the site sets and the editor's
+  # controls never draw with: each has an editor token of its own, or no
+  # place in the editor.
   defp site_words(html) do
     html
     |> String.replace("&quot;", "\"")
     |> ClassWords.words()
     |> Enum.filter(fn word ->
-      String.starts_with?(word, ["bb-type-", "rounded-bb-", "--bb-duration", "--bb-ease"]) or
+      String.starts_with?(word, ["bb-type-", "rounded-bb-"]) or
+        (String.starts_with?(word, "--bb-") and not String.starts_with?(word, "--bb-edit-")) or
         ClassWords.colour?(word, ClassWords.theme_colours()) or
-        word in ~w(ease-bb duration-bb)
+        word in ~w(ease-bb duration-bb bb-card bb-wrap bb-measure bb-measure-title bb-section-pad
+                   bb-rule-top)
     end)
     |> Enum.uniq()
   end
@@ -231,7 +234,7 @@ defmodule Billboard.Editor.ComponentsTest do
       assert has?(doc(html), "input#shown[type='checkbox']#{@ring}")
     end
 
-    test "marks a focused field by its underline, in the editor's ink, with no ring" do
+    test "marks a focused field by its underline, in the editor's blue, with no ring" do
       for type <- ~w(text select textarea) do
         html =
           render_component(&Components.input/1,
@@ -244,8 +247,32 @@ defmodule Billboard.Editor.ComponentsTest do
 
         assert has?(
                  doc(html),
-                 "#heading.focus\\:border-bb-edit-ink.focus-visible\\:outline-none"
+                 "#heading.border-bb-edit-faint.not-placeholder-shown\\:border-bb-edit-ink" <>
+                   ".focus\\:border-bb-edit.focus-visible\\:outline-none"
                ),
+               type
+      end
+    end
+
+    # Tailwind sorts a variant's rule after a plain one, so a field with a
+    # problem names no other underline, which would outweigh its own.
+    test "keeps a field's error underline, focused or holding words" do
+      for type <- ~w(text select textarea) do
+        html =
+          render_component(&Components.input/1,
+            id: "heading",
+            name: "heading",
+            type: type,
+            value: "Far too long",
+            options: [],
+            errors: ["at most 3"]
+          )
+
+        doc = doc(html)
+        assert has?(doc, "#heading.border-bb-edit-error.focus-visible\\:outline-none"), type
+
+        assert html |> ClassWords.words() |> Enum.filter(&String.contains?(&1, "border-bb-")) ==
+                 ["border-bb-edit-error"],
                type
       end
     end
@@ -254,10 +281,15 @@ defmodule Billboard.Editor.ComponentsTest do
   describe "the theme check" do
     test "finds the theme's names in what it reads" do
       html =
-        ~s(<p class="bb-type-body text-bb-ink rounded-bb-card ease-bb hover:bg-bb-accent/40">)
+        ~s|<p class="bb-type-body text-bb-ink rounded-bb-card ease-bb hover:bg-bb-accent/40 bb-wrap
+           bb-card bb-measure bb-measure-title bb-section-pad bb-rule-top
+           duration-[var(--bb-duration)] pl-[var(--bb-gutter)] bb-edit-type-body
+           duration-[var(--bb-edit-duration)]">|
 
       assert site_words(html) ==
-               ~w(bb-type-body text-bb-ink rounded-bb-card ease-bb bg-bb-accent)
+               ~w(bb-type-body text-bb-ink rounded-bb-card ease-bb bg-bb-accent bb-wrap bb-card
+                  bb-measure bb-measure-title bb-section-pad bb-rule-top --bb-duration
+                  --bb-gutter)
     end
   end
 
