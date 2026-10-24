@@ -18,7 +18,7 @@ defmodule Billboard.Test.Router do
 
     live_session :admin, on_mount: [{Billboard.Test.SignIn, :admin}] do
       live "/probe", Billboard.Test.ProbeLive
-      billboard_editor("/pages", back: {"Admin", "/admin"})
+      billboard_editor "/pages", back: {"Admin", "/admin"}
     end
   end
 end

@@ -29,7 +29,9 @@ locals_without_parens = [
   description: 1,
   page: 2,
   page: 3,
-  library: 1
+  library: 1,
+  billboard_editor: 1,
+  billboard_editor: 2
 ]
 
 [

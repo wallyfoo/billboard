@@ -18,7 +18,7 @@ defmodule Billboard.Editor.RouterTest do
 
     scope "/admin", MySiteWeb.Admin do
       live_session :admin do
-        billboard_editor("/pages")
+        billboard_editor "/pages"
       end
     end
   end
@@ -60,7 +60,7 @@ defmodule Billboard.Editor.RouterTest do
         import Billboard.Editor.Router
 
         scope "/" do
-          billboard_editor("/pages", bakc: {"Admin", "/admin"})
+          billboard_editor "/pages", bakc: {"Admin", "/admin"}
         end
       end
     end
