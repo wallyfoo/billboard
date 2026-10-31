@@ -196,7 +196,7 @@ Points draws them itself (`Billboard.Sections.Points`), one to four:
 each under a hairline, or, in the cards look, as a `bb-card`, with the
 `bb-point` hook, and its title with `bb-item-title`, an `h3` under a
 head and an `h2` without one. A point's link is always a text link.
-[Its source](https://github.com/wallyfoo/billboard/blob/v0.4.0/lib/billboard/sections/points.ex)
+[Its source](https://github.com/wallyfoo/billboard/blob/v0.5.0/lib/billboard/sections/points.ex)
 is the stock example of a list of parts with their tools.
 
 ## Detail (`Billboard.Parts.Detail`)
