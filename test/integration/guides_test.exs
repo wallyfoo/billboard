@@ -59,6 +59,13 @@ defmodule Billboard.Integration.GuidesTest do
       sh!("mix assets.build", site)
       assert File.read!(Path.join(site, "priv/static/assets/css/app.css")) =~ "bb-surface-band"
       assert File.read!(Path.join(site, "priv/static/assets/js/app.js")) =~ "EditCanvas"
+
+      # The usage rules, as getting started's last section has a site add them.
+      add_deps(site, ~s|      {:usage_rules, "~> 1.2", only: :dev},|)
+      sh!("mix deps.get", site)
+      rules = sh!("mix usage_rules.list billboard", site)
+      assert rules =~ "usage-rules.md: yes"
+      assert rules =~ ~r/sub-rules: components, theme/
     after
       if File.dir?(site) do
         sh("MIX_ENV=test mix ecto.drop --force", site)
@@ -79,9 +86,20 @@ defmodule Billboard.Integration.GuidesTest do
     do: text |> String.split("\n", trim: true) |> Enum.reduce(cwd, &command/2)
 
   defp step(%{marker: :site, arg: "mix.exs", text: "      {:billboard, " <> _ = text}, cwd) do
-    path = Path.join(cwd, "mix.exs")
+    add_deps(
+      cwd,
+      String.replace(text, ~r/\{:billboard, [^}]*\}/, ~s|{:billboard, path: "#{@root}"}|)
+    )
+
+    cwd
+  end
+
+  defp step(_block, cwd), do: cwd
+
+  # Puts `deps`, lines of the deps list, first in the site's, once.
+  defp add_deps(site, deps) do
+    path = Path.join(site, "mix.exs")
     mix = File.read!(path)
-    deps = String.replace(text, ~r/\{:billboard, [^}]*\}/, ~s|{:billboard, path: "#{@root}"}|)
 
     unless String.contains?(mix, deps) do
       File.write!(
@@ -91,11 +109,7 @@ defmodule Billboard.Integration.GuidesTest do
         )
       )
     end
-
-    cwd
   end
-
-  defp step(_block, cwd), do: cwd
 
   defp command("cd " <> path, cwd), do: Path.expand(path, cwd)
 
