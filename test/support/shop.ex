@@ -44,6 +44,7 @@ defmodule Billboard.Test.Shop do
       Billboard.Components.TextMedia,
       Billboard.Components.Details,
       MySite.Sections.Faq,
+      MySite.Sections.Fees,
       Billboard.Components.Reviews,
       Billboard.Components.News,
       Billboard.Components.Columns,

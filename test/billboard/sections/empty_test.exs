@@ -67,6 +67,13 @@ defmodule Billboard.Sections.EmptyTest do
         do: {%{head: head, items: [detail(only)]}, nil, [context: %{scope: "shoes"}]}
   end
 
+  # The page is about a service with no fees, so a limited section shows none.
+  defp cases(:fees) do
+    for only <- [nil, "assessments"],
+        data <- [nil, [], MySite.Fees.list()],
+        do: {%{title: "Fees", only_service: only}, data, [context: %{scope: "supervision"}]}
+  end
+
   defp cases(:shared) do
     library = %{
       "band" => section("band", :band, %{heading: "Visit the shop"}),
@@ -87,7 +94,7 @@ defmodule Billboard.Sections.EmptyTest do
           do: type
 
     assert Enum.sort(Sections.emptiable()) == Enum.sort(exporting)
-    assert Enum.sort(Sections.emptiable()) == ~w(details news reviews shared)a
+    assert Enum.sort(Sections.emptiable()) == ~w(details fees news reviews shared)a
   end
 
   test "empty? says whether a visitor sees nothing of the section" do

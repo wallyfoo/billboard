@@ -619,6 +619,7 @@ defmodule Billboard.SectionsTest do
   defp drawn(type) do
     data = %{
       reviews: [review(1)],
+      fees: MySite.Fees.list(),
       news: [%{id: "n1", title: "Late", body: "Open late.", published_on: ~D[2026-09-12]}]
     }
 
