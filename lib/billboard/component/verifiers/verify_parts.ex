@@ -84,7 +84,7 @@ defmodule Billboard.Component.Verifiers.VerifyParts do
 
       is_nil(Ash.Resource.Info.primary_action(type, :destroy)) ->
         "#{inspect(type)} has no destroy action, and Ash destroys a part when it's " <>
-          "dropped from a list. Add `defaults [:read, :destroy, create: :*, update: :*]` " <>
+          "dropped from a list or cleared. Add `defaults [:read, :destroy, create: :*, update: :*]` " <>
           "to its actions."
 
       match?(%Parts{}, part) and Ash.Resource.Info.primary_key(type) != [:id] ->

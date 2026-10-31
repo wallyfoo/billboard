@@ -737,10 +737,10 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       end)
     end
 
-    test "names the paths the README and mix billboard.assets give" do
+    test "names the paths the getting started guide and mix billboard.assets give" do
       igniter = project() |> install()
       installed = content(igniter, "assets/css/app.css") <> content(igniter, "assets/js/app.js")
-      readme = File.read!(Path.expand("../../../README.md", __DIR__))
+      guide = File.read!(Path.expand("../../../guides/getting-started.md", __DIR__))
 
       {:docs_v1, _, _, _, %{"en" => assets_doc}, _, _} =
         Code.fetch_docs(Mix.Tasks.Billboard.Assets)
@@ -758,7 +758,7 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       # Every billboard path the docs give, the installer writes, and the
       # reverse, so none can drift when billboard draws classes in a new
       # file.
-      assert vendored.(readme) == written
+      assert vendored.(guide) == written
       assert vendored.(assets_doc) == written
 
       # The theme's own header names its import and every source line.

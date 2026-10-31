@@ -122,7 +122,7 @@ end
 
 ```text
 MySite.Sections.Broken.Item has no destroy action, and Ash destroys a
-part when it's dropped from a list. Add `defaults [:read, :destroy,
+part when it's dropped from a list or cleared. Add `defaults [:read, :destroy,
 create: :*, update: :*]` to its actions.
 ```
 

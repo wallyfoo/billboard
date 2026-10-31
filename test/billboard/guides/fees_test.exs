@@ -15,24 +15,33 @@ defmodule Billboard.Guides.FeesTest do
 
   @fees MySite.Fees.list()
 
-  defp drawn(only) do
-    section = section(:fees, %{title: "Fees", only_service: only})
-    visitor(section, %{data: %{"s1" => @fees}, context: %{scope: "assessments"}})
+  defp drawn(only, context \\ %{scope: "assessments"}) do
+    section = section(:fees, %{title: "Fees", this_service_only: only})
+    visitor(section, %{data: %{"s1" => @fees}, context: context})
   end
 
   test "works, with the fees the site's data gives" do
     assert_component_works(MySite.Sections.Fees, data: @fees, context: %{scope: "assessments"})
   end
 
-  test "draws every fee, or only the page's service's when limited" do
-    every = drawn(nil)
+  test "draws every fee, or only the page's service's when asked" do
+    every = drawn(false)
     assert every =~ "A first assessment"
     assert every =~ "A session"
 
-    limited = drawn("assessments")
+    limited = drawn(true)
     assert limited =~ "A first assessment"
     assert limited =~ "A follow-up"
     refute limited =~ "A session"
+
+    therapy = drawn(true, %{scope: "therapy"})
+    assert therapy =~ "A session"
+    refute therapy =~ "A first assessment"
+  end
+
+  test "draws nothing when asked for the page's service on a page about none" do
+    refute drawn(true, %{}) =~ "<section"
+    assert drawn(false, %{}) =~ "A session"
   end
 
   test "the site's data reads the fees once for two sections" do

@@ -2,7 +2,8 @@ defmodule MySiteWeb.Sections.Fees do
   @moduledoc """
   Draws the fees the page's data holds for this section: every one, or,
   when the section shows only the page's service, those of the service
-  the page is about (`ctx.context.scope`).
+  the page is about (`ctx.context.scope`), or none on a page about no
+  service.
   """
   use Billboard.Renderer
 
@@ -36,8 +37,8 @@ defmodule MySiteWeb.Sections.Fees do
 
   defp fees(content, section, ctx), do: shown(content, ctx.data[section.key], ctx)
 
-  # With `only_service` set, only the fees of the page's service.
-  defp shown(%{only_service: nil}, fees, _ctx), do: fees || []
+  # With `this_service_only` set, only the fees of the page's service.
+  defp shown(%{this_service_only: false}, fees, _ctx), do: fees || []
 
   defp shown(_content, fees, ctx) do
     scope = get_in(ctx, [:context, :scope])

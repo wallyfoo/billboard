@@ -96,18 +96,19 @@ end
 
 editor do
   words :title, label: "Title", limit: 60
-  field :only_service, as: :choice, from: :services, label: "Shows"
+  field :this_service_only, as: :toggle, label: "Only this page's service"
 end
 
 attributes do
   attribute :title, :string, public?: true, constraints: [max_length: 120]
-  attribute :only_service, :string, public?: true
+  attribute :this_service_only, :boolean, allow_nil?: false, default: false, public?: true
 end
 ```
 
 `context` declares what of the page's context the renderer reads, here
-its `:scope`. The `only_service` picker offers the site's `:services`,
-a set of choices the context gives (below).
+its `:scope`, the service the page is about. The toggle keeps the
+section to that service's fees, and on a page about no service it shows
+none.
 
 <!-- from: guides/examples/lib/my_site_web/sections/fees.ex#render -->
 ```elixir
@@ -140,8 +141,8 @@ def nothing_to_show(_content, _ctx), do: "there are no fees to show."
 
 defp fees(content, section, ctx), do: shown(content, ctx.data[section.key], ctx)
 
-# With `only_service` set, only the fees of the page's service.
-defp shown(%{only_service: nil}, fees, _ctx), do: fees || []
+# With `this_service_only` set, only the fees of the page's service.
+defp shown(%{this_service_only: false}, fees, _ctx), do: fees || []
 
 defp shown(_content, fees, ctx) do
   scope = get_in(ctx, [:context, :scope])

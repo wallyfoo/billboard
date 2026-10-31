@@ -24,17 +24,12 @@ Add billboard and Ash to `mix.exs` together, at the top of the list in
       {:igniter, "~> 0.8", only: [:dev, :test]},
 ```
 
-Then fetch them, install Ash, and install billboard:
-
-```bash
-mix deps.get
-mix compile
-mix igniter.install ash ash_postgres ash_phoenix --yes
-mix billboard.install --home --yes
-```
-
 [Getting started](guides/getting-started.md) takes a new Phoenix site
-from here to its first published page.
+from there to its first published page, in order: signing in with
+`mix phx.gen.auth`, installing Ash, running `mix billboard.install`,
+and migrating. Billboard's editor lets anyone in its `live_session`
+edit and publish every page, so close open registration before you
+deploy.
 
 ## Start here
 

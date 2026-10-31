@@ -303,7 +303,7 @@ defmodule Billboard.Component do
   @doc """
   Builds the component `type` from `attrs`, applying its defaults and
   running its validations, as a save would. Raises `Ash.Error.Invalid`
-  when they fail, and `KeyError` for a type the site doesn't list.
+  when they fail, and `ArgumentError` for a type the site doesn't list.
   `Ash.create!/1` works on an embedded resource, so no casting by hand is
   needed, and a section can be created with the result
   (`%Ash.Union{type: type, value: Billboard.Component.build!(type, attrs)}`).

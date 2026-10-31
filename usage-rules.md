@@ -24,6 +24,10 @@ module named here has docs.
 
 ## Always
 
+- Mount `billboard_editor` only in a `live_session` that admins alone
+  can join: anyone it lets in can edit and publish every page. Close
+  `mix phx.gen.auth`'s open registration, or give the editor's session
+  an `on_mount` that admits admins only.
 - Start a component with `mix billboard.gen.component MySite.Sections.Name`,
   and keep its test, which calls `assert_component_works/2`
   (`Billboard.ComponentCase`).

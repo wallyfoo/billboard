@@ -19,12 +19,12 @@ defmodule MySite.Sections.Fees do
 
   editor do
     words :title, label: "Title", limit: 60
-    field :only_service, as: :choice, from: :services, label: "Shows"
+    field :this_service_only, as: :toggle, label: "Only this page's service"
   end
 
   attributes do
     attribute :title, :string, public?: true, constraints: [max_length: 120]
-    attribute :only_service, :string, public?: true
+    attribute :this_service_only, :boolean, allow_nil?: false, default: false, public?: true
   end
 
   # guide:end

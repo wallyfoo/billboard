@@ -127,7 +127,7 @@ defmodule Billboard.PartsTest do
                end
              end) ==
                "Billboard.Test.NoDestroy has no destroy action, and Ash destroys a part " <>
-                 "when it's dropped from a list. Add " <>
+                 "when it's dropped from a list or cleared. Add " <>
                  "`defaults [:read, :destroy, create: :*, update: :*]` to its actions."
     end
 

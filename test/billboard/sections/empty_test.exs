@@ -69,9 +69,9 @@ defmodule Billboard.Sections.EmptyTest do
 
   # The page is about a service with no fees, so a limited section shows none.
   defp cases(:fees) do
-    for only <- [nil, "assessments"],
+    for only <- [false, true],
         data <- [nil, [], MySite.Fees.list()],
-        do: {%{title: "Fees", only_service: only}, data, [context: %{scope: "supervision"}]}
+        do: {%{title: "Fees", this_service_only: only}, data, [context: %{scope: "supervision"}]}
   end
 
   defp cases(:shared) do
