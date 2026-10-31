@@ -265,7 +265,9 @@ defmodule Billboard.Rules do
 
   defp children(%{content: %Ash.Union{type: :columns}, key: key}) do
     raise ArgumentError,
-          "load the children of Two columns section #{inspect(key)} before checking the rules"
+          "load the children of Two columns section #{inspect(key)} before checking the rules. " <>
+            "Read the version through the site's domain, which loads them, or load them with " <>
+            "`Ash.load!(version, sections: :children)`"
   end
 
   defp children(_section), do: []

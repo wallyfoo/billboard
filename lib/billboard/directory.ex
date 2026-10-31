@@ -28,7 +28,13 @@ defmodule Billboard.Directory do
   @doc "The page for route `pattern`. Raises `ArgumentError` for an unknown one."
   @spec fetch!(String.t() | nil) :: Page.t()
   def fetch!(pattern),
-    do: fetch(pattern) || raise(ArgumentError, "no builder page for #{inspect(pattern)}")
+    do:
+      fetch(pattern) ||
+        raise(
+          ArgumentError,
+          "no builder page for #{inspect(pattern)}. Add `page #{inspect(pattern)}, …` to the " <>
+            "site's `pages do`, or open one it has"
+        )
 
   @doc """
   The page the editor opens when it's given none: `/`, or else the

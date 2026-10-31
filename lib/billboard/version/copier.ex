@@ -73,6 +73,9 @@ defmodule Billboard.Version.Copier do
   defp children!(%{children: children}) when is_list(children), do: children
 
   defp children!(%{key: key}) do
-    raise ArgumentError, "load the children of section #{inspect(key)} before copying it"
+    raise ArgumentError,
+          "load the children of section #{inspect(key)} before copying it. Read the version " <>
+            "through the site's domain, which loads them, or load them with " <>
+            "`Ash.load!(version, sections: :children)`"
   end
 end

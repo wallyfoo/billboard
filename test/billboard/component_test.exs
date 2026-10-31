@@ -449,7 +449,7 @@ defmodule Billboard.ComponentTest do
     end
 
     test "raises for a type the site doesn't list" do
-      assert_raise KeyError, fn -> Billboard.Component.build!(:nope, %{}) end
+      assert_raise ArgumentError, fn -> Billboard.Component.build!(:nope, %{}) end
     end
   end
 
@@ -472,7 +472,7 @@ defmodule Billboard.ComponentTest do
       put_site!(components: [Banner, Billboard.Test.Plain])
 
       assert_raise ArgumentError,
-                   ~r/lists Billboard.Test.Plain, which isn't a billboard component. Add `use Billboard.Component` to it, or take it out of components\/0/,
+                   ~r/lists Billboard.Test.Plain, which isn't a billboard component. Add `use Billboard.Component` to it, or take it out of `components:`/,
                    fn -> Site.component!(:nope) end
     end
   end

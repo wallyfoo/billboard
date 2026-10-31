@@ -124,7 +124,8 @@ defmodule Billboard.Resource do
       unknown ->
         raise ArgumentError,
               "`use Billboard.#{name}` takes #{Enum.map_join(allowed, " and ", &"`#{&1}:`")}, " <>
-                "not #{Enum.map_join(unknown, ", ", &inspect/1)}"
+                "not #{Enum.map_join(unknown, ", ", &inspect/1)}. Take " <>
+                "#{Enum.map_join(unknown, ", ", &inspect/1)} out, or correct it"
     end
   end
 

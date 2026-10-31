@@ -43,13 +43,18 @@ defmodule Billboard.Catalogue do
 
   @doc """
   The entry for `key`, built from `Billboard.Site.component!/1`. Raises
-  `KeyError` for an unknown key.
+  `ArgumentError`, naming the fix, for a key the site doesn't list.
   """
   @spec fetch!(atom()) :: Entry.t()
   def fetch!(key) do
     if key in keys(),
       do: key |> Site.component!() |> entry(),
-      else: raise(KeyError, key: key, term: __MODULE__)
+      else:
+        raise(
+          ArgumentError,
+          "the site has no component with the key #{inspect(key)}. Add its module to " <>
+            "`components:` in #{inspect(Site.get!())}'s `use Billboard.Site`"
+        )
   end
 
   @doc "The embedded resource for `key`."

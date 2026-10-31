@@ -59,7 +59,9 @@ defmodule Billboard.Resolver do
 
   defp with_children(%{content: %Ash.Union{type: :columns}, key: key}) do
     raise ArgumentError,
-          "load the children of Two columns section #{inspect(key)} before resolving its data"
+          "load the children of Two columns section #{inspect(key)} before resolving its data. " <>
+            "Read the version through the site's domain, which loads them, or load them with " <>
+            "`Ash.load!(version, sections: :children)`"
   end
 
   defp with_children(section), do: [section]

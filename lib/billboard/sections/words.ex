@@ -95,8 +95,13 @@ defmodule Billboard.Sections.Words do
 
     spec =
       case EditorFields.words(EditorFields.specs(type), path) do
-        {:ok, _form_path, spec} -> spec
-        :error -> raise ArgumentError, "#{inspect(path)} isn't a words field of #{type}"
+        {:ok, _form_path, spec} ->
+          spec
+
+        :error ->
+          raise ArgumentError,
+                "#{inspect(path)} isn't a words field of #{type}. Pass the path of one of its " <>
+                  "`words` entries, such as \"title\" or \"questions.0.title\""
       end
 
     html = visitor(value, markdown)

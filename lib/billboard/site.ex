@@ -417,7 +417,8 @@ defmodule Billboard.Site do
   def component!(type) when is_atom(type) do
     Enum.find(components(), &(key!(&1) == type)) ||
       raise ArgumentError,
-            "the site has no component #{inspect(type)}. Add its module to the site's components/0"
+            "the site has no component #{inspect(type)}. Add its module to `components:` in " <>
+              "`use Billboard.Site`, or to a hand-written site's components/0"
   end
 
   defp key!(module) do
@@ -425,8 +426,9 @@ defmodule Billboard.Site do
       Billboard.Component.Info.component_key!(module)
     else
       raise ArgumentError,
-            "the site's components/0 lists #{inspect(module)}, which isn't a billboard " <>
-              "component. Add `use Billboard.Component` to it, or take it out of components/0"
+            "the site lists #{inspect(module)}, which isn't a billboard component. Add " <>
+              "`use Billboard.Component` to it, or take it out of `components:` in " <>
+              "`use Billboard.Site` (or a hand-written site's components/0)"
     end
   end
 

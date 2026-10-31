@@ -70,7 +70,8 @@ defmodule Billboard.Surfaces do
       [] ->
         raise ArgumentError,
               "the site offers no surfaces for the kind #{inspect(kind)}. Add " <>
-                "`#{kind}: [...]` to its offered/0, naming at least one of its surfaces"
+                "`#{kind}: [...]` to `offered:` in `use Billboard.Site` (or a hand-written site's " <>
+                "offered/0), naming at least one of its surfaces"
 
       names ->
         listed = Enum.map(all(), & &1.name)
@@ -82,8 +83,9 @@ defmodule Billboard.Surfaces do
           [unlisted | _] ->
             raise ArgumentError,
                   "the site offers #{inspect(kind)} the surface “#{unlisted}”, " <>
-                    "which isn't among its surfaces. Add it to the site's surfaces/0, " <>
-                    "or take it out of offered/0"
+                    "which isn't among its surfaces. Add it to `surfaces:` in `use Billboard.Site`, " <>
+                    "or take it out of `offered:` (or a hand-written site's surfaces/0 and " <>
+                    "offered/0)"
         end
     end
   end
@@ -94,7 +96,12 @@ defmodule Billboard.Surfaces do
   """
   @spec default(kind()) :: String.t()
   def default(kind) when kind in @may_be_empty,
-    do: raise(ArgumentError, "#{inspect(kind)} isn't a section's kind, so it has no default")
+    do:
+      raise(
+        ArgumentError,
+        "#{inspect(kind)} isn't a section's kind, so it has no default. Ask for its " <>
+          "section's surface instead"
+      )
 
   def default(kind), do: kind |> offered() |> hd()
 

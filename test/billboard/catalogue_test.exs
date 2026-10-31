@@ -53,7 +53,10 @@ defmodule Billboard.CatalogueTest do
 
   test "labels a component, and raises for an unknown one" do
     assert Catalogue.label(:hero) == "Hero"
-    assert_raise KeyError, fn -> Catalogue.fetch!(:nope) end
+
+    assert_raise ArgumentError, ~r/no component with the key :nope. Add its module/, fn ->
+      Catalogue.fetch!(:nope)
+    end
   end
 
   test "an entry allows every kind of page, or only the kinds it lists" do
