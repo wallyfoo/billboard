@@ -80,13 +80,14 @@
   --bb-radius-photo: 0;
   --bb-radius-field: 0;
 
-  /* Type: four faces, then each role's tokens. The label face falls back
-     to the body's, the heading face to the body's, and the display face
-     to the heading's. */
+  /* Type: five faces, then each role's tokens. The label face falls back
+     to the body's, the heading face to the body's, and the display and
+     quote faces to the heading's. */
   --bb-font-display: ui-serif, Georgia, serif;
   --bb-font-heading: var(--bb-font-display);
   --bb-font-body: ui-sans-serif, system-ui, sans-serif;
   --bb-font-label: var(--bb-font-body);
+  /* --bb-font-quote: a quote's face; falls back to --bb-font-heading */
 
   /* A role's -size has no fallback, so each is set. Its -size-md, from
      the md breakpoint, falls back to its -size. The rest fall back as

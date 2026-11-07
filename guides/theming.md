@@ -232,18 +232,22 @@ to `none` gives hover a cue of its own, through `--bb-link-hover` or the
 
 ### Type
 
-Four faces, and eleven roles, each a utility that reads its own set of
+Five faces, and eleven roles, each a utility that reads its own set of
 tokens.
 
 | Token | What it's for | Falls back to |
 | --- | --- | --- |
 | `--bb-font-body` | the body face: the lead, body, and small roles | none |
-| `--bb-font-heading` | the heading face: the title, heading, subheading, and quote roles | `--bb-font-body` |
+| `--bb-font-heading` | the heading face: the title, heading, and subheading roles, and the quote's unless `--bb-font-quote` is set | `--bb-font-body` |
 | `--bb-font-display` | the display face: the display role | `--bb-font-heading`, then `--bb-font-body` |
+| `--bb-font-quote` | the quote face: the quote role, which sets a band's pull quote and a review shown alone | `--bb-font-heading`, then `--bb-font-body` |
 | `--bb-font-label` | the label face: the label, eyebrow, and button roles | `--bb-font-body` |
 
 A site with one typeface needs only `--bb-font-body`, since the other
-three fall back to it.
+four fall back to it. A site that sets its quotes in the body face, not
+the heading's, sets `--bb-font-quote: var(--bb-font-body)` on `:root`,
+beside its other faces; a site that never sets it sees its quotes as
+before, in the heading face.
 
 | Role | Utility | Its tokens, and their fallbacks |
 | --- | --- | --- |

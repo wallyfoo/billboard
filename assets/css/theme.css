@@ -70,7 +70,7 @@
    families, so a site can set its labels in capitals or not, and its
    headings in any face. A site with one typeface sets only
    --bb-font-body: the label and heading faces fall back to it, and the
-   display face to the heading's. They're longhands, not the font
+   display and quote faces to the heading's. They're longhands, not the font
    shorthand, since one unset token in a shorthand with var() voids the
    whole declaration; font-style: normal keeps the shorthand's reset of
    an inherited italic. */
@@ -123,7 +123,7 @@
   }
 }
 @utility bb-type-quote {
-  font-family: var(--bb-font-heading, var(--bb-font-body));
+  font-family: var(--bb-font-quote, var(--bb-font-heading, var(--bb-font-body)));
   font-size: var(--bb-quote-size);
   font-style: normal;
   line-height: var(--bb-quote-leading, 1.3);

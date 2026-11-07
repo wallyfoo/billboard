@@ -21,6 +21,33 @@ defmodule Billboard.ThemeCheckTest do
       assert Regex.scan(~r/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch)\(/, File.read!(@theme)) ==
                []
     end
+
+    # Each role's face, as Theming's Type table gives it. The quote has a
+    # face of its own, which falls back to the heading's, so a site that
+    # never sets it sees its quotes as before.
+    test "sets each type role in its face, with the faces' fallbacks" do
+      css = File.read!(@theme)
+      heading = "var(--bb-font-heading, var(--bb-font-body))"
+
+      faces = %{
+        "display" => "var(--bb-font-display, #{heading})",
+        "title" => heading,
+        "heading" => heading,
+        "subheading" => heading,
+        "quote" => "var(--bb-font-quote, #{heading})",
+        "lead" => "var(--bb-font-body)",
+        "body" => "var(--bb-font-body)",
+        "small" => "var(--bb-font-body)",
+        "label" => "var(--bb-font-label, var(--bb-font-body))",
+        "eyebrow" => "var(--bb-font-label, var(--bb-font-body))",
+        "button" => "var(--bb-font-label, var(--bb-font-body))"
+      }
+
+      for {role, face} <- faces do
+        [_, family] = Regex.run(~r/@utility bb-type-#{role} \{\n  font-family: ([^;]+);/, css)
+        assert family == face, "bb-type-#{role} is set in #{family}, not #{face}"
+      end
+    end
   end
 
   # The editor's stylesheet draws its chrome from its own tokens, and

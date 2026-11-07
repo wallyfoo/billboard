@@ -36,7 +36,8 @@ Shape:
 
 Faces:
 - `--bb-font-body` (none), `--bb-font-heading` (body),
-  `--bb-font-display` (heading, body), `--bb-font-label` (body)
+  `--bb-font-display` (heading, body), `--bb-font-label` (body),
+  `--bb-font-quote` (heading, body)
 
 Type roles, each a utility; `-size` has no fallback, `-size-md` falls
 back to `-size`, `-tracking` to `normal`, and `-case` to `none`:
