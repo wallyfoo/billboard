@@ -53,6 +53,9 @@
   );
   --color-bb-action-2: var(--bb-action-2);
   --color-bb-on-action-2: var(--bb-on-action-2);
+  --color-bb-edge-2: var(--bb-edge-2, var(--bb-action-2));
+  --color-bb-action-2-hover: var(--bb-action-2-hover, var(--bb-action-2));
+  --color-bb-on-action-2-hover: var(--bb-on-action-2-hover, var(--bb-on-action-2));
 
   --radius-bb-card: var(--bb-radius-card, 0);
   --radius-bb-button: var(--bb-radius-button, 0);

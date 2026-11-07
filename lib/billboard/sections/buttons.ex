@@ -25,8 +25,11 @@ defmodule Billboard.Sections.Buttons do
 
   @doc """
   A button, or a link drawn as one when `href`, `navigate`, or `patch` is
-  given. `primary` fills with the action colour, and `secondary` is
-  outlined in the second action colour and fills with it on hover.
+  given. `primary` fills with the action colour. `secondary` has words in
+  `--bb-action-2`, an outline in `--bb-edge-2`, and, on hover, a fill in
+  `--bb-action-2-hover` with words in `--bb-on-action-2-hover`. Unset,
+  the outline and the hover fill take `--bb-action-2`, and the hover
+  words `--bb-on-action-2`.
   """
   attr :rest, :global, include: ~w(href navigate patch method target rel type)
   attr :class, :any, default: nil
@@ -69,7 +72,7 @@ defmodule Billboard.Sections.Buttons do
 
   defp skin("secondary"),
     do:
-      "border-bb-action-2 bg-transparent text-bb-action-2 hover:bg-bb-action-2 hover:text-bb-on-action-2"
+      "border-bb-edge-2 bg-transparent text-bb-action-2 hover:bg-bb-action-2-hover hover:text-bb-on-action-2-hover"
 
   @doc """
   A text link with a 1px underline that clears on hover. Tones: `ink` for

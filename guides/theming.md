@@ -65,9 +65,12 @@ Its first block is paper, the page's own surface:
   --bb-action-hover: #3a3a3a;      /* falls back to --bb-action */
   --bb-action-active: initial;     /* falls back to --bb-action-hover */
   --bb-on-action-active: initial;  /* falls back to --bb-on-action-hover */
-  --bb-action-2: #1c1c1c;          /* the secondary button's ink and outline */
-  --bb-on-action-2: #ffffff;       /* its ink when it fills on hover */
+  --bb-action-2: #1c1c1c;          /* the secondary button's words, and its outline and hover fill unless set */
+  --bb-on-action-2: #ffffff;       /* its words when it fills on hover */
   /* --bb-on-action-hover: falls back to --bb-on-action */
+  --bb-edge-2: initial;            /* the secondary button's outline; falls back to --bb-action-2 */
+  --bb-action-2-hover: initial;    /* its fill on hover; falls back to --bb-action-2 */
+  --bb-on-action-2-hover: initial; /* its words on hover; falls back to --bb-on-action-2 */
 }
 ```
 
@@ -117,6 +120,9 @@ and the band's:
   --bb-on-action-active: initial;
   --bb-action-2: #ffffff;
   --bb-on-action-2: #1c1c1c;
+  --bb-edge-2: initial;
+  --bb-action-2-hover: initial;
+  --bb-on-action-2-hover: initial;
   --paper-ground: #ffffff;
 }
 ```
@@ -171,13 +177,44 @@ The nine noise tokens are `--bb-noise-1`, `--bb-noise-2`,
 | `--bb-on-action-hover` | its words under the pointer | `--bb-on-action` |
 | `--bb-action-active` | its fill as it's pressed | `--bb-action-hover`, then `--bb-action` |
 | `--bb-on-action-active` | its words as it's pressed | `--bb-on-action-hover`, then `--bb-on-action` |
-| `--bb-action-2` | the secondary button's words and outline, and its fill on hover | none |
-| `--bb-on-action-2` | its words when it fills on hover | none |
+| `--bb-action-2` | the secondary button's words | none |
+| `--bb-on-action-2` | its words under the pointer, unless `--bb-on-action-2-hover` is set | none |
+| `--bb-edge-2` | the secondary button's outline, at rest and under the pointer | `--bb-action-2` |
+| `--bb-action-2-hover` | the secondary button's fill under the pointer; at rest it has none | `--bb-action-2` |
+| `--bb-on-action-2-hover` | its words under the pointer | `--bb-on-action-2` |
 | `--bb-button-height` | a button's least height | 2.75rem |
 | `--bb-button-pad-x` | a button's room at each side | 1.5rem |
 | `--bb-button-border` | a button's edge | 1px |
 | `--bb-link-decoration` | a text link's line, such as `none` | underline |
 | `--bb-link-offset` | how far below the words the line sits | 4px |
+
+A site that sets none of `--bb-edge-2`, `--bb-action-2-hover`, and
+`--bb-on-action-2-hover` gets the secondary button billboard has always
+drawn: outlined in `--bb-action-2`, and filled with it on hover, words
+in `--bb-on-action-2`. Set them to part the three, as for a button
+with a teal outline, dark words, and a pale fill on hover:
+
+<!-- from: test/support/guides/theming.css#secondary -->
+```css
+:root,
+.bb-surface-paper {
+  --bb-action-2: #1c1c1c;
+  --bb-on-action-2: #ffffff;
+  --bb-edge-2: #2f7f7a;
+  --bb-action-2-hover: #e7efee;
+  --bb-on-action-2-hover: #1c1c1c;
+}
+```
+
+The installed tokens file sets all three to `initial` on paper, on the
+band, and in both dark blocks, so each takes its fallback everywhere.
+Give one a value on paper and the band keeps its `initial`, so a
+secondary button on the band is still outlined and filled in the
+band's own `--bb-action-2`. A site whose tokens file came from an
+earlier billboard has none of the three lines: until it sets one,
+nothing changes, and once it sets one on paper, it adds
+`--bb-edge-2: initial;` and the rest to every other surface, and to
+both dark blocks, or those inherit paper's value.
 
 Hover clears a link's line by its colour, not the line itself, so it
 clears whatever line a site sets. A site that sets `--bb-link-decoration`
@@ -344,6 +381,9 @@ the dark one, so paper's words must be light there:
   --bb-on-action-active: initial;
   --bb-action-2: #f4f5f7;
   --bb-on-action-2: #1c1c1c;
+  --bb-edge-2: initial;
+  --bb-action-2-hover: initial;
+  --bb-on-action-2-hover: initial;
   --bb-placeholder: #343b45;
   --bb-placeholder-ink: #e6e8eb;
   --bb-placeholder-chip: #1e2329;
@@ -447,8 +487,9 @@ draws its buttons and links with `Billboard.Sections.Buttons`, from the
 tokens, so they're right on any surface:
 
 - `bb_button/1`, with `variant` `"primary"`, filled with `--bb-action`,
-  or `"secondary"`, outlined in `--bb-action-2` and filled with it on
-  hover. Given `href`, `navigate`, or `patch`, it draws a link. It has
+  or `"secondary"`, its words in `--bb-action-2` and its outline in
+  `--bb-edge-2`, filled on hover with `--bb-action-2-hover`, its words
+  then in `--bb-on-action-2-hover` ([Actions](#actions)). Given `href`, `navigate`, or `patch`, it draws a link. It has
   no disabled look and takes no form attributes, since stock sections
   draw only links and enabled buttons. Its words are in the button
   role, `bb-type-button`, so `--bb-button-size` and the rest of the

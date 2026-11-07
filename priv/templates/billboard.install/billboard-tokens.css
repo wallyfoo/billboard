@@ -37,9 +37,12 @@
   --bb-action-hover: #3a3a3a;      /* falls back to --bb-action */
   --bb-action-active: initial;     /* falls back to --bb-action-hover */
   --bb-on-action-active: initial;  /* falls back to --bb-on-action-hover */
-  --bb-action-2: #1c1c1c;          /* the secondary button's ink and outline */
-  --bb-on-action-2: #ffffff;       /* its ink when it fills on hover */
+  --bb-action-2: #1c1c1c;          /* the secondary button's words, and its outline and hover fill unless set */
+  --bb-on-action-2: #ffffff;       /* its words when it fills on hover */
   /* --bb-on-action-hover: falls back to --bb-on-action */
+  --bb-edge-2: initial;            /* the secondary button's outline; falls back to --bb-action-2 */
+  --bb-action-2-hover: initial;    /* its fill on hover; falls back to --bb-action-2 */
+  --bb-on-action-2-hover: initial; /* its words on hover; falls back to --bb-on-action-2 */
 }
 /* guide:end */
 
@@ -179,6 +182,9 @@
   --bb-on-action-active: initial;
   --bb-action-2: #f4f5f7;
   --bb-on-action-2: #1c1c1c;
+  --bb-edge-2: initial;
+  --bb-action-2-hover: initial;
+  --bb-on-action-2-hover: initial;
   --bb-placeholder: #343b45;
   --bb-placeholder-ink: #e6e8eb;
   --bb-placeholder-chip: #1e2329;
@@ -207,6 +213,9 @@
     --bb-on-action-active: initial;
     --bb-action-2: #f4f5f7;
     --bb-on-action-2: #1c1c1c;
+    --bb-edge-2: initial;
+    --bb-action-2-hover: initial;
+    --bb-on-action-2-hover: initial;
     --bb-placeholder: #343b45;
     --bb-placeholder-ink: #e6e8eb;
     --bb-placeholder-chip: #1e2329;
@@ -252,6 +261,9 @@
   --bb-on-action-active: initial;
   --bb-action-2: #ffffff;
   --bb-on-action-2: #1c1c1c;
+  --bb-edge-2: initial;
+  --bb-action-2-hover: initial;
+  --bb-on-action-2-hover: initial;
   --paper-ground: #ffffff;
 }
 /* guide:end */

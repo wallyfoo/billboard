@@ -45,8 +45,23 @@ defmodule Billboard.Sections.ButtonsTest do
         "button"
       )
 
-    assert "border-bb-action-2" in classes
+    assert "border-bb-edge-2" in classes
     assert "text-bb-action-2" in classes
+    assert "hover:bg-bb-action-2-hover" in classes
+    assert "hover:text-bb-on-action-2-hover" in classes
+  end
+
+  # A site that sets none of the three new tokens sees the secondary
+  # button it saw before they were there: outlined and filled on hover
+  # in --bb-action-2, its words then in --bb-on-action-2.
+  test "a secondary button's outline and hover fall back to the second action colour" do
+    theme = File.read!("assets/css/theme.css")
+
+    assert theme =~ "--color-bb-edge-2: var(--bb-edge-2, var(--bb-action-2));"
+    assert theme =~ "--color-bb-action-2-hover: var(--bb-action-2-hover, var(--bb-action-2));"
+
+    assert theme =~
+             "--color-bb-on-action-2-hover: var(--bb-on-action-2-hover, var(--bb-on-action-2));"
   end
 
   test "a link takes its tone's colour" do

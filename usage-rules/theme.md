@@ -25,8 +25,10 @@ Actions:
 - `--bb-action` (none), `--bb-on-action` (none), `--bb-action-hover`
   (action), `--bb-on-action-hover` (on-action), `--bb-action-active`
   (action-hover, action), `--bb-on-action-active` (on-action-hover,
-  on-action), `--bb-action-2` (none), `--bb-on-action-2`
-  (none)
+  on-action), `--bb-action-2` (none: the secondary button's words),
+  `--bb-on-action-2` (none), `--bb-edge-2` (action-2: its outline),
+  `--bb-action-2-hover` (action-2: its hover fill), and
+  `--bb-on-action-2-hover` (on-action-2: its hover words)
 
 Shape:
 - `--bb-radius-card`, `--bb-radius-button`, `--bb-radius-photo`, and

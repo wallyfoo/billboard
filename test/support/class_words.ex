@@ -25,7 +25,7 @@ defmodule Billboard.Test.ClassWords do
   @colour_roots ~w(ink ink-soft title heading subheading eyebrow link link-hover accent rule
                    edge card placeholder placeholder-ink placeholder-chip focus action
                    on-action action-hover on-action-hover action-active on-action-active
-                   action-2 on-action-2)
+                   action-2 on-action-2 edge-2 action-2-hover on-action-2-hover)
 
   @old_theme_names Enum.map(@colour_roots, &"--color-#{&1}") ++
                      ~w(--radius-card --radius-button --radius-photo --radius-field

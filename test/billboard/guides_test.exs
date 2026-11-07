@@ -129,6 +129,27 @@ defmodule Billboard.GuidesTest do
       end
     end
 
+    # The site CSS the guide quotes, from test/support/guides/theming.css:
+    # every token it sets or reads is one billboard reads, and every class
+    # it styles is a hook or a surface.
+    test "quotes site CSS that sets only billboard's tokens, on its hooks" do
+      css = File.read!("test/support/guides/theming.css")
+      known = Theme.site_tokens()
+      used = Theme.read_or_set_tokens("test/support/guides/theming.css")
+
+      assert used -- known == [],
+             "test/support/guides/theming.css names tokens billboard doesn't read: " <>
+               Enum.join(used -- known, ", ")
+
+      hooks = ~w(bb-title bb-eyebrow bb-heading bb-section-head bb-point bb-detail
+                 bb-item-title bb-quote bb-photo bb-button bb-link)
+
+      for [_, class] <- Regex.scan(~r/\.(bb-[a-z0-9-]+)/, css) do
+        assert class in hooks or String.starts_with?(class, "bb-surface-"),
+               "test/support/guides/theming.css styles .#{class}, which is no hook or surface"
+      end
+    end
+
     test "names every hook class" do
       text = File.read!("guides/theming.md")
 

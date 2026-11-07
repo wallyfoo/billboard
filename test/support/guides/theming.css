@@ -1,0 +1,14 @@
+/* The theming guide's examples, which it quotes: each region is a site's
+   CSS, and Billboard.GuidesTest checks it reads and sets only the tokens
+   billboard reads, on the hooks the stock sections carry. */
+
+/* guide:secondary */
+:root,
+.bb-surface-paper {
+  --bb-action-2: #1c1c1c;
+  --bb-on-action-2: #ffffff;
+  --bb-edge-2: #2f7f7a;
+  --bb-action-2-hover: #e7efee;
+  --bb-on-action-2-hover: #1c1c1c;
+}
+/* guide:end */

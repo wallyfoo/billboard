@@ -77,7 +77,7 @@ defmodule Billboard.Sections.PartsTest do
       assert has?(text, "a.bb-link[href='/about']")
       refute has?(text, ".bb-button")
       assert has?(primary, "a.bb-button.bg-bb-action[href='/about']")
-      assert has?(secondary, "a.bb-button.border-bb-action-2[href='/about']")
+      assert has?(secondary, "a.bb-button.border-bb-edge-2[href='/about']")
     end
 
     test "hands any other kind to the site, with the prefix for its id" do
