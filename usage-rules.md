@@ -38,6 +38,12 @@ module named here has docs.
   resources, run `mix ash.codegen` and check it creates nothing for
   content (content is stored as JSON) unless the change was to a table.
 
+- Write a page's sections from code, as in `priv/repo/seeds.exs`,
+  with `put_page/3` on the site's domain (`Billboard.Pages.put_page/3`),
+  passing `authorize?: false` where there's no signed-in user. It
+  replaces the page's layout and publishes it, so run it on a fresh
+  database, not over editors' work.
+
 ## Never
 
 - Never change a component's `key`: it's what stored content is filed

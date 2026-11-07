@@ -3,8 +3,8 @@
 This guide covers what changes from one page to another: the kinds of
 page a site has and the components each may hold, the data a section
 reads from the site's own resources, the context that says what a page
-is about, and replacing a stock component with one of the site's own.
-Its example is a Fees section, which shows the fees from one source on
+is about, replacing a stock component with one of the site's own, and
+writing a page's sections from code, as a site's seeds do. Its example is a Fees section, which shows the fees from one source on
 the fees page and on each service's page, limited to that service.
 
 ## Page kinds
@@ -347,3 +347,181 @@ on `#page-hero .bb-photo`, as the theming guide's
 [Hooks for decoration](theming.md#hooks-for-decoration) shows; the
 other hooks, and the layout's hero slot, are often enough for the
 rest.
+
+## Pages from code
+
+A page's layout is the editor's to make, but code can write one too,
+so that a fresh database starts with a page's approved layout and its
+placeholder copy. `Billboard.Pages.put_page/3`, which the site's domain
+gives as `MySite.Pages.put_page/3` as well, makes the page at a route
+pattern hold exactly the sections it's given, in order, and publishes
+them, so visitors see them. A home page with a hero, three points, a
+band, and a Text and image section, from the site's own module:
+
+<!-- from: guides/examples/lib/my_site/pages/seeds.ex#home -->
+```elixir
+def home do
+  Billboard.Pages.put_page(
+    "/",
+    [
+      %{
+        type: :hero,
+        key: "home-hero",
+        content: %{
+          variant: :media_right,
+          eyebrow: "Psychology in the city",
+          heading: "Talking helps",
+          lede: "Assessments and therapy for adults, in person and online.",
+          actions: [
+            %{label: "Book a first session", path: "/contact", style: :primary},
+            %{label: "How it works", path: "/about", style: :secondary}
+          ],
+          photo: %{label: "The consulting room"}
+        }
+      },
+      %{
+        type: :points,
+        key: "home-points",
+        anchor: "how-we-work",
+        content: %{
+          head: %{eyebrow: "How we work", heading: "Three things to know"},
+          columns: 3,
+          points: [
+            %{title: "Unhurried", body: "Fifty minutes, every time."},
+            %{title: "Plain words", body: "No jargon in the room or in the report."},
+            %{
+              title: "Near you",
+              body: "Ten minutes from the station.",
+              link: %{label: "Find us", path: "/contact", style: :text}
+            }
+          ]
+        }
+      },
+      %{
+        type: :band,
+        key: "home-band",
+        surface: "band",
+        content: %{
+          variant: :heading,
+          eyebrow: "First sessions",
+          heading: "A first talk costs nothing",
+          body: "Twenty minutes on the phone, to see whether we suit you.",
+          action: %{label: "Ask for a call", path: "/contact", style: :secondary}
+        }
+      },
+      %{
+        type: :text_media,
+        key: "home-about",
+        content: %{
+          variant: :media_left,
+          head: %{heading: "Who you'll see"},
+          body: "Every psychologist here is registered and supervised.",
+          photo: %{label: "The team, outside"}
+        }
+      }
+    ],
+    authorize?: false
+  )
+end
+```
+
+`priv/repo/seeds.exs` runs it, as `{:ok, _home} = MySite.Pages.Seeds.home()`,
+which `mix run priv/repo/seeds.exs` runs, and so do phx.new's
+`mix ecto.setup` and `mix ecto.reset`. A seeds file is a script, so the
+site keeps the layout in a module under `lib/`, where it's compiled
+and can be tested, and the script only calls it.
+
+### Its arguments
+
+`put_page(pattern, sections, opts)`:
+
+- `pattern` is the page's route pattern, as its `page` entry in the
+  site's `pages` block names it, such as `"/"` or `"/services/:slug"`,
+  or `nil` for the library of shared sections. The page's record is
+  found, or made if it has none; a pattern the site has no page for is
+  refused, with "there is no such page".
+- `sections` is a list of maps, one for each section, in the order the
+  page draws them:
+
+  | Key | What it is | Needed |
+  | --- | --- | --- |
+  | `type` | the component's key, as `:hero`, `:points`, `:band`, `:text_media`, or a site's own, as `:fees` | yes |
+  | `content` | a map of the component's fields, its parts as maps too | yes |
+  | `surface` | the name of a surface the site offers the component's kind, as `"band"`, or nil for its kind's default ([Theming's Surfaces](theming.md#surfaces)) | no |
+  | `anchor` | its DOM id on the page, for in-page links, as `"how-we-work"`: lowercase letters, digits, and hyphens, starting with a letter, and none the site's layout reserves | no |
+  | `key` | the string the editor follows it by; one is made if it's left out | no |
+  | `children` | a Two columns section's two sections, each a map like these | only for `:columns` |
+
+- `opts` go to each action it runs. Seeds have no signed-in user, and
+  every write needs an actor, so they pass `authorize?: false`; code
+  with a user passes `actor: user`. `publish: false` leaves the
+  sections in the page's draft, for someone to look over in the editor
+  and publish, and returns the draft.
+
+It returns `{:ok, version}`, the live version with its sections, or
+`{:error, error}`, which says what's wrong.
+
+### Each section's content
+
+`content` is what `Billboard.Component.build/2` takes for the component:
+its fields by name, the values the editor would save. A site's own
+component has the attributes it declares; the stock components have
+these, and a field left out takes the default shown:
+
+| Type | Its fields |
+| --- | --- |
+| `:hero` | `variant` (`:media_right`, `:media_left`, or `:text_only`), `size` (`:h1`, `:display`, or `:auto`), `bind` (`:none`, or a binding the context module names), `eyebrow`, `heading`, `lede` (Markdown), `actions` (up to three actions), `photo` |
+| `:points` | `columns` (3; 2 to 4), `look` (`:rows` or `:cards`), `head`, `points` (one to four points) |
+| `:band` | `variant` (`:heading`, `:quote_left`, or `:quote_right`), `eyebrow`, `heading`, `body` (Markdown), `quote`, `action` |
+| `:text_media` | `variant` (`:media_right`, `:media_left`, or `:text_only`), `head` (needed), `body` (Markdown), `actions` (up to two), `photo` (needed unless `:text_only`) |
+| `:details` | `width` (`:standard` or `:narrow`), `head`, `items` (details, up to twelve) |
+| `:reviews` | `head` (headed "What clients say"), `note`, `initial` (6, how many show at first); its rows are the site's data |
+| `:news` | `head`, `empty` (the words when there's none), `limit` (2); its rows are the site's data |
+| `:columns` | `variant` (`:even`, `:wide_left`, or `:wide_right`); its two sections are its `children` |
+| `:shared` | `key`, the key of the library section it places |
+
+A hero's `heading` is needed unless it's bound, and a band's `heading`
+or `quote` as its `variant` says. A site that narrows a component's
+choices in its options (`Billboard.SiteOptions`), such as Points'
+looks, is held to them here too, and a field it makes an offer for,
+left out, takes the site's first choice in place of the default shown.
+
+A part is a map of its own fields, as [Parts](parts.md) lists them: a
+`head` is `%{eyebrow: ..., heading: ...}`; an action is
+`%{label: ..., path: ..., style: ...}`, its `kind` `:link` unless given,
+its `style` `:primary`, `:secondary`, or `:text`; a list of parts, such
+as Points' `points` or the hero's `actions`, is a list of those maps;
+and a photograph is `%{label: ...}`, which draws the placeholder, in
+the site's noise colours, with its label on top, until someone uploads
+the photograph in the editor. Every check the editor makes holds here
+too: a field past its length, a missing heading, or a surface the site
+doesn't offer is refused, and nothing is written.
+
+### Running it again
+
+`put_page/3` throws away the page's draft, if it has one, writes a new
+draft holding only `sections`, and commits it, which replaces the live
+version, all in one transaction. So it can run any number of times,
+and each run puts the same page back. That includes over what editors
+have published since: a site runs its seeds on a fresh database, or
+to start a page over, not on a site whose pages its editors have
+changed.
+
+The commit checks the page against the rules, as the editor's Publish
+does ([Why the rules exist](why-the-rules-exist.md)): every page but
+the library opens with exactly one hero, a fixed page holds exactly
+its fixed sections, in order, and the rest. A layout that breaks one
+changes nothing, neither the draft nor the live version, and the error
+names the rule.
+
+### Other ways to put sections on a page
+
+- A starter (`Billboard.Starter`) is a page's layout in code, drawn
+  until the page's first publish, with nothing in the database. Choose
+  it for a layout every new site starts with; choose `put_page/3` for
+  a layout stored and published, as an editor's would be.
+- To add to a page rather than replace it, change its draft as the
+  editor does: `MySite.Pages.change_draft/3` runs a function on the
+  page's draft, and `MySite.Pages.create_section/2` adds a section to
+  it, then `MySite.Pages.commit_page/2` publishes it. `Billboard.Domain`
+  lists every function, and its arguments.

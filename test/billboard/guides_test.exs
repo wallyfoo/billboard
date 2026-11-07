@@ -99,6 +99,37 @@ defmodule Billboard.GuidesTest do
     end
   end
 
+  describe "the page kinds guide" do
+    # Pages from code's table of the stock components' fields: a row for
+    # each, by its key, naming every field it takes, and no other.
+    test "lists each stock component's fields, and only those" do
+      text = File.read!("guides/page-kinds-and-bound-sections.md")
+      [_, after_heading] = String.split(text, "### Each section's content\n", parts: 2)
+      [section | _] = String.split(after_heading, "\n#")
+
+      alias Billboard.Components, as: C
+
+      for module <-
+            [C.Hero, C.Points, C.Band, C.TextMedia, C.Details, C.Reviews, C.News] ++
+              [C.Columns, C.Shared] do
+        key = Billboard.Component.Info.component_key!(module)
+        row = Regex.run(~r/^\| `:#{key}` \| (.*) \|$/m, section)
+        assert row, "the stock components' table has no row for :#{key}"
+
+        fields =
+          for %{name: name, public?: true} <- Ash.Resource.Info.attributes(module),
+              name not in [:id, :component],
+              do: to_string(name)
+
+        named =
+          for [_, field] <- Regex.scan(~r/(?:^|, )`([a-z_]+)`/, List.last(row)), do: field
+
+        assert Enum.sort(named) == Enum.sort(fields),
+               "the row for :#{key} names #{inspect(named)}, not its fields #{inspect(fields)}"
+      end
+    end
+  end
+
   describe "the theming guide" do
     # Every token a site sets for billboard: those the theme, the
     # sections, and the buttons read, and the nine noise tokens, which the

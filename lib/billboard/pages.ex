@@ -148,6 +148,138 @@ defmodule Billboard.Pages do
   defp sections_by_key(sections),
     do: Map.new(sections ++ Enum.flat_map(sections, & &1.children), &{&1.key, &1})
 
+  @typedoc """
+  A section for `put_page/3`: the component's key, and its content, a map
+  of the component's fields, as `Billboard.Component.build/2` takes, with
+  its parts as maps too. The rest are optional: `surface`, a name from the
+  site's surfaces for its kind (`Billboard.Surfaces`), or nil for its
+  kind's default; `anchor`, its DOM id on the page; `key`, which the
+  editor follows it by, made for it if not given; and `children`, a Two
+  columns section's two sections, each one of these.
+  """
+  @type section_spec :: %{
+          required(:type) => atom(),
+          required(:content) => map(),
+          optional(:surface) => String.t() | nil,
+          optional(:anchor) => String.t() | nil,
+          optional(:key) => String.t(),
+          optional(:children) => [section_spec()]
+        }
+
+  @section_spec_keys [:type, :content, :surface, :anchor, :key, :children]
+
+  @doc """
+  Makes the page at `pattern` (`nil` for the library) hold exactly
+  `sections`, in order, and publishes it, so visitors see it: what a
+  site's seeds do, to rebuild a page in a fresh database. Each section
+  is a `t:section_spec/0`.
+
+  It throws away the page's draft, if it has one, writes a new draft
+  holding only `sections`, and commits it, which replaces the live
+  version, all in one transaction: so running it again puts the same
+  page back, whatever was published or drafted since, and a page that
+  breaks a rule (`Billboard.Rules`), such as one that doesn't open with
+  its hero, changes nothing and gives the commit's error.
+
+  `opts` go to each of the domain's actions, so a caller with no
+  signed-in user passes `authorize?: false`, or an `actor:`. With
+  `publish: false`, it leaves the draft for the editor to publish, and
+  returns it. Returns `{:ok, version}`, the live version (or the draft),
+  with its sections and their children loaded, or `{:error, error}`.
+  """
+  @spec put_page(String.t() | nil, [section_spec()], keyword()) ::
+          {:ok, struct()} | {:error, term()}
+  def put_page(pattern, sections, opts \\ []) when is_list(sections) do
+    {publish?, opts} = Keyword.pop(opts, :publish, true)
+    Enum.each(sections, &check_spec!/1)
+
+    [Site.resource!(:page), Site.resource!(:version), Site.resource!(:section)]
+    |> Ash.transact(fn ->
+      with :ok <- known_page(pattern),
+           :ok <- domain().discard_page(pattern, opts),
+           {:ok, page} <- ensure_page(pattern, opts),
+           {:ok, draft} <- domain().create_version(%{page_id: page.id}, opts),
+           :ok <- put_sections(sections, draft.id, nil, opts),
+           {:ok, _version} <-
+             if(publish?, do: domain().commit_page(pattern, opts), else: {:ok, nil}) do
+        version_with_sections(page.id, publish?, opts)
+      end
+    end)
+    |> case do
+      {:ok, {:ok, version}} -> {:ok, version}
+      {:ok, {:error, error}} -> {:error, error}
+      {:ok, version} -> {:ok, version}
+      error -> error
+    end
+  end
+
+  defp check_spec!(%{type: type, content: content} = spec)
+       when is_atom(type) and is_map(content) do
+    case Map.keys(spec) -- @section_spec_keys do
+      [] ->
+        Enum.each(Map.get(spec, :children) || [], &check_spec!/1)
+
+      extra ->
+        raise ArgumentError,
+              "a section for put_page/3 has keys it doesn't take: #{inspect(extra)}. " <>
+                "Give only #{inspect(@section_spec_keys)}"
+    end
+  end
+
+  defp check_spec!(spec) do
+    raise ArgumentError,
+          "put_page/3 takes each section as a map with `type:`, a component's key, and " <>
+            "`content:`, a map of its fields, as %{type: :hero, content: %{heading: \"Welcome\"}}. " <>
+            "It was given #{inspect(spec)}"
+  end
+
+  defp known_page(pattern) do
+    if Directory.fetch(pattern),
+      do: :ok,
+      else:
+        {:error,
+         Ash.Error.Changes.InvalidArgument.exception(
+           field: :pattern,
+           message: "there is no such page"
+         )}
+  end
+
+  defp put_sections(specs, version_id, parent_id, opts) do
+    Enum.reduce_while(specs, :ok, fn spec, :ok ->
+      case put_section(spec, version_id, parent_id, opts) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp put_section(spec, version_id, parent_id, opts) do
+    with {:ok, content} <- Billboard.Component.build(spec.type, spec.content),
+         {:ok, section} <-
+           domain().create_section(
+             %{
+               version_id: version_id,
+               parent_id: parent_id,
+               content: %Ash.Union{type: spec.type, value: content},
+               surface: Map.get(spec, :surface),
+               anchor: Map.get(spec, :anchor),
+               key: Map.get(spec, :key) || Ecto.UUID.generate()
+             },
+             opts
+           ) do
+      put_sections(Map.get(spec, :children) || [], version_id, section.id, opts)
+    end
+  end
+
+  defp version_with_sections(page_id, false, opts), do: domain().get_draft(page_id, opts)
+
+  defp version_with_sections(page_id, true, opts) do
+    Site.resource!(:version)
+    |> Ash.Query.for_read(:live, %{}, opts)
+    |> Ash.Query.filter(page_id == ^page_id)
+    |> Ash.read_one(opts)
+  end
+
   @doc """
   Swaps a Two columns section's columns: the right one goes left, and the
   left one right. `columns` must have its `children` loaded. Like every

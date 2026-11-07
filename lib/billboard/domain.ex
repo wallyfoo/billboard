@@ -12,19 +12,69 @@ defmodule Billboard.Domain do
 
   ## Its functions
 
-  On the page record, `fetch_page/2`, `fetch_library_page/1`, and
-  `create_page/2`. On versions, `create_version/2`, `get_version/2`,
-  `list_live_versions/1`, `list_drafts/1`, `get_draft/2`, `edit_page/2`,
-  `commit_page/2`, and `discard_page/2`. On sections, `create_section/2`,
-  `get_section/2`, `get_section_by_key/3`, `update_section/3`,
-  `destroy_section/2`, `arrange_sections/3`, and `place_section/3`. Each
-  has its `!` form.
+  Each takes `opts` last, Ash's options for the action, and has its `!`
+  form. Every write, and every read of a draft, needs an actor, so pass
+  `actor:` (any actor is a signed-in user to billboard's policies) or, in
+  seeds and scripts, `authorize?: false`.
 
-  And, from `Billboard.Pages`, `draft_for(pattern, opts)`,
-  `ensure_page(pattern, opts)`, `change_draft(pattern, fun, opts)`,
-  `swap_columns(columns, opts)`, `page_for(pattern)`, `shared_sections()`,
-  `shared_section(key)`, `subscribe()`, `subscribe_page(pattern)`,
-  `unsubscribe_page(pattern)`, `page_topic(pattern)`, and
+  On the page record:
+
+    * `fetch_page(pattern, opts)`: `{:ok, page}` for the route pattern,
+      as `"/about"`, or `{:ok, nil}` before the page's first edit.
+    * `fetch_library_page(opts)`: the shared-sections library's record,
+      or `{:ok, nil}`.
+    * `create_page(%{pattern: pattern}, opts)`: makes a page's record.
+      `ensure_page/2`, below, makes it only if it has none.
+
+  On versions (`Billboard.Version`):
+
+    * `create_version(%{page_id: page_id}, opts)`: a new, empty draft of
+      the page. A page has at most one draft.
+    * `get_version(id, opts)`.
+    * `list_live_versions(opts)`: every live version, with its page and
+      its sections and their children.
+    * `list_drafts(opts)`: every draft, with its page.
+    * `get_draft(page_id, opts)`: the page's draft, with its sections and
+      their children, or `{:ok, nil}`.
+    * `edit_page(pattern, opts)`: the page's draft, made from its live
+      version, or from its starter, if it has none; `nil` is the library.
+    * `commit_page(pattern, opts)`: checks the draft against the rules
+      (`Billboard.Rules`) and makes it the live version, replacing the
+      old one.
+    * `discard_page(pattern, opts)`: deletes the draft, if there is one,
+      and returns `:ok`.
+
+  On sections (`Billboard.Section`), each of which only works on a
+  draft's section:
+
+    * `create_section(attrs, opts)`: puts a section at the end of its
+      version, or of its Two columns section. `attrs` are `version_id`,
+      the draft's id; `content`, an `Ash.Union` of the component's key and
+      its fields, as
+      `%Ash.Union{type: :hero, value: Billboard.Component.build!(:hero, %{heading: "Welcome"})}`;
+      and optionally `parent_id`, a Two columns section's id; `anchor`,
+      its DOM id; `key`, made for it if not given; and `surface`, a name
+      from `Billboard.Surfaces`, or nil for its kind's default.
+    * `get_section(id, opts)`, and `get_section_by_key(version_id, key, opts)`.
+    * `update_section(section, attrs, opts)`: changes its `content`,
+      `anchor`, or `surface`.
+    * `destroy_section(section, opts)`: removes it, and its columns'
+      sections. A hero, and a fixed page's sections, can't go.
+    * `arrange_sections(version_id, order, opts)`: puts the version's
+      top-level sections in `order`, a list of every one's id.
+    * `place_section(section, position, opts)`: sets its `position`, by
+      which it's sorted among its siblings, leaving theirs as they are.
+      `arrange_sections/3` reorders a whole version.
+
+  And, from `Billboard.Pages`: `put_page(pattern, sections, opts)`,
+  which makes a page hold exactly `sections` and publishes it, for seeds
+  (the page kinds guide's "Pages from code" has a worked example);
+  `draft_for(pattern, opts)`; `ensure_page(pattern, opts)`;
+  `change_draft(pattern, fun, opts)`, which runs `fun` on the page's
+  draft, as every editor change does; `swap_columns(columns, opts)`;
+  `page_for(pattern)`, what visitors see; `shared_sections()`;
+  `shared_section(key)`; `subscribe()`; `subscribe_page(pattern)`;
+  `unsubscribe_page(pattern)`; `page_topic(pattern)`; and
   `drain_page_changes(pattern)`.
   """
 
@@ -75,6 +125,9 @@ defmodule Billboard.Domain do
 
       @doc "See `Billboard.Pages.change_draft/3`."
       defdelegate change_draft(pattern, fun, opts \\ []), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.put_page/3`."
+      defdelegate put_page(pattern, sections, opts \\ []), to: Billboard.Pages
 
       @doc "See `Billboard.Pages.swap_columns/2`."
       defdelegate swap_columns(columns, opts \\ []), to: Billboard.Pages
