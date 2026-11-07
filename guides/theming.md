@@ -163,6 +163,33 @@ keep it set.
 | `--bb-noise-1` to `--bb-noise-9` | the stand-in's pattern, dark to light in the tokens file | none: set all nine |
 | `--bb-focus` | the keyboard focus ring | `--bb-ink` |
 
+#### One place's hairline
+
+`--bb-rule-width` and `--bb-rule-gap` are read on the element that
+draws the hairline, and that element carries a hook: a section head's
+is `bb-section-head`, a point's `bb-point`, and a detail's `bb-detail`
+([Hooks for decoration](#hooks-for-decoration)). Nothing inside a head
+draws a hairline of its own. So setting them on a hook changes that
+place's hairline alone, and `:root`'s value holds everywhere else. A
+site that draws no hairline above its section heads, since the change
+of ground parts its sections already, but keeps one between the rows
+of Points and Details, sets this in its tokens file or `app.css`:
+
+<!-- from: test/support/guides/theming.css#head-rule -->
+```css
+.bb-section-head {
+  --bb-rule-width: 0;
+  --bb-rule-gap: 0;
+}
+```
+
+`--bb-rule-gap: 0` takes away the room the hairline stood in, too; a
+head keeps its eyebrow and heading, and its room below. Unlike hook
+CSS that draws, these lines may sit in any `@layer`, or none: they set
+custom properties, which no utility on the element sets, so nothing
+competes with them. The same works on `.bb-point` or `.bb-detail`, and
+inside a surface, as in `.bb-surface-band .bb-section-head`.
+
 The nine noise tokens are `--bb-noise-1`, `--bb-noise-2`,
 `--bb-noise-3`, `--bb-noise-4`, `--bb-noise-5`, `--bb-noise-6`,
 `--bb-noise-7`, `--bb-noise-8`, and `--bb-noise-9`.
@@ -443,7 +470,8 @@ can clash with a name the site has already, such as daisyUI's `card`.
   `--bb-card-pad`.
 - **`bb-rule-top`:** the hairline above a head, a point, and a detail,
   from `--bb-rule-width` and `--bb-rule`. Set `--bb-rule-width` to 0,
-  not a border class, to draw none.
+  not a border class, to draw none: on `:root` for every one, or on a
+  hook for one place's ([One place's hairline](#one-place-s-hairline)).
 
 The theme also rings whatever has the keyboard's focus in
 `--bb-focus`, a 2px outline 2px out, in Tailwind's base layer, so any

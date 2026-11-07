@@ -12,3 +12,10 @@
   --bb-on-action-2-hover: #1c1c1c;
 }
 /* guide:end */
+
+/* guide:head-rule */
+.bb-section-head {
+  --bb-rule-width: 0;
+  --bb-rule-gap: 0;
+}
+/* guide:end */

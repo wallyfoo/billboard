@@ -471,6 +471,31 @@ defmodule Billboard.SectionsTest do
     end
   end
 
+  # Theming says a site may set the hairline's tokens on the
+  # bb-section-head, bb-point, or bb-detail hook alone, which holds only
+  # while each hook is the element that draws its hairline and reads its
+  # gap, and nothing inside a head draws one of its own.
+  describe "the hairlines" do
+    test "each is drawn by the hook it's above, so its tokens may be set there" do
+      gap = "pt-\\[var\\(--bb-rule-gap\\,1\\.5rem\\)\\]"
+
+      doc =
+        render_page([
+          hero(),
+          s(:points, Map.put(pts(), :head, %{heading: "Why us"}), anchor: "p"),
+          s(:details, Map.put(det(), :head, %{heading: "Visiting"}), anchor: "d")
+        ])
+
+      for id <- ~w(p d) do
+        assert has?(doc, "##{id} .bb-section-head.bb-rule-top.#{gap}")
+        refute has?(doc, "##{id} .bb-section-head .bb-rule-top")
+      end
+
+      assert has?(doc, "#p .bb-point.bb-rule-top.#{gap}")
+      assert has?(doc, "#d .bb-detail.bb-rule-top")
+    end
+  end
+
   defp band(anchor), do: s(:band, %{heading: "Visit the shop"}, key: anchor, anchor: anchor)
   defp points(anchor, opts \\ []), do: s(:points, pts(), [key: anchor, anchor: anchor] ++ opts)
 

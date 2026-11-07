@@ -75,7 +75,9 @@ Space and motion:
   `bb-section-pad`, `bb-measure`, and `bb-measure-title`.
 - `bb-card`: a card's fill, edge, and corners.
 - `bb-rule-top`: the hairline above a head, a point, or a detail. Set
-  `--bb-rule-width` to 0 to draw none.
+  `--bb-rule-width` to 0 to draw none. Set it, and `--bb-rule-gap`, on
+  the `bb-section-head`, `bb-point`, or `bb-detail` hook to change one
+  place's hairline alone.
 
 ## Surfaces
 
