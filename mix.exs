@@ -1,7 +1,7 @@
 defmodule Billboard.MixProject do
   use Mix.Project
 
-  @version "0.5.0"
+  @version "0.5.1"
 
   def project do
     [
@@ -80,7 +80,8 @@ defmodule Billboard.MixProject do
         "guides/parts.md",
         "guides/theming.md",
         "guides/page-kinds-and-bound-sections.md",
-        "guides/why-the-rules-exist.md"
+        "guides/why-the-rules-exist.md",
+        "CHANGELOG.md"
       ],
       groups_for_extras: [Guides: ~r{guides/}]
     ]

@@ -452,7 +452,7 @@ end
 `use Billboard.Renderer` aliases `Words`, `Parts`, and `EditorFields`,
 among the pieces stock sections are drawn from. Details, billboard's
 own list of items, is
-[the stock example](https://github.com/wallyfoo/billboard/blob/v0.5.0/lib/billboard/sections/details.ex).
+[the stock example](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/details.ex).
 
 ## A rule
 

@@ -50,7 +50,7 @@ Add billboard and Ash to `mix.exs` together, at the top of the list in
 
 <!-- site: mix.exs -->
 ```elixir
-      {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.0"},
+      {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.1"},
       {:ash, "~> 3.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.0"},
@@ -590,7 +590,7 @@ says; so make `mix precommit` refuse it too:
 # BILLBOARD_PATH points billboard at a local checkout while working on both.
 defp billboard do
   case System.get_env("BILLBOARD_PATH") do
-    nil -> {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.0"}
+    nil -> {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.1"}
     path -> {:billboard, path: path}
   end
 end
