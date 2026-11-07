@@ -261,7 +261,9 @@ defmodule Billboard.Sections.Hero do
   end
 
   @doc """
-  The photograph, at 4:3. A bound hero seeds the placeholder with its
+  The photograph, at 4:3 unless the site sets `--bb-hero-photo-ratio`
+  or `--bb-photo-ratio`, and as wide as its column unless it sets
+  `--bb-hero-photo-max`, when it's centred in the column. A bound hero seeds the placeholder with its
   binding's seed, such as a product's slug, so each product's page has
   its own. In the open hero, it has its tools over it
   (`Billboard.Sections.Parts.editable_photo/1`). It reads the hero's
@@ -287,7 +289,8 @@ defmodule Billboard.Sections.Hero do
         alt={@photo.alt || ""}
         label={@label}
         seed={@seed}
-        ratio="aspect-[4/3]"
+        ratio="aspect-[var(--bb-hero-photo-ratio,var(--bb-photo-ratio,4/3))]"
+        class="mx-auto max-w-[var(--bb-hero-photo-max,none)]"
       />
     </Parts.editable_photo>
     """

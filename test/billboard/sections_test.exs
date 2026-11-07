@@ -131,7 +131,17 @@ defmodule Billboard.SectionsTest do
 
       assert has?(doc, ".bb-surface-loud #page-hero h1.bb-type-title.text-bb-title em")
       assert has?(doc, "#page-hero [data-hero-media='right']")
-      assert has?(doc, "#page-hero figure .aspect-\\[4\\/3\\]")
+      # 4:3 unless the site sets the hero's or every photograph's ratio.
+      assert has?(
+               doc,
+               "#page-hero figure [class~='aspect-[var(--bb-hero-photo-ratio,var(--bb-photo-ratio,4/3))]']"
+             )
+
+      assert has?(
+               doc,
+               "#page-hero figure.bb-photo[class~='max-w-[var(--bb-hero-photo-max,none)]']"
+             )
+
       assert has?(doc, "#page-hero [data-hero-media='right'] > div:not([class]) > figure")
     end
 

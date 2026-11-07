@@ -19,3 +19,17 @@
   --bb-rule-gap: 0;
 }
 /* guide:end */
+
+/* guide:ring */
+:root {
+  --bb-hero-photo-ratio: 1;
+  --bb-hero-photo-max: 400px;
+}
+
+#page-hero .bb-photo {
+  --bb-radius-photo: 50%;
+  padding: 12px;
+  border: 2px solid #b8913a;
+  border-radius: 50%;
+}
+/* guide:end */

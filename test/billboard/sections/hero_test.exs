@@ -65,7 +65,12 @@ defmodule Billboard.Sections.HeroTest do
 
       assert html(Hero.heading(section, %{})) == "The <em>shop</em>"
       assert Hero.media(section, %{}) == "right"
-      assert has?(media_slot(section), "figure .aspect-\\[4\\/3\\]")
+
+      assert has?(
+               media_slot(section),
+               "figure [class~='aspect-[var(--bb-hero-photo-ratio,var(--bb-photo-ratio,4/3))]']"
+             )
+
       assert String.trim(text(media_slot(section), "figure span.bb-type-label")) == "The room"
     end
 

@@ -86,6 +86,14 @@ defmodule Billboard.Sections.StockTest do
     end
   end
 
+  # Text and image's photograph is 4:3 unless the site sets every
+  # photograph's ratio, as Theming's Shape says.
+  test "text and image draws its photograph at the site's photograph ratio" do
+    section = section(:text_media, @full.text_media)
+
+    assert visitor(section) =~ ~s|class="aspect-[var(--bb-photo-ratio,4/3)] |
+  end
+
   # The hero draws the inside of the page's hero block, never a section
   # in `<main>` (`Billboard.Sections.Hero`).
   test "the hero draws its words into the page's hero block, for a visitor and open" do

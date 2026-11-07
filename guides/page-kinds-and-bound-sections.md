@@ -262,6 +262,10 @@ replacement keeps a `#main` target.
 [The stock hero](https://github.com/wallyfoo/billboard/blob/v0.5.0/lib/billboard/sections/hero.ex)
 is the example to start from.
 
-A smaller change, such as a ring round the photograph, may need no
-replacement at all: the hook classes, such as `bb-photo`, and the
-layout's hero slot are often enough. See the theming guide.
+A smaller change may need no replacement at all. A round portrait in
+a ring is the hero's photograph tokens, `--bb-hero-photo-ratio: 1` and
+`--bb-hero-photo-max`, with `--bb-radius-photo: 50%` and the ring set
+on `#page-hero .bb-photo`, as the theming guide's
+[Hooks for decoration](theming.md#hooks-for-decoration) shows; the
+other hooks, and the layout's hero slot, are often enough for the
+rest.

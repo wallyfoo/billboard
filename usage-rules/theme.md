@@ -33,6 +33,10 @@ Actions:
 Shape:
 - `--bb-radius-card`, `--bb-radius-button`, `--bb-radius-photo`, and
   `--bb-radius-field`, each 0
+- `--bb-photo-ratio` (4/3), `--bb-hero-photo-ratio` (photo-ratio,
+  4/3), and `--bb-hero-photo-max` (none). A round photograph is a
+  ratio of 1 with `--bb-radius-photo: 50%`; set both on the
+  `bb-photo` hook, as `#page-hero .bb-photo`, for one place's.
 
 Faces:
 - `--bb-font-body` (none), `--bb-font-heading` (body),

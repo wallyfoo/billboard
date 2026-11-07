@@ -1,7 +1,8 @@
 defmodule Billboard.Sections.TextMedia do
   @moduledoc """
   Text and image: a section head, some words, and up to two actions, with
-  a 4:3 photograph beside them on wider screens, on the right
+  a photograph beside them on wider screens, 4:3 unless the site sets
+  `--bb-photo-ratio`, on the right
   (`:media_right`) or the left (`:media_left`). Text never sits on the
   photograph. `:text_only` has none.
 
@@ -44,7 +45,7 @@ defmodule Billboard.Sections.TextMedia do
                 src={@content.photo.path}
                 alt={@content.photo.alt || ""}
                 label={@content.photo.label}
-                ratio="aspect-[4/3]"
+                ratio="aspect-[var(--bb-photo-ratio,4/3)]"
               />
             </Parts.editable_photo>
           </div>

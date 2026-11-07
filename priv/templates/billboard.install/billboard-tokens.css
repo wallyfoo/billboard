@@ -79,6 +79,10 @@
   --bb-radius-button: 0;
   --bb-radius-photo: 0;
   --bb-radius-field: 0;
+  /* A photograph's shape, with its fallbacks:
+     --bb-photo-ratio: 4/3, the hero's and Text and image's photograph;
+     --bb-hero-photo-ratio: --bb-photo-ratio, the hero's alone;
+     --bb-hero-photo-max: none, the hero's photograph's widest. */
 
   /* Type: five faces, then each role's tokens. The label face falls back
      to the body's, the heading face to the body's, and the display and

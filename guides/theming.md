@@ -256,6 +256,16 @@ to `none` gives hover a cue of its own, through `--bb-link-hover` or the
 | `--bb-radius-button` | a button's corners | 0 |
 | `--bb-radius-photo` | a photograph's corners | 0 |
 | `--bb-radius-field` | a form field's corners, for the site's own fields; no stock section draws one | 0 |
+| `--bb-photo-ratio` | the hero's and Text and image's photograph's width to height, as `1` or `3/2` | `4/3` |
+| `--bb-hero-photo-ratio` | the hero's photograph's alone | `--bb-photo-ratio`, then `4/3` |
+| `--bb-hero-photo-max` | the hero's photograph's widest, ring and all; narrower than its column, it's centred there | none: the column's width |
+
+A photograph's ratio is its frame's: an uploaded image fills it with a
+centre crop, and the stand-in fills it too. `--bb-photo-ratio: 1` makes
+them square, and a square with `--bb-radius-photo: 50%` is a circle; a
+rounded corner on a 4:3 frame is an ellipse at most. To make the hero's
+photograph alone round, set the hero's tokens and the radius on its
+hook ([Hooks for decoration](#hooks-for-decoration)).
 
 ### Type
 
@@ -502,6 +512,34 @@ decorate them in its CSS without replacing a component:
 | `bb-photo` | a photograph's figure |
 | `bb-button` | every button `bb_button/1` draws |
 | `bb-link` | every text link `bb_link/1` draws |
+
+A hook can set tokens as well as draw, and what's inside it reads
+them. `bb-photo` is the photograph's figure, and the frame inside it,
+which no hook names, reads `--bb-radius-photo` and the ratio tokens,
+so it takes whatever the figure sets. So a round portrait in a ring, 400px across,
+with a 2px ring 12px out from the photograph, is the hero's tokens,
+the radius set on its `bb-photo`, and the ring drawn on it:
+
+<!-- from: test/support/guides/theming.css#ring -->
+```css
+:root {
+  --bb-hero-photo-ratio: 1;
+  --bb-hero-photo-max: 400px;
+}
+
+#page-hero .bb-photo {
+  --bb-radius-photo: 50%;
+  padding: 12px;
+  border: 2px solid #b8913a;
+  border-radius: 50%;
+}
+```
+
+`#page-hero` is the hero's block, on every page, so photographs in
+other sections stay as they were. The figure's width includes its
+padding and its border, so `--bb-hero-photo-max` is the ring's outer
+size, and the photograph is 372px across inside it. Put the ring in `app.css`, outside
+every `@layer`, as for any hook CSS that draws.
 
 A rule under the headline, or a dash before a list item's title, is
 drawn this way: unlayered CSS on the hook, with a pseudo-element of
