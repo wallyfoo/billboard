@@ -361,6 +361,14 @@ defmodule Mix.Tasks.Billboard.InstallTest do
       assert page_live =~ "site={@site}"
       assert page_live =~ "route_info(router, \"GET\", path, host)"
 
+      # What the page is about, from the site's context module, reaches
+      # its sections' data and its renderers.
+      assert page_live =~ "context = Billboard.Context.sample(page)"
+      assert page_live =~ "Billboard.Resolver.resolve(version, context)"
+      assert page_live =~ "ctx={%{context: @context}}"
+      refute page_live =~ "# guide:"
+      assert {:ok, _quoted} = Code.string_to_quoted(page_live)
+
       router = content(igniter, "lib/my_site_web/router.ex")
 
       # In phx.gen.auth's :current_user session, whose on_mount gives

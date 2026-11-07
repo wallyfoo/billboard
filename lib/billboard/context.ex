@@ -40,7 +40,10 @@ defmodule Billboard.Context do
     * `sample/1`, what the page editor draws a page about, as its
       visitors' pages are, such as the first product for a product's
       page: a context, as the site's LiveViews build for that page.
-      Without it, every page is drawn about nothing in particular.
+      For a page whose route has no parameter, it's what visitors see
+      the page about too: the installer's `BillboardPageLive` hands
+      it to the page. Without it, every page is drawn about nothing in
+      particular.
     * `path/2`, the address that draws a page about a context, such as
       `"/items/shoes"`, which the editor hands the site's layout as the
       address drawn. Without it, a page's address is its pattern, and a

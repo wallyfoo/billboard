@@ -52,6 +52,7 @@ defmodule <%= inspect(@page_live) %> do
     {:noreply, socket}
   end
 
+  # guide:render
   @impl true
   def render(assigns) do
     ~H"""
@@ -62,19 +63,30 @@ defmodule <%= inspect(@page_live) %> do
       site={@site}
       flash={@flash}
       current_path={@current_path}
+      ctx={%{context: @context}}
     />
     """
   end
+  # guide:end
 
+  # guide:load
+  # What the page is about (`Billboard.Context`): the site's context
+  # module's `sample/1` for it, which is what the page editor draws it
+  # about too. A route with no parameters is always about the same
+  # thing, so the sample is the page's own context. The data its
+  # sections read, and the sections themselves, are given it.
   defp load(socket, version) do
     page = Billboard.Directory.fetch(socket.assigns.pattern)
+    context = Billboard.Context.sample(page)
 
     assign(socket,
       version: version,
-      data: Billboard.Resolver.resolve(version),
+      context: context,
+      data: Billboard.Resolver.resolve(version, context),
       page_title: page.title || Billboard.Sections.Hero.title(version)
     )
   end
+  # guide:end
 
   # The route pattern of the page at `path`, which is its billboard
   # page's: `/` for the home page.

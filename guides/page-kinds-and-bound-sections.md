@@ -236,6 +236,84 @@ A hero saved bound to a binding the site no longer lists keeps the
 binding. Billboard loads the context module at boot to read stored
 sections, so it must keep naming every binding a stored section holds.
 
+## Handing a page its context
+
+The context module tells the editor what a page is about. A visitor's
+page is told by the LiveView that draws it, which builds the page's
+context, reads the page's data with it, and hands it to the sections.
+`mix billboard.install --home` writes `BillboardPageLive`, which does
+all three for every page it draws, from the context module's
+`sample/1`:
+
+<!-- from: priv/templates/billboard.install/page_live.ex.eex#load -->
+```elixir
+# What the page is about (`Billboard.Context`): the site's context
+# module's `sample/1` for it, which is what the page editor draws it
+# about too. A route with no parameters is always about the same
+# thing, so the sample is the page's own context. The data its
+# sections read, and the sections themselves, are given it.
+defp load(socket, version) do
+  page = Billboard.Directory.fetch(socket.assigns.pattern)
+  context = Billboard.Context.sample(page)
+
+  assign(socket,
+    version: version,
+    context: context,
+    data: Billboard.Resolver.resolve(version, context),
+    page_title: page.title || Billboard.Sections.Hero.title(version)
+  )
+end
+```
+
+<!-- from: priv/templates/billboard.install/page_live.ex.eex#render -->
+```elixir
+@impl true
+def render(assigns) do
+  ~H"""
+  <Billboard.Sections.page
+    version={@version}
+    data={@data}
+    library={@library}
+    site={@site}
+    flash={@flash}
+    current_path={@current_path}
+    ctx={%{context: @context}}
+  />
+  """
+end
+```
+
+- `Billboard.Context.sample/1` is the site's `sample/1` for the page,
+  or `%{}` for a site that names no context module.
+- `Billboard.Resolver.resolve/2` hands the context to the data module's
+  `fetch/3`, as its second argument.
+- `ctx={%{context: @context}}` is where every renderer reads it, as
+  `ctx.context`: a bound hero its `:bindings`, a detail its `:scope`,
+  and the Fees section above its `:scope`.
+
+A page whose route has no parameter, such as `/assessments`, is always
+about the same thing, so its sample is its context. A context module
+with `def sample(%{pattern: "/assessments"}), do: %{scope: "assessments"}`
+draws that page about the assessments, for its visitors and in the
+editor alike, and its Fees section, with "Only this page's service"
+on, shows the assessments' fees.
+
+A page whose route takes a parameter, such as `/services/:slug`, is
+about whatever the address names, so it has a LiveView of its own,
+which builds the context from its params in place of the sample, as
+`%{scope: slug, bindings: %{service: %{heading: service.name}}}`
+for the service the slug names. It hands it on in the same two places,
+`Billboard.Resolver.resolve(version, context)` and
+`ctx={%{context: @context}}`, and draws and listens as
+`BillboardPageLive` does.
+
+A `BillboardPageLive` written by billboard 0.5.0 or earlier passes no
+context, and the installer never rewrites a file the site has. Until
+the site changes it, its pages are drawn about nothing in particular,
+which is right only for a site with no context module. To bring it up
+to date, make its `load/2` the one above, and add
+`ctx={%{context: @context}}` to its `<Billboard.Sections.page>`.
+
 ## Replacing a stock component
 
 A site replaces a stock component by listing its own, with the stock

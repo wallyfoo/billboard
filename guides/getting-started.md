@@ -326,6 +326,7 @@ publish:
       site={@site}
       flash={@flash}
       current_path={@current_path}
+      ctx={%{context: @context}}
     />
     """
   end
