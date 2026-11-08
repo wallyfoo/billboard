@@ -1,5 +1,81 @@
 # Changelog
 
+## v0.6.1
+
+A site that takes a component out of `components:` no longer breaks
+every page that stored one of its sections, and has a way to move or
+delete those sections. Nothing changes for a site whose stored keys are
+all ones it lists: there are no migrations, no codegen, and no new
+Tailwind `@source` paths, and every page draws as it did on 0.6.0.
+
+### Fixed
+
+- A stored section whose key the site no longer lists, as when a site
+  trades its own `:fees` for the stock `:prices`, made every read of
+  its version fail (`binary_to_existing_atom("fees")` from
+  `Ash.Type.Union`), so the visitor's page, the editor, and
+  `put_page/3` all crashed. Such a section now reads as
+  `%Ash.Union{type: :retired, value: %Billboard.Content.Retired{}}`,
+  holding its key (`component`) and its stored fields (`fields`), and
+  is written back as it was stored, so a draft copied from the live
+  version keeps it.
+- Visitors' pages draw nothing for it, and the sections either side
+  meet; a column holding one draws its other column alone, and a
+  Shared section placing one from the library draws nothing. Each time
+  the pages cache is filled, at start-up and after each publish,
+  billboard logs a warning naming the key, the page, and the section.
+- The page editor draws a stand-in naming the key, which opens to a
+  header with Remove, Up, Down, and Done, and nothing to edit.
+- Publishing is refused while a page holds one: the rules give it an
+  error, "this section's component, “fees”, is no longer on the site;
+  remove the section to publish the page". Components' rules and the
+  site's are never handed one. `put_page/3` replaces such a page as any
+  other.
+
+### Added
+
+- `Billboard.Pages.migrate_sections/3`, and the domain's
+  `migrate_sections/3`, which move every stored section of a key, in
+  live versions, drafts, and the library, to another component, given
+  its key or a function of each section's stored fields that returns
+  `{key, fields}` or `:delete`, in one transaction, with `dry_run: true`
+  to see what it would do. It returns each section it changed, with its
+  page, version, key, and what it became, and refreshes the cache
+  afterwards (Page kinds, "Retiring a component", with a worked example
+  retiring the guide's Fees for Prices, and deleting them).
+- `Billboard.Content.Retired`, what a section of a key the site no
+  longer lists reads as, and `Billboard.Content.Retired.retired?/1`.
+
+### Documented
+
+- Page kinds' new "Retiring a component": what happens to a retired
+  component's sections for visitors, in the editor, and on publish;
+  moving them, mapping their fields; deleting them; and running the
+  move from a script or a release. "Replacing a stock component" and
+  Why the rules exist's "9. Keys are forever" link to it, and the usage
+  rules name `migrate_sections/3`.
+- `Billboard.Domain`'s moduledoc lists `migrate_sections/3`.
+
+### Upgrading from 0.6.0
+
+- Move the dependency's tag to `v0.6.1` and run `mix deps.get`.
+  `mix ash.codegen --check` finds nothing to generate: the content
+  union gains a type of its own, `:retired`, which is stored as JSON
+  like the rest, and the site's section resource recompiles with it.
+- A site with a component keyed `:retired` renames it, migrating its
+  sections, since the content union now keeps that key; its content
+  module fails to compile, naming the component, until it does.
+- A site that has retired a component, or means to, moves its stored
+  sections with `migrate_sections/3`, or deletes them with a function
+  that returns `:delete`, `dry_run: true` first; or its admins remove
+  each stand-in in the editor, and publish. Until then those pages
+  can't be published.
+- A site's own rules (`Billboard.Rule`) are never handed a retired
+  section, so they need no change. Code of the site's own that reads
+  sections itself, as a rule's helper or a page of its own does, meets
+  `content.type == :retired` for one, and `Billboard.Content.Retired.retired?/1`
+  says so.
+
 ## v0.6.0
 
 A new stock component, and a new way to write `hide_when`. Nothing
