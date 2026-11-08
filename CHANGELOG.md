@@ -1,5 +1,69 @@
 # Changelog
 
+## v0.6.0
+
+A new stock component, and a new way to write `hide_when`. Nothing
+changes for a site that doesn't use them: no stored section changes,
+there are no migrations, no codegen, and no new Tailwind `@source`
+paths, and every page draws as it did on 0.5.1.
+
+### Added
+
+- `Billboard.Components.Prices`, key `:prices`, a price list drawn by
+  `Billboard.Sections.Prices` from rows the site's `Billboard.Data`
+  module gives it: each an `id`, a `title`, a `price` the site has
+  already formatted, and an optional `unit`, `note`, and `group`.
+  Billboard never keeps or edits the prices. Its fields are an
+  optional `head`, `body` (opening words), up to one action in
+  `actions`, a `note` under the rows, a `group` (one of the site's
+  `:scope` choices), which shows only that group's rows, and
+  `this_page_only`, which shows only the page's scope's rows. It
+  reads the page's `:scope`, fits in a column, and draws nothing with
+  no rows to show, when the editor's stand-in says why (Page kinds,
+  "The stock Prices section", and its row in "Each section's
+  content").
+- The `bb-price` hook, on each row of a price list (Theming, "Hooks
+  for decoration", now twelve).
+- `hide_when: [field: :any]` hides an editor entry while `field` holds
+  anything at all, and shows it while it's nil or blank, as a
+  `:choice` is when it's set to every one. A list of values works as
+  before. The editor verifier refuses values that are neither a list
+  nor `:any` (Writing a component, "Hiding an entry").
+- `Billboard.Sections.EditorFields.hides?/2`, which says whether a
+  `hide_when` entry's values hide a field.
+
+### Documented
+
+- `hide_when`'s exact shape, a keyword list of attributes, each with a
+  list of values or `:any`, with examples (Writing a component,
+  "Hiding an entry").
+- The stock components' pickers read the context's `:scope` set of
+  choices: Prices' "Group" and a detail's "Shows on" (Page kinds,
+  "What a page is about"). The guide's example context now names its
+  services `:scope`, and its data module gives Prices and the site's
+  own Fees the same fees, in one read.
+
+### Upgrading from 0.5.1
+
+- Move the dependency's tag to `v0.6.0` and run `mix deps.get`.
+  `mix ash.codegen --check` finds nothing to generate, since no
+  resource the site holds changed.
+- A site that wants the stock price list adds a clause for
+  `%Billboard.Components.Prices{}` to its data module, giving rows in
+  the shape `Billboard.Sections.Prices` documents, and then lists
+  `Billboard.Components.Prices` in `use Billboard.Site`'s
+  `components:`. Its "Group" picker offers the context module's
+  `:scope` choices, so a site whose set has another name renames it
+  `:scope`, in `choice_sets/0` and `choices/1`, or has no picker.
+- A site with a component of its own keyed `:prices` keeps it, and
+  can't list the stock one beside it, since no two components may
+  share a key; nothing changes for it unless it replaces its own with
+  the stock one, when its stored sections must hold the stock fields
+  (Page kinds, "Replacing a stock component").
+- The guide's Fees example now names a fee's service `group`, so the
+  same rows draw in the stock Prices section. A site that copied the
+  example needn't change its copy, which billboard never reads.
+
 ## v0.5.1
 
 Every change keeps an existing site's look: a site that sets none of

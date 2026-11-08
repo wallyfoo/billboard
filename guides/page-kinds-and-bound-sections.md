@@ -89,9 +89,9 @@ section to shape, as `Billboard.Data`'s news example does.
 
 The stock Reviews, News, and Prices sections read their rows this way,
 and their renderers document the fields each row has:
-[Reviews](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/reviews.ex),
-[News](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/news.ex),
-and [Prices](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/prices.ex).
+[Reviews](https://github.com/wallyfoo/billboard/blob/v0.6.0/lib/billboard/sections/reviews.ex),
+[News](https://github.com/wallyfoo/billboard/blob/v0.6.0/lib/billboard/sections/news.ex),
+and [Prices](https://github.com/wallyfoo/billboard/blob/v0.6.0/lib/billboard/sections/prices.ex).
 
 ## The stock Prices section
 
@@ -437,7 +437,7 @@ the stock renderer draws them whatever the site's hero.
 `Billboard.Sections.Hero.title/2` reads any hero's `heading` for the
 browser title. If the layout's skip link lands on `#main`, the
 replacement keeps a `#main` target.
-[The stock hero](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/hero.ex)
+[The stock hero](https://github.com/wallyfoo/billboard/blob/v0.6.0/lib/billboard/sections/hero.ex)
 is the example to start from.
 
 A smaller change may need no replacement at all. A round portrait in

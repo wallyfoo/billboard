@@ -17,7 +17,7 @@ Add billboard and Ash to `mix.exs` together, at the top of the list in
 `deps/0`:
 
 ```elixir
-      {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.5.1"},
+      {:billboard, git: "https://github.com/wallyfoo/billboard.git", tag: "v0.6.0"},
       {:ash, "~> 3.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.0"},
