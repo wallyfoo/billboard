@@ -179,12 +179,21 @@ defmodule Billboard.Component do
   part by its module (`MySite.Sections.Faq.Question`, which does
   `use Billboard.Part` and declares its own editor fields and blank).
 
-  Every entry takes `label`, `hint`, `hide_when: [field: values]`, which
-  leaves it out while the named field holds one of `values`,
-  `bound: :hide`, which leaves it out while the section's binding
-  replaces its own words, and `more: true`, for words a visitor sees only
-  in a state the editor can't show, such as an empty list, which the
-  editor offers under More.
+  Every entry takes `label`, `hint`, `hide_when`, `bound: :hide`, which
+  leaves it out while the section's binding replaces its own words, and
+  `more: true`, for words a visitor sees only in a state the editor
+  can't show, such as an empty list, which the editor offers under More.
+
+  `hide_when` leaves an entry out while another field holds some value.
+  It's a keyword list of the component's attributes, each with a list
+  of values, which hide the entry while the attribute holds one of
+  them, or `:any`, which hides it while the attribute holds anything at
+  all, so not while it's nil or blank. Values are compared as strings,
+  and any one attribute's hides it. The entry's value is kept while it's
+  hidden.
+
+      field :photo, as: :photo, ratio: "aspect-[4/3]", hide_when: [variant: [:text_only]]
+      field :this_page_only, as: :toggle, label: "Only this page's group", hide_when: [group: :any]
 
   A component without an `editor` section offers nothing to change.
   `Billboard.Component.Info.editor_fields/1` reads the entries in the
@@ -231,7 +240,8 @@ defmodule Billboard.Component do
       and one in a `parts` list must have an `:id` primary key (see
       Parts).
     * Every `editor` entry but a note must name an attribute, and no two
-      the same one; `hide_when` must name attributes; `words` must edit a
+      the same one; `hide_when` must name attributes, each with a list of
+      values or `:any`; `words` must edit a
       string; a `:part` must edit a part and a `:list` a list of parts,
       each naming its `part`; a `:choice` or `:choices` must name its
       set, `from`; a `:choices` must edit `{:array, :string}`, and a

@@ -240,6 +240,42 @@ defmodule Billboard.ComponentEditorTest do
              ]
     end
 
+    test "refuse a hide_when whose values are neither a list nor :any, and take :any" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.Billboard.ComponentEditorTest.Unlisted do
+            use Billboard.Component
+
+            component do
+              key :unlisted
+              label "Unlisted"
+              hint "x"
+              category :content
+            end
+
+            editor do
+              words :title, label: "Title", hide_when: [variant: :plain]
+              words :lede, label: "Lede", hide_when: [variant: :any]
+            end
+
+            attributes do
+              attribute :title, :string, public?: true
+              attribute :lede, :string, public?: true
+              attribute :variant, :atom, public?: true
+            end
+          end
+        end
+
+      assert [{_, errors}] = errors
+
+      assert Enum.map(errors, & &1.message) == [
+               "`:title` hides when `:variant` holds `:plain`, which is neither a list of " <>
+                 "values nor `:any`. Write `hide_when: [variant: [:plain]]` to hide it while " <>
+                 "`:variant` holds that value, or `hide_when: [variant: :any]` while it holds " <>
+                 "anything at all"
+             ]
+    end
+
     test "refuse a name twice, a hide_when on no attribute, a part that isn't one, " <>
            "and choices that aren't strings" do
       errors =

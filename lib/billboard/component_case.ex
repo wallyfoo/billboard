@@ -908,7 +908,7 @@ defmodule Billboard.ComponentCase do
   defp hidden?(spec, content) do
     hidden_by_value? =
       Enum.any?(spec[:hide_when] || [], fn {field, values} ->
-        to_string(Map.get(content, field)) in Enum.map(values, &to_string/1)
+        EditorFields.hides?(values, Map.get(content, field))
       end)
 
     hidden_by_binding? =

@@ -140,9 +140,19 @@ defmodule Billboard.Sections.EditorFields do
   """
   def hidden?(form, spec) do
     Enum.any?(Keyword.get(spec, :hide_when, []), fn {field, values} ->
-      to_string(form[field].value) in Enum.map(values, &to_string/1)
+      hides?(values, form[field].value)
     end) or (spec[:bound] == :hide and Context.replaces_words?(form[:bind].value))
   end
+
+  @doc """
+  Whether one of a `hide_when`'s entries, `values`, hides its field while
+  the field it names holds `value`: a list of values hides it while that
+  field holds one of them, and `:any` while it holds anything at all, so
+  not while it's nil or blank.
+  """
+  @spec hides?([term()] | :any, term()) :: boolean()
+  def hides?(:any, value), do: to_string(value) != ""
+  def hides?(values, value), do: to_string(value) in Enum.map(values, &to_string/1)
 
   @doc """
   `specs` with each `:binding_note` made the note of the binding `form`

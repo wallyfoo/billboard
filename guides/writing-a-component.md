@@ -343,9 +343,36 @@ its `as`:
 A part or a list's `part` names one of billboard's parts by its name,
 such as `:point` ([Parts reference](parts.md)), or one of the site's own
 by its module, as here. Every entry also takes `label`, `hint`,
-`hide_when`, which leaves it out while another field holds one of some
-values, `bound: :hide`, and `more: true`. A select or variants the site
-narrows to one option isn't drawn, since the site has made the choice.
+`hide_when`, `bound: :hide`, which leaves it out while the section's
+binding replaces its words, and `more: true`, which offers words under
+More. A select or variants the site narrows to one option isn't drawn,
+since the site has made the choice.
+
+### Hiding an entry
+
+`hide_when` leaves an entry out of the editor while another of the
+component's fields holds some value. It's a keyword list: each key
+names one of the component's attributes, and its value is either a
+list of the values that hide the entry, or `:any`, which hides it while
+the field holds anything at all:
+
+- `hide_when: [variant: [:text_only]]` hides a photograph while the
+  section is text only, as Text and image's does.
+- `hide_when: [variant: [:quote_left, :quote_right]]` hides an entry
+  while the section has either quote layout.
+- `hide_when: [group: :any]` hides an entry while `group` holds any
+  value, and shows it while `group` is empty (nil or `""`), as a
+  `:choice` is when it's set to every one.
+
+Values are compared as strings, so `:text_only` and `"text_only"` match
+alike. With more than one key, any one of them hides the entry. A
+hidden entry keeps its value, and the renderer is still given it, so
+when one setting makes another moot, the renderer says which wins:
+hide a toggle while the choice that overrides it is set, and have the
+renderer ignore the toggle then. A key that isn't one of
+the component's attributes, or a value that's neither a list nor
+`:any`, fails `mix compile --warnings-as-errors` with a message naming
+the fix.
 
 ## The look
 

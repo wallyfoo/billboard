@@ -44,8 +44,9 @@ Parts, inside `component`:
 ## The editor section
 
 Entries draw in the order written. Every entry takes `label`, `hint`,
-`hide_when` (`[field: [values]]`), `more` (under More…), and `bound`
-(`:hide` while a binding replaces the words).
+`hide_when` (`[field: [values]]`, hidden while `field` holds one of
+them, or `[field: :any]`, while it holds anything), `more` (under
+More…), and `bound` (`:hide` while a binding replaces the words).
 
 - `words :name`: typed in place; a string attribute. `as: :text` (the
   default) or `:markdown`, `limit`, and `accent`.

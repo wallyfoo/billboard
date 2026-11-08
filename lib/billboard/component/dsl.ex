@@ -50,7 +50,8 @@ defmodule Billboard.Component.Dsl do
       type: :keyword_list,
       doc:
         "Leaves it out while another field holds one of some values, as " <>
-          "`[variant: [:text_only]]`."
+          "`[variant: [:text_only]]`, or, with `:any` for the values, while it holds " <>
+          "anything at all, as `[group: :any]`."
     ],
     more: [
       type: :boolean,

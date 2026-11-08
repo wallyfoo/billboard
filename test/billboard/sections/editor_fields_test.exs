@@ -274,6 +274,35 @@ defmodule Billboard.Sections.EditorFieldsTest do
     end
   end
 
+  describe "hide_when" do
+    defp holding(value), do: %{variant: %{value: value}}
+
+    test "hides a field while another holds one of its values" do
+      spec = [as: :photo, hide_when: [variant: [:text_only]]]
+
+      assert EditorFields.hidden?(holding("text_only"), spec)
+      refute EditorFields.hidden?(holding("media_left"), spec)
+    end
+
+    test "hides a field while another holds anything at all, with :any" do
+      spec = [as: :toggle, hide_when: [variant: :any]]
+
+      assert EditorFields.hidden?(holding("hats"), spec)
+      refute EditorFields.hidden?(holding(nil), spec)
+      refute EditorFields.hidden?(holding(""), spec)
+    end
+
+    test "matches listed values, or anything at all with :any" do
+      assert EditorFields.hides?([:text_only], :text_only)
+      assert EditorFields.hides?([:text_only], "text_only")
+      refute EditorFields.hides?([:text_only], :media_left)
+      assert EditorFields.hides?(:any, "hats")
+      assert EditorFields.hides?(:any, :media_left)
+      refute EditorFields.hides?(:any, nil)
+      refute EditorFields.hides?(:any, "")
+    end
+  end
+
   describe "the section's binding" do
     test "hides a field while the section's binding replaces its words" do
       put_site!(components: [Billboard.Test.Faq], context: Billboard.Test.Context)

@@ -601,7 +601,10 @@ defmodule Billboard.EditorLive.SectionEditor do
   defp fill_shown_parts(form, specs, variant) do
     Enum.reduce(specs, form, fn {field, spec}, form ->
       shows? =
-        variant not in (spec |> Keyword.get(:hide_when, []) |> Keyword.get(:variant, [variant]))
+        case spec |> Keyword.get(:hide_when, []) |> Keyword.fetch(:variant) do
+          {:ok, values} -> not EditorFields.hides?(values, variant)
+          :error -> false
+        end
 
       if spec[:as] in [:part, :photo] and shows? and not Keyword.get(spec, :optional, false) and
            is_nil(EditorFields.nested(form.source, [:content, field])) do

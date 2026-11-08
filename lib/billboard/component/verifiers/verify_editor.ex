@@ -2,12 +2,13 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   @moduledoc """
   Checks the `editor` section: each entry edits one of the component's
   attributes, but a note, which edits nothing, and no two edit the same
-  one; `hide_when` names attributes; words edit a string; a part edits a
-  part, and a list a list of parts, each naming its part, by a stock
-  part's name or a site's part (`Billboard.Part`); a choice names
-  its set; several choices edit a list of strings, and there's at most
-  one set of them (`:choices`), since the editor keeps one a section, in
-  the order it was ticked; a select's options and the variants' layouts
+  one; `hide_when` names attributes, each with a list of values or
+  `:any`; words edit a string; a part edits a part, and a list a list
+  of parts, each naming its part, by a stock part's name or a site's
+  part (`Billboard.Part`); a choice names its set; several choices
+  edit a list of strings, and there's at most one set of them
+  (`:choices`), since the editor keeps one a section, in the order it
+  was ticked; a select's options and the variants' layouts
   are given, and are among the attribute's `one_of` values when it has
   them; and a select's `only_on` names its options. A part or list
   naming a site's part by its module edits an attribute of that part,
@@ -173,13 +174,29 @@ defmodule Billboard.Component.Verifiers.VerifyEditor do
   end
 
   defp hide_when(entry, attributes, module) do
-    for {field, _values} <- entry.hide_when || [],
-        not Map.has_key?(attributes, field),
-        do:
-          "`#{inspect(entry.name)}` hides when `#{inspect(field)}` holds some values, but " <>
-            "`#{inspect(field)}` isn't an attribute of #{inspect(module)}" <>
-            "#{did_you_mean(field, attributes)}. Name one of its attributes in `hide_when`, " <>
-            "or take it out"
+    Enum.flat_map(entry.hide_when || [], fn {field, values} ->
+      cond do
+        not Map.has_key?(attributes, field) ->
+          [
+            "`#{inspect(entry.name)}` hides when `#{inspect(field)}` holds some values, but " <>
+              "`#{inspect(field)}` isn't an attribute of #{inspect(module)}" <>
+              "#{did_you_mean(field, attributes)}. Name one of its attributes in `hide_when`, " <>
+              "or take it out"
+          ]
+
+        values != :any and not is_list(values) ->
+          [
+            "`#{inspect(entry.name)}` hides when `#{inspect(field)}` holds " <>
+              "`#{inspect(values)}`, which is neither a list of values nor `:any`. Write " <>
+              "`hide_when: [#{field}: [#{inspect(values)}]]` to hide it while " <>
+              "`#{inspect(field)}` holds that value, or `hide_when: [#{field}: :any]` while it " <>
+              "holds anything at all"
+          ]
+
+        true ->
+          []
+      end
+    end)
   end
 
   defp words(%Words{name: name}, %{type: type}) when type != Ash.Type.String,
