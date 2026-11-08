@@ -91,6 +91,12 @@ defmodule Billboard.EditorLive.SectionEditor do
   over theirs. The page editor hands the editor the section again on
   every change to the page's draft, which keeps that window short.
 
+  A section of a component the site no longer has
+  (`Billboard.Content.Retired`) has nothing to edit: its header says so,
+  naming the key it's stored under, and offers only Remove, Up, Down,
+  and Done, and its strip says why the page can't be published while
+  it's there.
+
   A removed photograph's file stays: the live page and the draft share it.
   """
   use Phoenix.LiveComponent
@@ -161,6 +167,10 @@ defmodule Billboard.EditorLive.SectionEditor do
     |> assign(:popover, nil)
   end
 
+  defp present_section(socket, %{content: %{type: :retired}} = section) do
+    assign(socket, shown: signature(section), form: nil, picked: [], photo_params: nil)
+  end
+
   defp present_section(socket, section) do
     socket
     |> assign(:shown, signature(section))
@@ -197,6 +207,7 @@ defmodule Billboard.EditorLive.SectionEditor do
   # The component's fields, narrowed to what the site offers. A select
   # left with one is a choice the site has made, so the header doesn't
   # draw it.
+  defp specs(%{content: %{type: :retired}}), do: []
   defp specs(section), do: EditorFields.narrowed(section.content.type)
 
   ## Events
@@ -209,6 +220,13 @@ defmodule Billboard.EditorLive.SectionEditor do
   # handed params for, and so would take away if they left them out,
   # keeps them.
   @impl true
+  def handle_event(
+        _event,
+        _params,
+        %{assigns: %{section: %{content: %{type: :retired}}}} = socket
+      ),
+      do: {:noreply, socket}
+
   def handle_event("change", params, socket) do
     specs = specs(socket)
 
@@ -1207,6 +1225,84 @@ defmodule Billboard.EditorLive.SectionEditor do
   # Every button sits in the header's form, so each one says it's only a
   # button: a button in a form sends it otherwise.
   @impl true
+  def render(%{section: %{content: %{type: :retired}}} = assigns) do
+    assigns =
+      assign(assigns,
+        key: assigns.section.key,
+        name: Billboard.Content.Retired.label(assigns.section),
+        component: assigns.section.content.value.component
+      )
+
+    ~H"""
+    <div
+      id="section-editor"
+      data-section={@key}
+      data-editor-ui
+      class="sticky top-[var(--bb-edit-bar-height,0px)] z-30"
+    >
+      <div
+        id="section-controls"
+        role="group"
+        aria-label={"#{@name}: its settings"}
+        tabindex="-1"
+        class="flex flex-wrap items-center gap-x-3 gap-y-2 bg-bb-edit px-4 py-2 font-bb-edit text-[13px] leading-tight text-bb-edit-on-accent outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-bb-edit-on-accent md:px-6"
+      >
+        <p class="mr-1 font-semibold">{@name}</p>
+        <button
+          :if={@moves[:remove]}
+          id="section-remove"
+          type="button"
+          phx-click="remove_section"
+          phx-value-key={@key}
+          data-confirm="Remove this section? Its words can't be brought back here."
+          class={EditorFields.setting_button_class()}
+        >
+          Remove section
+        </button>
+        <p id="section-retired" class="max-w-prose text-xs opacity-90">
+          The site no longer has the “{@component}” component, so this section can't be
+          edited, and visitors don't see it.
+        </p>
+        <div class="ml-auto flex items-center gap-2">
+          <button
+            :for={{dir, words} <- [up: "Up", down: "Down"]}
+            :if={@moves[dir]}
+            id={"section-move-#{dir}"}
+            type="button"
+            phx-click="move"
+            phx-value-key={@key}
+            phx-value-dir={dir}
+            aria-label={"Move this section #{dir}"}
+            class={EditorFields.setting_button_class()}
+          >
+            <span aria-hidden="true">{if dir == :up, do: "↑", else: "↓"}</span> {words}
+          </button>
+          <button
+            id="section-done"
+            type="button"
+            phx-click="close_section"
+            class={EditorFields.setting_button_class(:done)}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+      <div :if={@issues != []} id="section-issues" role="alert" class="bg-bb-edit-ground">
+        <ul class="flex flex-wrap gap-x-5 gap-y-1 bg-bb-edit-error/8 px-4 py-2 font-bb-edit text-[13px] font-medium md:px-6">
+          <li
+            :for={{issue, i} <- Enum.with_index(@issues)}
+            id={"section-issue-#{i}"}
+            data-level={issue.level}
+            class={if(issue.level == :error, do: "text-bb-edit-error", else: "text-bb-edit-soft")}
+          >
+            {sentence(issue.message)}
+          </li>
+        </ul>
+      </div>
+    </div>
+    """
+  end
+
   def render(assigns) do
     section = assigns.section
     specs = specs(section)

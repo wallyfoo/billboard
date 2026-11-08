@@ -23,6 +23,11 @@ defmodule Billboard.Rules do
     * A shared section goes on a page once, and no other section on the
       page may take its anchor, so no DOM id repeats.
     * A shared section whose source has left the library is a warning.
+    * A section of a component the site no longer has
+      (`Billboard.Content.Retired`) is an error, so the page can't be
+      published until it's removed, in the editor, or migrated, with
+      `Billboard.Pages.migrate_sections/3`. Neither the components' rules
+      nor the site's are handed one.
 
   A component adds rules about its own sections, each a
   `Billboard.Component.Rule`, through its `component` section's `rules`,
@@ -61,11 +66,13 @@ defmodule Billboard.Rules do
         columns(sections),
         actions(sections),
         anchors(sections, shared),
-        shared_refs(sections, shared)
+        shared_refs(sections, shared),
+        retired(sections)
       ])
 
     components = component_issues(page, sections, shared)
-    site = Enum.flat_map(Site.get!().rules(), & &1.check(page, sections, shared))
+    known = without_retired(sections)
+    site = Enum.flat_map(Site.get!().rules(), & &1.check(page, known, shared))
 
     stock ++ components ++ site
   end
@@ -82,6 +89,7 @@ defmodule Billboard.Rules do
   # order, columns' sections included.
   defp component_issues(page, sections, shared) do
     for s <- everything(sections),
+        type(s) != :retired,
         rule <- Info.component_rules!(Catalogue.module!(type(s))),
         issue <- rule.check(s, page, shared),
         do: issue
@@ -128,6 +136,7 @@ defmodule Billboard.Rules do
   # A hero in the library is left to `heroes/2`, which says it better.
   defp placement(%Page{kind: kind}, sections) do
     for s <- everything(sections),
+        type(s) != :retired,
         not (kind == :library and type(s) == :hero),
         entry = Catalogue.fetch!(type(s)),
         not Entry.allows?(entry, kind),
@@ -159,6 +168,7 @@ defmodule Billboard.Rules do
 
     misfits =
       for child <- children,
+          type(child) != :retired,
           entry = Catalogue.fetch!(type(child)),
           not entry.column?,
           do: error(child, "#{entry.label} can't sit in a column")
@@ -222,6 +232,34 @@ defmodule Billboard.Rules do
   defp library_children(%{children: children}) when is_list(children), do: children
   defp library_children(_section), do: []
 
+  # A section the site has no component for can't be drawn or edited, so
+  # it can't be published either, until it's gone or moved to a component
+  # the site has.
+  defp retired(sections) do
+    for s <- everything(sections),
+        type(s) == :retired,
+        do:
+          error(
+            s,
+            "this section's component, “#{s.content.value.component}”, is no longer on the " <>
+              "site; remove the section to publish the page"
+          )
+  end
+
+  # The sections, and Two columns' children, less any of a component the
+  # site no longer has, for the site's own rules.
+  defp without_retired(sections) do
+    for s <- sections, type(s) != :retired do
+      case s do
+        %{content: %Ash.Union{type: :columns}, children: children} when is_list(children) ->
+          %{s | children: Enum.reject(children, &(type(&1) == :retired))}
+
+        s ->
+          s
+      end
+    end
+  end
+
   defp shared_refs(sections, shared) do
     for s <- everything(sections),
         type(s) == :shared,
@@ -274,12 +312,14 @@ defmodule Billboard.Rules do
 
   @doc """
   The type of what `section` draws: a Shared section's library section's
-  type, found in `shared`, or `:shared` when that has left the library,
-  and any other section's own type.
+  type, found in `shared`, or `:shared` when that has left the library or
+  is of a component the site no longer has, and any other section's own
+  type.
   """
   @spec effective_type(map(), shared()) :: atom()
   def effective_type(%{content: %Ash.Union{type: :shared, value: %{key: key}}}, shared) do
     case Map.get(shared, key) do
+      %{content: %Ash.Union{type: :retired}} -> :shared
       %{} = library -> type(library)
       nil -> :shared
     end

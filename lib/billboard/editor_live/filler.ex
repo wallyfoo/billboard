@@ -65,6 +65,7 @@ defmodule Billboard.EditorLive.Filler do
     texts = texts()
 
     for section <- Enum.flat_map(sections, &[&1 | children(&1)]),
+        not Billboard.Content.Retired.retired?(section),
         text = Enum.find(strings(section.content.value), &(&1 in texts)),
         do: %{
           level: :warning,

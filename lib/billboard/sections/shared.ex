@@ -4,9 +4,10 @@ defmodule Billboard.Sections.Shared do
   `ctx.shared` when the page passed its library
   (`Billboard.Sections.page/1`), else from the live library
   (`Billboard.Pages.shared_section/1`), with the library section's own
-  anchor. Nothing shows when the key has left the library, or when the
+  anchor. Nothing shows when the key has left the library, when the
   library section is itself a shared section, which could point back at
-  itself.
+  itself, or when it's of a component the site no longer has
+  (`Billboard.Content.Retired`).
 
   In the page editor, the library section is drawn as a visitor sees it,
   never opened here: it's edited in the library.
@@ -45,9 +46,16 @@ defmodule Billboard.Sections.Shared do
 
   @doc "What the editor's stand-in says when `render/1` draws nothing."
   def nothing_to_show(content, ctx) do
-    if source(ctx, content.key),
-      do: "its library section has nothing to show on this page.",
-      else: "its section has left the shared library."
+    cond do
+      source(ctx, content.key) ->
+        "its library section has nothing to show on this page."
+
+      match?(%{content: %{type: :retired}}, shared_section(ctx, content.key)) ->
+        "its library section is of a component the site no longer has."
+
+      true ->
+        "its section has left the shared library."
+    end
   end
 
   @doc """
@@ -56,7 +64,7 @@ defmodule Billboard.Sections.Shared do
   """
   def source(ctx, key) do
     case shared_section(ctx, key) do
-      %{content: %{type: :shared}} -> nil
+      %{content: %{type: type}} when type in [:shared, :retired] -> nil
       section -> section
     end
   end
@@ -74,7 +82,7 @@ defmodule Billboard.Sections.Shared do
   def glyph(assigns) do
     source =
       case library_section(assigns[:library], assigns.content.key) do
-        %{content: %{type: :shared}} -> nil
+        %{content: %{type: type}} when type in [:shared, :retired] -> nil
         section -> section
       end
 

@@ -349,7 +349,12 @@ field, and `resolve/3` gives the site's default for it.
 A component's key is what its sections' content is stored under. Change
 it, and every stored section of the old key no longer names a component
 the site has. Rename a component's module, label, or hint as you like,
-but keep its key, or migrate the stored sections to the new one.
+but keep its key, or migrate the stored sections to the new one with
+`migrate_sections/3`, as the page kinds guide's
+[Retiring a component](page-kinds-and-bound-sections.md#retiring-a-component)
+shows. Until they're migrated, such sections still read, but draw
+nothing for visitors, stand in the editor with only Remove to offer,
+and hold Publish back on every page that holds one.
 
 ## 10. Verifiers report through compile warnings
 

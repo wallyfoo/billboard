@@ -11,6 +11,13 @@ defmodule Billboard.Snapshot do
   whose data can't be read is left out, rather than kept with its
   defaults, and `Billboard.Pages.page_for/1` builds it on each render
   until the next snapshot.
+
+  A live section of a component the site no longer has
+  (`Billboard.Content.Retired`) stays in its version, which the editor
+  reads, and visitors' pages draw nothing for it. Each build logs a
+  warning for each one, naming its key and its page, so it's said once
+  each time the cache is filled, at start-up and after each publish,
+  rather than on every visit.
   """
   require Logger
 
@@ -36,6 +43,8 @@ defmodule Billboard.Snapshot do
         &{&1.page.pattern, &1}
       )
 
+    Enum.each(live, fn {pattern, version} -> warn_retired(pattern, version) end)
+
     %__MODULE__{
       pages: live,
       starters:
@@ -48,6 +57,21 @@ defmodule Billboard.Snapshot do
         )
     }
   end
+
+  defp warn_retired(pattern, version) do
+    for section <- Enum.flat_map(version.sections, &[&1 | &1.children]),
+        Billboard.Content.Retired.retired?(section) do
+      Logger.warning(
+        "The live #{page_name(pattern)} holds a section of “#{section.content.value.component}”, " <>
+          "a component the site no longer has, so visitors don't see it (section " <>
+          "#{inspect(section.key)}). Remove it in the page editor, or migrate it with " <>
+          "Billboard.Pages.migrate_sections/3."
+      )
+    end
+  end
+
+  defp page_name(nil), do: "shared library"
+  defp page_name(pattern), do: "page #{pattern}"
 
   # Strict, so a failed read never leaves defaults in the cache. One
   # page's failure costs only that page its place.

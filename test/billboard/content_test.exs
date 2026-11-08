@@ -4,11 +4,13 @@ defmodule Billboard.ContentTest do
   alias Billboard.Test
   alias Billboard.Test.Shop
 
-  test "holds the site's components, in order, each tagged by its key" do
+  test "holds the site's components, in order, each tagged by its key, then its own :retired" do
     types = Shop.Content.subtype_constraints()[:types]
 
     assert Keyword.keys(types) ==
-             ~w(hero band cards text notes points text_media details faq fees reviews news prices columns shared unwritten misdrawn)a
+             ~w(hero band cards text notes points text_media details faq fees reviews news prices columns shared unwritten misdrawn retired)a
+
+    assert types[:retired] == [type: Billboard.Content.Retired]
 
     for {key, module} <- [
           hero: Billboard.Components.Hero,

@@ -69,7 +69,12 @@ defmodule Billboard.Domain do
   And, from `Billboard.Pages`: `put_page(pattern, sections, opts)`,
   which makes a page hold exactly `sections` and publishes it, for seeds
   (the page kinds guide's "Pages from code" has a worked example);
-  `draft_for(pattern, opts)`; `ensure_page(pattern, opts)`;
+  `migrate_sections(from, to, opts)`, which moves every stored section
+  of the component `from`, live, drafted, and in the library, to the
+  component `to`, an atom, or as a function of its stored fields says,
+  or deletes them, in one transaction, with `dry_run: true` to see what
+  it would do first (the page kinds guide's "Retiring a component" has
+  a worked example); `draft_for(pattern, opts)`; `ensure_page(pattern, opts)`;
   `change_draft(pattern, fun, opts)`, which runs `fun` on the page's
   draft, as every editor change does; `swap_columns(columns, opts)`;
   `page_for(pattern)`, what visitors see; `shared_sections()`;
@@ -128,6 +133,9 @@ defmodule Billboard.Domain do
 
       @doc "See `Billboard.Pages.put_page/3`."
       defdelegate put_page(pattern, sections, opts \\ []), to: Billboard.Pages
+
+      @doc "See `Billboard.Pages.migrate_sections/3`."
+      defdelegate migrate_sections(from, to, opts \\ []), to: Billboard.Pages
 
       @doc "See `Billboard.Pages.swap_columns/2`."
       defdelegate swap_columns(columns, opts \\ []), to: Billboard.Pages

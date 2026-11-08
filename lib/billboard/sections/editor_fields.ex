@@ -623,14 +623,15 @@ defmodule Billboard.Sections.EditorFields do
   end
 
   # The library's sections a Shared section can place: any but another
-  # Shared section, which draws nothing. One that has left the library is
+  # Shared section, or one of a component the site no longer has, which
+  # draw nothing. One that has left the library is
   # kept while it's the one placed, so the menu still says so.
   defp draw_setting(%{as: :shared} = assigns) do
     current = to_string(assigns.input.value)
 
     options =
       for section <- assigns.ctx.library,
-          section.content.type != :shared,
+          section.content.type not in [:shared, :retired],
           do: {shared_label(section), section.key}
 
     options =

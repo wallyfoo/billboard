@@ -75,7 +75,8 @@ defmodule Billboard.EditorLive.Palette do
 
   @doc """
   The keys of the library's sections that none of `sections`, or their
-  columns, place yet.
+  columns, place yet, less any of a component the site no longer has,
+  which draws nothing.
   """
   @spec unplaced([map()], [map()]) :: [String.t()]
   def unplaced(library, sections) do
@@ -84,7 +85,7 @@ defmodule Billboard.EditorLive.Palette do
           s.content.type == :shared,
           do: s.content.value.key
 
-    for s <- library, s.key not in placed, do: s.key
+    for s <- library, s.key not in placed, s.content.type != :retired, do: s.key
   end
 
   @doc """

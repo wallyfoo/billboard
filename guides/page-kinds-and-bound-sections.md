@@ -419,7 +419,10 @@ to date, make its `load/2` the one above, and add
 A site replaces a stock component by listing its own, with the stock
 one's key, in the stock one's place in `components:`. Stored sections
 keep their content, so the replacement must accept the stock fields,
-or the site migrates the sections it has.
+or the site migrates the sections it has, as
+[Retiring a component](#retiring-a-component) shows. Replacing a
+component of the site's own with a stock one, under the stock one's
+key, is retiring the site's: its sections move to the stock key.
 
 A replacement hero draws only what's inside its block. The page keeps
 `<section id="page-hero" class="bb-section-pad">`, in the layout's hero
@@ -447,6 +450,142 @@ on `#page-hero .bb-photo`, as the theming guide's
 [Hooks for decoration](theming.md#hooks-for-decoration) shows; the
 other hooks, and the layout's hero slot, are often enough for the
 rest.
+
+## Retiring a component
+
+A site retires a component when it takes the component's module out of
+`components:`, as when it trades a component of its own for a stock
+one: its own `:fees` for the stock `:prices`, say. Its sections stay
+stored under the old key, in live versions, drafts, and the library,
+until the site moves or deletes them. Billboard keeps no older
+versions: a page has its live version and at most one draft, so those
+are all there are.
+
+Until then, nothing breaks, and nothing is lost:
+
+- Every read works. A stored section whose key the site no longer
+  lists reads as `%Ash.Union{type: :retired}`, holding a
+  `Billboard.Content.Retired` with the old key (`component`, as
+  `"fees"`) and its stored fields (`fields`, with string keys), and
+  it's written back exactly as it was, so a draft copied from the live
+  version keeps it. `:retired` is billboard's, so no component may take
+  it as its key.
+- Visitors' pages draw nothing for it, and the sections either side
+  meet as if it weren't there. Each time billboard fills its pages
+  cache, at start-up and after each publish, it logs a warning naming
+  the key, the page, and the section, once for each such section.
+- The page editor draws a stand-in in its place, saying the section is
+  of a component the site no longer has, and naming the key. It opens
+  as any section does, to a header with Remove, Up, Down, and Done,
+  and nothing to edit.
+- Publishing is refused while the page holds one: the rules
+  (`Billboard.Rules`) give it an error, "this section's component,
+  “fees”, is no longer on the site; remove the section to publish the
+  page", so Publish waits until it's removed or migrated. Nothing is
+  dropped without someone choosing to drop it. The components' own
+  rules, and the site's, are never handed one.
+- `put_page/3` works over such a page, as over any: it replaces what
+  the page held.
+
+### Moving its sections to another component
+
+`Billboard.Pages.migrate_sections/3`, which the site's domain gives as
+`MySite.Pages.migrate_sections/3` as well, moves every stored section of
+one key to another component, on every page, live and drafted, and in
+the library, in one transaction: every section changes, or none does.
+Each keeps its key, its place, its anchor, and its surface. Retiring
+the site's own Fees, which has a `title` and "Only this page's
+service", for the stock Prices:
+
+<!-- from: guides/examples/lib/my_site/pages/retire_fees.ex#migrate -->
+```elixir
+@doc """
+Moves every Fees section to Prices. Its title becomes the head's
+heading, a service it chose becomes the group, and "Only this page's
+service" becomes "Only this page's group".
+"""
+def to_prices(opts \\ []) do
+  Billboard.Pages.migrate_sections(:fees, &prices/1, opts)
+end
+
+# `fees` is a section's stored fields, by name, as strings.
+defp prices(fees) do
+  {:prices,
+   %{
+     head: fees["title"] && %{heading: fees["title"]},
+     group: fees["service"],
+     this_page_only: fees["this_service_only"] == true
+   }}
+end
+```
+
+The function is given each section's fields as they're stored, a map
+with string keys, its parts maps too, so `fees["title"]`, not
+`fees.title`: the old component's module may be gone. It returns the
+new component's key and its fields, as `put_page/3`'s `content` takes
+them ([Each section's content](#each-section-s-content) lists the
+stock ones'), and each new section is built and checked as a save
+would be. This Fees chose no service, so `fees["service"]` is nil and
+each Prices section shows every group, as its Fees showed every fee; a
+Fees whose sections chose a service, from the `:scope` choices,
+carries it into `group` by the same line. A component whose fields are
+the new one's already, under the same names, needs no function: give
+its key, as `migrate_sections(:banner, :band)`.
+
+### Deleting them
+
+The simplest retirement throws the sections away. A function that says
+`:delete` takes every one off every page:
+
+<!-- from: guides/examples/lib/my_site/pages/retire_fees.ex#delete -->
+```elixir
+@doc "Takes every Fees section off every page."
+def delete(opts \\ []) do
+  Billboard.Pages.migrate_sections(:fees, fn _fees -> :delete end, opts)
+end
+```
+
+An admin can do the same a page at a time, with Remove on each
+stand-in, and then publish the page.
+
+### Running it
+
+`migrate_sections(from, to, opts)`:
+
+- `from` is the key the sections are stored under, an atom or a
+  string, as `:fees`. It may be a key the site still lists, so the
+  move can run before the old module goes, or after.
+- `to` is a key the site lists, as `:prices`, which takes each
+  section's fields as they are, or a function of a section's stored
+  fields that returns `{key, fields}` or `:delete`. A key the site
+  doesn't list, or any other answer, raises `ArgumentError`.
+- `opts`: `dry_run: true` builds every new section but writes nothing,
+  so a first run says what would change. It runs no actions and no
+  policies, as a database migration doesn't, so it needs no `actor:`
+  or `authorize?: false`.
+
+It returns `{:ok, migrated}`, one map for each section, in page order,
+with the page's pattern (`nil` for the library), `:live` or `:draft`,
+the section's key, and what it became, a key or `:deleted`, so
+`length(migrated)` is the count. A section whose new fields fail their
+checks stops it with
+`{:error, %{page: pattern, version: status, key: key, error: error}}`,
+and nothing changes. It doesn't check the rules: a page it leaves
+breaking one, such as a Prices section on a kind of page the site
+keeps Prices off, is marked in the editor, and holds Publish back as any change does.
+
+Keep the module under `lib/`, as the seeds are, and run it once: with
+`mix run -e "MySite.Pages.RetireFees.to_prices()"` where the site is
+checked out, or on a running release with
+`bin/my_site rpc "MySite.Pages.RetireFees.to_prices()"`. Run it with
+`dry_run: true` first. Afterwards, it refreshes the pages cache, where
+one is running, so visitors see the new sections at once, and tells
+each changed page's open editors to read it again.
+
+The order that keeps every page drawn throughout: list the new
+component in `components:` and deploy; run the move; then take the old
+module out. Taken out first, as it may already be, its sections draw
+nothing for visitors until the move runs.
 
 ## Pages from code
 

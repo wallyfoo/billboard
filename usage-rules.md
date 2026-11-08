@@ -46,8 +46,15 @@ module named here has docs.
 
 ## Never
 
-- Never change a component's `key`: it's what stored content is filed
-  under.
+- Never change a component's `key`, or take a component out of
+  `components:`, without migrating its stored sections: the key is
+  what stored content is filed under. Move them to another component,
+  or delete them, with `migrate_sections/3` on the site's domain
+  (`Billboard.Pages.migrate_sections/3`), from a script, in one
+  transaction, `dry_run: true` first. Until then a section of a key
+  the site no longer lists (`Billboard.Content.Retired`) draws nothing
+  for visitors and blocks Publish. The page kinds guide's "Retiring a
+  component" has a worked example.
 - Never take away the `component` tag, a list part's `uuid_primary_key
   :id`, or a part's primary destroy action. `guides/why-the-rules-exist.md`
   says why.

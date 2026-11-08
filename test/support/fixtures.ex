@@ -40,4 +40,46 @@ defmodule Billboard.Test.Fixtures do
     |> Map.put_new(:key, Ecto.UUID.generate())
     |> then(&Ash.Seed.seed!(Shop.Section, &1))
   end
+
+  @doc """
+  Writes a section of `version` straight to its table, as it's stored:
+  `type`, a component key, which needn't be one the shop has, and
+  `fields`, string keys, as a site's rows hold a component it has since
+  taken out of `components:`. Returns the section's key.
+  """
+  def stored_section_fixture(version, type, fields, attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    key = Map.get(attrs, :key, Ecto.UUID.generate())
+    now = DateTime.utc_now()
+
+    Billboard.Test.Repo.insert_all("billboard_sections", [
+      %{
+        id: Ecto.UUID.bingenerate(),
+        version_id: Ecto.UUID.dump!(version.id),
+        parent_id: attrs[:parent_id] && Ecto.UUID.dump!(attrs[:parent_id]),
+        key: key,
+        anchor: attrs[:anchor],
+        position: Map.get(attrs, :position, 0),
+        content: %{
+          "type" => to_string(type),
+          "value" => Map.put(fields, "component", to_string(type))
+        },
+        inserted_at: now,
+        updated_at: now
+      }
+    ])
+
+    key
+  end
+
+  @doc "The content of the section `key` of the version `version_id`, as its table holds it."
+  def stored_content(version_id, key) do
+    %{rows: [[content]]} =
+      Billboard.Test.Repo.query!(
+        "SELECT content FROM billboard_sections WHERE version_id = $1 AND key = $2",
+        [Ecto.UUID.dump!(version_id), key]
+      )
+
+    content
+  end
 end

@@ -18,6 +18,7 @@ defmodule Billboard.Version.Commit do
   require Ash.Query
 
   alias Billboard.{Catalogue, Directory, Pages, Rules}
+  alias Billboard.Content.Retired
 
   @impl true
   def run(input, _opts, context) do
@@ -66,11 +67,14 @@ defmodule Billboard.Version.Commit do
         pattern != nil,
         {section, id} <- Rules.anchor_clashes(Pages.page_for(pattern).sections, shared) do
       "#{page.label} places a shared section with the anchor “#{id}”, " <>
-        "which its #{Catalogue.label(section.content.type)} section already uses"
+        "which its #{label(section)} section already uses"
     end
   end
 
   defp placed_clashes(_draft, _pattern), do: []
+
+  defp label(%{content: %{type: :retired}} = section), do: Retired.label(section)
+  defp label(section), do: Catalogue.label(section.content.type)
 
   defp destroy_live(version_resource, page_id, opts) do
     version_resource

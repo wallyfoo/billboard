@@ -13,7 +13,8 @@ defmodule Billboard.Resolver do
 
   The result maps each data section's `key` to its data. Sections inside
   a Two columns section are resolved like top-level ones. A site with no
-  data module reads nothing.
+  data module reads nothing, and nor does a section of a component the
+  site no longer has (`Billboard.Content.Retired`).
   """
 
   @doc """
@@ -25,7 +26,10 @@ defmodule Billboard.Resolver do
   """
   @spec resolve(map(), map()) :: %{String.t() => term()}
   def resolve(%{sections: sections}, context \\ %{}) do
-    sections = Enum.flat_map(sections, &with_children/1)
+    sections =
+      sections
+      |> Enum.flat_map(&with_children/1)
+      |> Enum.reject(&Billboard.Content.Retired.retired?/1)
 
     case Billboard.Site.data() do
       nil -> %{}

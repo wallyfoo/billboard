@@ -12,7 +12,9 @@ destroy), and the site's options. Don't write any of them.
 
 `component` section, one option each:
 
-- `key`: the atom content is stored under. Never change it.
+- `key`: the atom content is stored under. Never change it without
+  migrating its stored sections (`Billboard.Pages.migrate_sections/3`).
+  `:retired` is billboard's own, never a component's.
 - `label`: the palette's name. Required.
 - `hint`: the palette's one line. Required.
 - `category`: its palette group. Required.

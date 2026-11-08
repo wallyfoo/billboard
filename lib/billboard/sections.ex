@@ -67,6 +67,12 @@ defmodule Billboard.Sections do
   see while they're empty, such as an eyebrow, so they can be typed
   into; `Words.editing?/1` says when.
 
+  A section of a component the site no longer has
+  (`Billboard.Content.Retired`) draws nothing for a visitor, and its
+  neighbours meet across it. In the editor it's drawn as a stand-in
+  saying so, which opens, as any section does, to a header offering
+  Remove.
+
   Each section is drawn on a surface (`Billboard.Surfaces`), its outer
   element carrying `page-section`, the surface's `bb-surface-NAME`, and
   `data-surface`. Neighbours on one surface share one rhythm: `page/1`
@@ -80,6 +86,7 @@ defmodule Billboard.Sections do
   use Phoenix.Component
 
   alias Billboard.{Catalogue, Renderer, SiteOptions, Surfaces}
+  alias Billboard.Content.Retired
   alias Billboard.EditorLive.{Palette, SectionEditor}
   alias Billboard.Sections.{Hero, Parts, Shared, Words}
   alias Phoenix.LiveView.JS
@@ -97,6 +104,8 @@ defmodule Billboard.Sections do
   with its data, for a component that can.
   """
   @spec empty?(map(), map()) :: boolean()
+  def empty?(%{content: %{type: :retired}}, _ctx), do: true
+
   def empty?(section, ctx) do
     module = Renderer.for!(section.content.type)
 
@@ -124,6 +133,8 @@ defmodule Billboard.Sections do
   section keeps the value it holds, and the editor shows that one.
   """
   @spec drawn_content(map()) :: struct()
+  def drawn_content(%{content: %{type: :retired, value: retired}}), do: retired
+
   def drawn_content(%{content: %{type: type, value: content}}),
     do: SiteOptions.resolved(type, content)
 
@@ -184,6 +195,9 @@ defmodule Billboard.Sections do
       |> put_shared(assigns.library)
 
     edit = ctx[:edit]
+    # A visitor's page leaves out a section of a component the site no
+    # longer has; the editor draws its stand-in.
+    body = if edit, do: body, else: Enum.reject(body, &Retired.retired?/1)
     body = Enum.zip(body, joins(body, ctx, edit != nil))
 
     assigns =
@@ -291,6 +305,7 @@ defmodule Billboard.Sections do
     end
   end
 
+  defp stands_out?(%{content: %{type: :retired}}, _ctx), do: false
   defp stands_out?(section, _ctx), do: Surfaces.kind(section.content.type) == :stand_out
 
   defp put_shared(ctx, nil), do: ctx
@@ -326,6 +341,13 @@ defmodule Billboard.Sections do
   attr :section, :map, required: true
   attr :ctx, :map, required: true
   attr :joined, :boolean, default: false, doc: "on the same surface as the section before it"
+
+  def section(%{section: %{content: %{type: :retired}}} = assigns) do
+    case assigns.ctx[:edit] do
+      nil -> ~H""
+      edit -> retired(assigns, edit)
+    end
+  end
 
   def section(assigns) do
     %{section: section, ctx: ctx} = assigns
@@ -413,6 +435,51 @@ defmodule Billboard.Sections do
     """
   end
 
+  # A section of a component the site no longer has, in its wrapper: a
+  # stand-in naming the key it's stored under, which opens to a header
+  # offering Remove (`SectionEditor`). Nothing of its own is drawn, since
+  # there's no renderer to draw it.
+  defp retired(assigns, edit) do
+    section = assigns.section
+    ctx = put_section(assigns.ctx, section)
+    surface = surface(section, ctx)
+    open? = edit.open == section.key
+
+    assigns =
+      assign(assigns,
+        anchor: anchor(section),
+        component: section.content.value.component,
+        ctx: Map.merge(ctx, %{surface: surface, joined: assigns.joined}),
+        edit: edit,
+        open?: open?,
+        issue: issue(edit, section)
+      )
+
+    ~H"""
+    <div
+      id={"edit-#{@section.key}"}
+      data-edit-section={@section.key}
+      data-open={to_string(@open?)}
+      data-issue={@issue}
+      data-retired={@component}
+      class={["bb-edit-section", @open? && "is-open"]}
+      phx-click={!@open? && open_section(@section)}
+    >
+      <.edit_marks section={@section} edit={@edit} />
+      <section
+        id={@anchor}
+        data-surface={@ctx.surface}
+        class={["bb-edit-stand-in" | Parts.section_class(@ctx)]}
+      >
+        <p class="bb-edit-type-small border border-dashed border-bb-edit-faint px-4 py-6 text-bb-edit-soft">
+          This section is of a component the site no longer has, “{@component}”, so
+          visitors don't see it. Remove it, or have the site's developer migrate it.
+        </p>
+      </section>
+    </div>
+    """
+  end
+
   attr :section, :map, required: true
   attr :edit, :map, required: true
 
@@ -428,7 +495,7 @@ defmodule Billboard.Sections do
       assign(assigns,
         open?: edit.open == section.key,
         issue: issue(edit, section),
-        label: Catalogue.label(section.content.type),
+        label: label(section),
         editor: Map.get(edit, :editor)
       )
 
@@ -464,6 +531,9 @@ defmodule Billboard.Sections do
     """
   end
 
+  defp label(%{content: %{type: :retired}} = section), do: Retired.label(section)
+  defp label(section), do: Catalogue.label(section.content.type)
+
   defp issue_words(:error), do: "Needs fixing · "
   defp issue_words(:warning), do: "Worth a look · "
   defp issue_words(nil), do: nil
@@ -492,6 +562,9 @@ defmodule Billboard.Sections do
   none here.
   """
   @spec surface(map(), map()) :: String.t() | nil
+  def surface(%{content: %{type: :retired}}, ctx),
+    do: (ctx[:in_column] && ctx[:surface]) || Surfaces.default(:page)
+
   def surface(section, ctx) do
     %{type: type, value: content} = section.content
 
@@ -534,6 +607,14 @@ defmodule Billboard.Sections do
   attr :section, :map, required: true
   attr :library, :map, default: nil
   attr :class, :any, default: nil
+
+  def glyph(%{section: %{content: %{type: :retired}}} = assigns) do
+    ~H"""
+    <span data-component="retired" class={["flex min-w-0", @class]}>
+      <span class="flex-1 border border-dashed border-bb-glyph-faint"></span>
+    </span>
+    """
+  end
 
   def glyph(assigns) do
     type = assigns.section.content.type

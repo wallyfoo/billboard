@@ -280,6 +280,216 @@ defmodule Billboard.Pages do
     |> Ash.read_one(opts)
   end
 
+  @typedoc """
+  One section `migrate_sections/3` changed, or would change: the page it's
+  on (`page`, its pattern, `nil` for the library), whether it's in the
+  page's `:live` version or its `:draft` (`version`), the section's `key`,
+  and what it became (`to`), a component's key or `:deleted`.
+  """
+  @type migrated :: %{
+          page: String.t() | nil,
+          version: :live | :draft,
+          key: String.t(),
+          to: atom()
+        }
+
+  @doc """
+  Moves every stored section of the component `from` to another
+  component, or deletes them: on every page, in its live version and its
+  draft, and in the shared library's, in one transaction, so either every
+  section changes or none does. It's for retiring a component, before or
+  after its module leaves `components:` (the page kinds guide's
+  "Retiring a component" has a worked example). Billboard keeps no older
+  versions, so these are all the stored sections there are.
+
+  `from` is the key the sections are stored under, an atom or a string,
+  as `:fees`, whether or not the site still lists it. `to` is one of:
+
+    * a component key the site lists, as `:band`, which takes each
+      section's stored fields as they are;
+    * a function of a section's stored fields, a map with string keys
+      (its parts maps too, and without the `component` tag), as
+      `fields["title"]`, which returns `{key, fields}`, the component
+      the section becomes and its fields, as `Billboard.Component.build/2`
+      takes them, or `:delete`.
+
+  Each new section is built with `Billboard.Component.build/2`, so it
+  holds its component's defaults and passes its validations; one that
+  doesn't stops the migration, and nothing changes. A section keeps its
+  key, its place, its anchor, and its surface (drawn as its new kind's
+  default where the site doesn't offer it). Deleting a Two columns
+  section deletes its columns' sections, and deleting a column's section
+  leaves its Two columns one short. The rules aren't checked here: what a
+  migrated page breaks, the editor marks, and Publish waits for, as for
+  any change.
+
+  `opts`: `dry_run: true` changes nothing, but builds every new section
+  all the same, and returns what it would have done. It runs no actions
+  and no policies, as a database migration doesn't, so it needs no
+  `actor:` or `authorize?: false`, and ignores them; call it from a
+  script, a seed, or a release task, never on a visitor's request.
+  Afterwards it refreshes `Billboard.Cache`, if it's running and a live
+  section changed, and tells each changed page's editors.
+
+  Returns `{:ok, migrated}`, a `t:migrated/0` for each section, in page
+  order, or `{:error, %{page: pattern, version: status, key: key, error:
+  error}}` for the first section whose new content didn't build. It
+  raises `ArgumentError` for a component the site doesn't list, and for a
+  function that returns anything else.
+
+      # A site's own Banner, whose fields are a band's, becomes a band.
+      {:ok, migrated} = MySite.Pages.migrate_sections(:banner, :band)
+
+      # Or every one is taken off every page.
+      {:ok, migrated} = MySite.Pages.migrate_sections(:banner, fn _fields -> :delete end)
+  """
+  @spec migrate_sections(atom() | String.t(), atom() | (map() -> term()), keyword()) ::
+          {:ok, [migrated()]} | {:error, map()}
+  def migrate_sections(from, to, opts \\ [])
+      when (is_atom(from) or is_binary(from)) and (is_atom(to) or is_function(to, 1)) do
+    opts = Keyword.validate!(opts, [:dry_run, :actor, :authorize?])
+    dry_run? = Keyword.get(opts, :dry_run, false)
+    to = migration(to)
+
+    result =
+      [Site.resource!(:section)]
+      |> Ash.transact(fn ->
+        from
+        |> to_string()
+        |> stored_sections()
+        |> Enum.reduce_while([], fn row, done ->
+          case migrate_section(row, to, dry_run?) do
+            {:ok, change} -> {:cont, [change | done]}
+            {:error, error} -> {:halt, {:error, Refused.exception(reason: error)}}
+          end
+        end)
+        |> case do
+          {:error, error} -> {:error, error}
+          done -> Enum.reverse(done)
+        end
+      end)
+      |> case do
+        {:error, %Refused{reason: reason}} -> {:error, reason}
+        other -> other
+      end
+
+    with {:ok, [_ | _] = changes} when not dry_run? <- result, do: tell(changes)
+    result
+  end
+
+  defp migration(key) when is_atom(key) do
+    known_key!(key)
+    fn fields -> {key, fields} end
+  end
+
+  defp migration(fun), do: fun
+
+  defp known_key!(key) do
+    unless key in Billboard.Catalogue.keys() do
+      raise ArgumentError,
+            "migrate_sections/3 moves sections only to a component the site lists, and " <>
+              "#{inspect(key)} isn't one. Add its module to `components:` in " <>
+              "#{inspect(Site.get!())}'s `use Billboard.Site` first"
+    end
+  end
+
+  # Every stored section of `type`, with its version's status and its
+  # page's pattern, read as the table holds it, so a key the site no
+  # longer lists reads as well as one it does.
+  defp stored_sections(type) do
+    [sections, versions, pages] =
+      Enum.map([:section, :version, :page], &AshPostgres.DataLayer.Info.table(Site.resource!(&1)))
+
+    %{rows: rows} =
+      Site.repo!().query!(
+        """
+        SELECT s.id, s.key, s.content, v.status, p.pattern
+        FROM "#{sections}" s
+        JOIN "#{versions}" v ON v.id = s.version_id
+        JOIN "#{pages}" p ON p.id = v.page_id
+        WHERE s.content->>'type' = $1
+        ORDER BY p.pattern NULLS FIRST, v.status, s.parent_id NULLS FIRST, s.position, s.key
+        """,
+        [type]
+      )
+
+    for [id, key, content, status, pattern] <- rows do
+      %{
+        id: id,
+        key: key,
+        fields: Map.delete(content["value"] || %{}, "component"),
+        change: %{page: pattern, version: status(status), key: key}
+      }
+    end
+  end
+
+  defp status("live"), do: :live
+  defp status("draft"), do: :draft
+
+  defp migrate_section(row, to, dry_run?) do
+    case to.(row.fields) do
+      :delete ->
+        unless dry_run?, do: write_section(row.id, :delete)
+        {:ok, Map.put(row.change, :to, :deleted)}
+
+      {key, fields} when is_atom(key) and is_map(fields) ->
+        known_key!(key)
+
+        with {:ok, value} <- Billboard.Component.build(key, fields),
+             {:ok, stored} <- dump_content(%Ash.Union{type: key, value: value}) do
+          unless dry_run?, do: write_section(row.id, stored)
+          {:ok, Map.put(row.change, :to, key)}
+        else
+          {:error, error} -> {:error, Map.put(row.change, :error, error)}
+          :error -> {:error, Map.put(row.change, :error, :not_stored)}
+        end
+
+      other ->
+        raise ArgumentError,
+              "migrate_sections/3's function returns `{key, fields}` or `:delete` for each " <>
+                "section, but returned #{inspect(other)} for section #{inspect(row.key)}"
+    end
+  end
+
+  defp dump_content(content) do
+    attribute = Ash.Resource.Info.attribute(Site.resource!(:section), :content)
+    Ash.Type.dump_to_native(attribute.type, content, attribute.constraints)
+  end
+
+  defp write_section(id, :delete) do
+    table = AshPostgres.DataLayer.Info.table(Site.resource!(:section))
+    Site.repo!().query!(~s(DELETE FROM "#{table}" WHERE id = $1), [id])
+  end
+
+  defp write_section(id, content) do
+    table = AshPostgres.DataLayer.Info.table(Site.resource!(:section))
+
+    Site.repo!().query!(
+      ~s{UPDATE "#{table}" SET content = $1, updated_at = (now() AT TIME ZONE 'utc') WHERE id = $2},
+      [content, id]
+    )
+  end
+
+  # The writes skip the actions, and so their notifications: what
+  # visitors see is read again, and each changed page's editors told,
+  # where there's a cache and a PubSub to do it with, as there may not be
+  # in a bare script.
+  defp tell(changes) do
+    if Process.whereis(Cache) && Enum.any?(changes, &(&1.version == :live)), do: Cache.refresh()
+
+    if Process.whereis(Site.pubsub!()) do
+      for pattern <- changes |> Enum.map(& &1.page) |> Enum.uniq() do
+        Phoenix.PubSub.broadcast(
+          Site.pubsub!(),
+          page_topic(pattern),
+          {:page_draft_changed, pattern}
+        )
+      end
+    end
+
+    :ok
+  end
+
   @doc """
   Swaps a Two columns section's columns: the right one goes left, and the
   left one right. `columns` must have its `children` loaded. Like every
