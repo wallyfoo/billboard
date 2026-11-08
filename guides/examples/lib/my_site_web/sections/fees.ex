@@ -42,7 +42,7 @@ defmodule MySiteWeb.Sections.Fees do
 
   defp shown(_content, fees, ctx) do
     scope = get_in(ctx, [:context, :scope])
-    Enum.filter(fees || [], &(&1.service == scope))
+    Enum.filter(fees || [], &(&1.group == scope))
   end
 
   # guide:end

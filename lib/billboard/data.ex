@@ -1,13 +1,13 @@
 defmodule Billboard.Data do
   @moduledoc """
   What a site reads for the sections that draw rows from outside the
-  builder, such as reviews and news. A site names its module in
+  builder, such as reviews, news, and prices. A site names its module in
   `use Billboard.Site`, as `data: MySite.Pages.Data`:
 
       defmodule MySite.Pages.Data do
         @behaviour Billboard.Data
 
-        alias Billboard.Components.{News, Reviews}
+        alias Billboard.Components.{News, Prices, Reviews}
 
         @impl true
         def fetch(%Reviews{}, _context, loaded),
@@ -15,6 +15,9 @@ defmodule Billboard.Data do
 
         def fetch(%News{limit: limit}, _context, loaded),
           do: Billboard.Data.once(loaded, {:news, limit}, fn -> MySite.latest_news!(limit) end)
+
+        def fetch(%Prices{}, _context, loaded),
+          do: Billboard.Data.once(loaded, :prices, &MySite.list_prices!/0)
 
         def fetch(_content, _context, _loaded), do: :none
       end
@@ -40,7 +43,9 @@ defmodule Billboard.Data do
       end
 
   Each stock component that draws rows documents them:
-  `Billboard.Sections.Reviews` and `Billboard.Sections.News`.
+  `Billboard.Sections.Reviews`, `Billboard.Sections.News`, and
+  `Billboard.Sections.Prices`. A site lists each in `components:` only
+  once its module has a clause for it.
   """
 
   @doc "A section's data, and what's been read. See the moduledoc."

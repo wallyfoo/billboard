@@ -74,6 +74,21 @@ defmodule Billboard.Sections.EmptyTest do
         do: {%{title: "Fees", this_service_only: only}, data, [context: %{scope: "supervision"}]}
   end
 
+  # A chosen group, the page's (shoes, or none on a page about nothing), or
+  # every row, among rows of either group and of none.
+  defp cases(:prices) do
+    rows = [
+      %{id: "p1", title: "Boots", price: "£90", group: "shoes"},
+      %{id: "p2", title: "A gift card", price: "from £10"}
+    ]
+
+    for group <- [nil, "shoes", "hats"],
+        only <- [false, true],
+        data <- [nil, [], rows],
+        context <- [%{scope: "shoes"}, %{scope: "hats"}, %{}],
+        do: {%{group: group, this_page_only: only}, data, [context: context]}
+  end
+
   defp cases(:shared) do
     library = %{
       "band" => section("band", :band, %{heading: "Visit the shop"}),
@@ -94,7 +109,7 @@ defmodule Billboard.Sections.EmptyTest do
           do: type
 
     assert Enum.sort(Sections.emptiable()) == Enum.sort(exporting)
-    assert Enum.sort(Sections.emptiable()) == ~w(details fees news reviews shared)a
+    assert Enum.sort(Sections.emptiable()) == ~w(details fees news prices reviews shared)a
   end
 
   test "empty? says whether a visitor sees nothing of the section" do

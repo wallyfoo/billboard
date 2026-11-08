@@ -16,13 +16,14 @@ defmodule Billboard.Sections.Parts do
   on the hero's heading, `bb-eyebrow` on every eyebrow, `bb-heading` on a
   section head's or a band's heading, `bb-section-head` on a section
   head's wrapper, `bb-point` on each point, `bb-detail` on each detail's
-  row, `bb-item-title` on a point's, a detail's, or a news post's title,
-  `bb-quote` on a quote, `bb-photo` on a photograph, and `bb-button` and
-  `bb-link` on a button and a text link. The hooks carry no styles, and
-  no stylesheet defines them, so a site can decorate through them in its
-  own CSS without replacing a component. The hero's are drawn in the
-  page's hero block, a point's and a detail's in their sections, the
-  quote and a news post's title here, a button's and a link's in
+  row, `bb-price` on each row of a price list, `bb-item-title` on a
+  point's, a detail's, or a news post's title, `bb-quote` on a quote,
+  `bb-photo` on a photograph, and `bb-button` and `bb-link` on a button
+  and a text link. The hooks carry no styles, and no stylesheet defines
+  them, so a site can decorate through them in its own CSS without
+  replacing a component. The hero's are drawn in the page's hero block,
+  a point's, a detail's, and a price's in their sections, the quote and
+  a news post's title here, a button's and a link's in
   `Billboard.Sections.Buttons`, and the rest in `Billboard.Sections.Blocks`.
 
   A site's own part (`Billboard.Part`) is named by its module where a

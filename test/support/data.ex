@@ -1,18 +1,19 @@
 defmodule Billboard.Test.Data do
   @moduledoc """
-  The shop's data: the reviews and news rows a test puts in its process
-  dictionary, under `:shop_reviews` and `:shop_news` (none unless it
-  does), the news cut to each section's `limit`. Each read is noted
-  there too, so `reads/0` says what a test's pages read, in order.
+  The shop's data: the reviews, news, and prices rows a test puts in its
+  process dictionary, under `:shop_reviews`, `:shop_news`, and
+  `:shop_prices` (none unless it does), the news cut to each section's
+  `limit`. Each read is noted there too, so `reads/0` says what a
+  test's pages read, in order.
 
   The process dictionary is the test's own, so its rows don't reach a
   LiveView, which runs in a process of its own: a mounted page reads no
-  reviews or news, and its reads aren't noted where the test can see
+  reviews, news, or prices, and its reads aren't noted where the test can see
   them. Test the rows through `Billboard.Resolver` in the test's process.
   """
   @behaviour Billboard.Data
 
-  alias Billboard.Components.{News, Reviews}
+  alias Billboard.Components.{News, Prices, Reviews}
 
   @impl true
   def fetch(%Reviews{}, _context, loaded),
@@ -23,6 +24,9 @@ defmodule Billboard.Test.Data do
       Billboard.Data.once(loaded, {:news, limit}, fn ->
         {:news, limit} |> read(:shop_news) |> Enum.take(limit)
       end)
+
+  def fetch(%Prices{}, _context, loaded),
+    do: Billboard.Data.once(loaded, :prices, fn -> read(:prices, :shop_prices) end)
 
   def fetch(_content, _context, _loaded), do: :none
 

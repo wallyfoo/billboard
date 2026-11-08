@@ -105,6 +105,12 @@ More…), and `bound` (`:hide` while a binding replaces the words).
 - `Billboard.Data`: `fetch/3` per section, ending in a catch-all
   `:none`; `Billboard.Data.once/3` and `Billboard.Data.cached/3` read
   a thing once a page.
+- The stock Reviews, News, and Prices draw the rows `fetch/3` gives
+  them, and nothing without; list each in `components:` once the data
+  module has a clause for it. For a price list, use the stock
+  `Billboard.Components.Prices` (its renderer,
+  `Billboard.Sections.Prices`, lists a row's fields) before writing
+  one: its `group` picks from the context's `:scope` choices.
 - `Billboard.Context`: `bindings/0`, `choice_sets/0` with `choices/1`
   (both or neither), `sample/1`, and `path/2`.
 - `Billboard.Layout`: the site's chrome, `page/1` and `site/0`.

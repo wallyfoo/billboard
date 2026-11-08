@@ -127,8 +127,8 @@ defmodule MySite.Billboard do
       section: Pages.Section,
       content: Pages.Content
     ],
-    # The palette, in order. Reviews and News draw rows the site reads
-    # through a `data:` module; add them once it has one.
+    # The palette, in order. Reviews, News, and Prices draw rows the
+    # site reads through a `data:` module; add them once it has one.
     components: [
       Billboard.Components.Hero,
       Billboard.Components.Band,
@@ -164,9 +164,13 @@ names it. Its answers:
 - `components` is the whole palette, in the order the editor offers it.
   The hero is first, though the palette never offers it: every page has
   exactly one, at the top. Two columns holds two sections side by side,
-  and Shared places a section from the shared library. Reviews and News
-  aren't listed, since each draws rows the site reads through a `data:`
-  module, and without one they draw nothing.
+  and Shared places a section from the shared library. Reviews, News,
+  and Prices, a price list, aren't listed, since each draws rows the
+  site reads through a `data:` module, and without one they draw
+  nothing. [Page kinds and bound sections](page-kinds-and-bound-sections.md)
+  shows the data module, and
+  [The stock Prices section](page-kinds-and-bound-sections.md#the-stock-prices-section)
+  what Prices reads.
 - `surfaces` names the grounds a section is drawn on, and `offered` says
   which each kind of section may take. The first surface is the page's
   own. A `:page` section sits on the page's ground, and a `:stand_out`

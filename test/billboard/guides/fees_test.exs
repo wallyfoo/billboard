@@ -1,8 +1,8 @@
 defmodule Billboard.Guides.FeesTest do
   @moduledoc """
   The page kinds guide's Fees: the component works, draws only the page's
-  service's fees when limited, and its site's data and context answer as
-  the guide says.
+  service's fees when limited, the stock Prices section draws the same
+  rows, and its site's data and context answer as the guide says.
   """
   use Billboard.ComponentCase,
     endpoint: Billboard.Test.Endpoint,
@@ -44,14 +44,30 @@ defmodule Billboard.Guides.FeesTest do
     assert drawn(false, %{}) =~ "A session"
   end
 
-  test "the site's data reads the fees once for two sections" do
+  test "the site's data reads the fees once for two sections, and for Prices too" do
     fees = Billboard.Component.build!(:fees, %{title: "Fees"})
+    prices = Billboard.Component.build!(:prices, %{})
 
     assert {:ok, @fees, loaded} = Pages.Data.fetch(fees, %{}, %{})
     assert {:ok, @fees, ^loaded} = Pages.Data.fetch(fees, %{}, loaded)
+    assert {:ok, @fees, ^loaded} = Pages.Data.fetch(prices, %{}, loaded)
+    assert {:ok, @fees, _loaded} = Pages.Data.fetch(prices, %{}, %{})
 
     assert Pages.Data.fetch(Billboard.Component.build!(:band, %{heading: "Visit"}), %{}, loaded) ==
              :none
+  end
+
+  test "the stock Prices section draws the same fees, with their units and notes" do
+    section = section(:prices, %{head: %{heading: "Fees"}, this_page_only: true})
+    therapy = visitor(section, %{data: %{"s1" => @fees}, context: %{scope: "therapy"}})
+
+    assert therapy =~ "A session"
+    assert therapy =~ "Online or in person."
+    refute therapy =~ "A first assessment"
+
+    every = visitor(section(:prices, %{group: "assessments"}), %{data: %{"s1" => @fees}})
+    assert every =~ "90 minutes"
+    refute every =~ "A session"
   end
 
   test "the editor draws a service's page about the first service, at its address" do
@@ -65,9 +81,9 @@ defmodule Billboard.Guides.FeesTest do
   end
 
   test "gives the services as a set of choices, in the shape a picker reads" do
-    assert Pages.Context.choice_sets() == [:services]
+    assert Pages.Context.choice_sets() == [:scope]
 
     assert %{options: [{"Assessments", "assessments"} | _], every: _, none_yet: _, gone: _} =
-             Pages.Context.choices(:services)
+             Pages.Context.choices(:scope)
   end
 end

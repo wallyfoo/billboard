@@ -76,7 +76,8 @@ the wrapper, the eyebrow, and the heading carry the `bb-section-head`,
 `bb-eyebrow`, and `bb-heading` hooks ([Theming](theming.md)). A section
 with no head draws none.
 
-Details and Points take a head they can do without. Text and image,
+Details, Points, and Prices take a head they can do without; Prices'
+starts as "Prices" when it's added from the palette. Text and image,
 Reviews, and What's on always have one; Reviews' starts as "What
 clients say".
 
@@ -119,7 +120,7 @@ section's `max`. In the open section,
 opens its popover rather than following it.
 
 The hero takes up to three, which `Billboard.Sections.Hero.actions/1`
-draws in the hero's row; Text and image up to two, in
+draws in the hero's row; Text and image up to two, and Prices one, in
 `action_group/1`; Band one; and a head one. A section with more than
 one primary action has a warning (`Billboard.Rules`).
 

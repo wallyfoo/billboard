@@ -95,10 +95,10 @@ Space and motion:
 
 ## Hooks
 
-Eleven classes with no styles, for a site's CSS to decorate stock
+Twelve classes with no styles, for a site's CSS to decorate stock
 sections: `bb-title`, `bb-eyebrow`, `bb-heading`, `bb-section-head`,
-`bb-point`, `bb-detail`, `bb-item-title`, `bb-quote`, `bb-photo`,
-`bb-button`, and `bb-link`.
+`bb-point`, `bb-detail`, `bb-price`, `bb-item-title`, `bb-quote`,
+`bb-photo`, `bb-button`, and `bb-link`.
 
 - Write hook CSS unlayered, outside every `@layer`, or the utilities
   on the same element beat it.

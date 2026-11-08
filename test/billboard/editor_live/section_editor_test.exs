@@ -1518,6 +1518,51 @@ defmodule Billboard.EditorLive.SectionEditorTest do
     end
   end
 
+  describe "a Prices section" do
+    defp prices!(attrs) do
+      make_live("/", [
+        {"hero", :hero, %{heading: "Everything for the shop"}},
+        {"prices", :prices, Map.merge(%{head: %{heading: "Prices"}}, attrs)}
+      ])
+    end
+
+    defp pick_group(lv, group),
+      do:
+        lv
+        |> form("#section-settings")
+        |> render_change(%{"section" => %{"content" => %{"group" => group}}})
+        |> settled(lv)
+
+    test "offers the site's scope as its group, and hides its toggle while one is chosen" do
+      prices!(%{})
+      lv = open("/", "prices")
+
+      assert has_element?(lv, "#section-setting-group option[value='shoes']", "Shoes")
+      assert has_element?(lv, "#section-setting-group option[value='']", "Every aisle")
+      assert has_element?(lv, "#section-setting-this_page_only", "Only this page's group")
+
+      pick_group(lv, "shoes")
+
+      assert content("/", "prices").group == "shoes"
+      refute has_element?(lv, "#section-setting-this_page_only")
+
+      pick_group(lv, "")
+
+      assert content("/", "prices").group == nil
+      assert has_element?(lv, "#section-setting-this_page_only")
+    end
+
+    test "keeps the toggle's value while it's hidden" do
+      prices!(%{this_page_only: true, group: "hats"})
+      lv = open("/", "prices")
+
+      refute has_element?(lv, "#section-setting-this_page_only")
+
+      pick_group(lv, "shoes")
+      assert %{group: "shoes", this_page_only: true} = content("/", "prices")
+    end
+  end
+
   describe "a Shared section" do
     test "links to the library with it open, by the editor's address" do
       about!()

@@ -2,7 +2,9 @@ defmodule MySite.Pages.Context do
   @moduledoc """
   What the site's pages are about: a service's page is about that
   service, whose name stands in for its hero's heading, and whose fees
-  a Fees section may show alone.
+  a Prices or Fees section may show alone. The services are the site's
+  `:scope` choices, which a Prices section's group and a detail's
+  "Shows on" pick from.
   """
   @behaviour Billboard.Context
 
@@ -23,10 +25,10 @@ defmodule MySite.Pages.Context do
     ]
 
   @impl true
-  def choice_sets, do: [:services]
+  def choice_sets, do: [:scope]
 
   @impl true
-  def choices(:services),
+  def choices(:scope),
     do: %{
       options: @services,
       every: "Every service",

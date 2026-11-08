@@ -110,7 +110,7 @@ defmodule Billboard.GuidesTest do
       alias Billboard.Components, as: C
 
       for module <-
-            [C.Hero, C.Points, C.Band, C.TextMedia, C.Details, C.Reviews, C.News] ++
+            [C.Hero, C.Points, C.Band, C.TextMedia, C.Details, C.Reviews, C.News, C.Prices] ++
               [C.Columns, C.Shared] do
         key = Billboard.Component.Info.component_key!(module)
         row = Regex.run(~r/^\| `:#{key}` \| (.*) \|$/m, section)
@@ -172,7 +172,7 @@ defmodule Billboard.GuidesTest do
              "test/support/guides/theming.css names tokens billboard doesn't read: " <>
                Enum.join(used -- known, ", ")
 
-      hooks = ~w(bb-title bb-eyebrow bb-heading bb-section-head bb-point bb-detail
+      hooks = ~w(bb-title bb-eyebrow bb-heading bb-section-head bb-point bb-detail bb-price
                  bb-item-title bb-quote bb-photo bb-button bb-link)
 
       for [_, class] <- Regex.scan(~r/\.(bb-[a-z0-9-]+)/, css) do
@@ -184,7 +184,7 @@ defmodule Billboard.GuidesTest do
     test "names every hook class" do
       text = File.read!("guides/theming.md")
 
-      for hook <- ~w(bb-title bb-eyebrow bb-heading bb-section-head bb-point bb-detail
+      for hook <- ~w(bb-title bb-eyebrow bb-heading bb-section-head bb-point bb-detail bb-price
                      bb-item-title bb-quote bb-photo bb-button bb-link) do
         assert text =~ "| `#{hook}` |", "guides/theming.md's table of hooks leaves out #{hook}"
       end

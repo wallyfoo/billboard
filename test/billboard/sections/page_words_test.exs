@@ -52,7 +52,8 @@ defmodule Billboard.Sections.PageWordsTest do
         },
         details: %{head: head, items: for(n <- 1..3, do: detail(n))},
         reviews: %{head: head, note: "From *our visitors*."},
-        news: %{head: head, empty: "No news yet."}
+        news: %{head: head, empty: "No news yet."},
+        prices: %{head: head, body: "What it *costs*.", actions: [link()], note: "No VAT."}
       ]
     end
 
@@ -65,7 +66,8 @@ defmodule Billboard.Sections.PageWordsTest do
         text_media: %{variant: :text_only, head: %{heading: "x"}},
         details: %{items: [detail(1)]},
         reviews: %{},
-        news: %{head: %{heading: "x"}}
+        news: %{head: %{heading: "x"}},
+        prices: %{}
       ]
     end
 
@@ -78,6 +80,9 @@ defmodule Billboard.Sections.PageWordsTest do
 
     defp data(:news),
       do: [%{id: "n1", title: "Late", body: "Open *late*.", published_on: ~D[2026-09-12]}]
+
+    defp data(:prices),
+      do: [%{id: "p1", title: "A first session", price: "£95", unit: "50 minutes"}]
 
     defp data(_type), do: nil
 

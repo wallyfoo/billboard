@@ -17,8 +17,8 @@ defmodule <%= inspect(@site) %> do
       section: Pages.Section,
       content: Pages.Content
     ],
-    # The palette, in order. Reviews and News draw rows the site reads
-    # through a `data:` module; add them once it has one.
+    # The palette, in order. Reviews, News, and Prices draw rows the
+    # site reads through a `data:` module; add them once it has one.
     components: [
       Billboard.Components.Hero,
       Billboard.Components.Band,

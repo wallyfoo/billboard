@@ -364,15 +364,34 @@ the field holds anything at all:
   value, and shows it while `group` is empty (nil or `""`), as a
   `:choice` is when it's set to every one.
 
+The stock Prices section's editor hides its toggle while a group is
+chosen ([Page kinds](page-kinds-and-bound-sections.md#the-stock-prices-section)):
+
+<!-- from: lib/billboard/components/prices.ex#editor -->
+```elixir
+editor do
+  field :head, as: :part, part: :head, optional: true, item_label: "heading"
+  words :body, as: :markdown, label: "Opening words", limit: 300
+  field :actions, as: :list, part: :action, max: 1, item_label: "action"
+  words :note, as: :markdown, label: "Note", limit: 200
+  field :group, as: :choice, from: :scope, label: "Group"
+
+  field :this_page_only,
+    as: :toggle,
+    label: "Only this page's group",
+    hide_when: [group: :any]
+end
+```
+
 Values are compared as strings, so `:text_only` and `"text_only"` match
 alike. With more than one key, any one of them hides the entry. A
 hidden entry keeps its value, and the renderer is still given it, so
-when one setting makes another moot, the renderer says which wins:
-hide a toggle while the choice that overrides it is set, and have the
-renderer ignore the toggle then. A key that isn't one of
-the component's attributes, or a value that's neither a list nor
-`:any`, fails `mix compile --warnings-as-errors` with a message naming
-the fix.
+when one setting makes another moot, the renderer says which wins: the
+editor hides Prices' "Only this page's group" while a group is chosen,
+and its renderer ignores the toggle then. A key that isn't one of the
+component's attributes, or a value that's neither a list nor `:any`,
+fails `mix compile --warnings-as-errors` with a message naming the
+fix.
 
 ## The look
 

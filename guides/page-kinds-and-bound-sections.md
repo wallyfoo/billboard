@@ -4,8 +4,16 @@ This guide covers what changes from one page to another: the kinds of
 page a site has and the components each may hold, the data a section
 reads from the site's own resources, the context that says what a page
 is about, replacing a stock component with one of the site's own, and
-writing a page's sections from code, as a site's seeds do. Its example is a Fees section, which shows the fees from one source on
+writing a page's sections from code, as a site's seeds do.
+
+Its example is a site whose fees are kept in one place and shown on
 the fees page and on each service's page, limited to that service.
+Billboard's stock Prices section draws such a price list, so a site
+that needs one writes no component of its own: it lists
+`Billboard.Components.Prices` and gives it the rows
+([The stock Prices section](#the-stock-prices-section)). The site's
+own Fees section, further on, is the example of a component that
+draws the site's records, for a section the stock ones don't cover.
 
 ## Page kinds
 
@@ -52,11 +60,15 @@ through the module the site names as `data:`, which follows
 defmodule MySite.Pages.Data do
   @moduledoc """
   What the site's pages read for the sections that draw rows: the fees,
-  read once for every Fees section on a page.
+  read once for every stock Prices section and every Fees section on a
+  page.
   """
   @behaviour Billboard.Data
 
   @impl true
+  def fetch(%Billboard.Components.Prices{}, _context, loaded),
+    do: Billboard.Data.once(loaded, :fees, &MySite.Fees.list/0)
+
   def fetch(%MySite.Sections.Fees{}, _context, loaded),
     do: Billboard.Data.once(loaded, :fees, &MySite.Fees.list/0)
 
@@ -70,16 +82,97 @@ ends with a catch-all `:none`; any answer other than `{:ok, value,
 loaded}` or `:none` raises an `ArgumentError` naming the section.
 
 `Billboard.Data.once/3` reads a thing once a page, however many
-sections ask for it: two Fees sections on one page read the fees once.
-`Billboard.Data.cached/3` gives the shared read back for the section to
-shape, as `Billboard.Data`'s news example does.
+sections ask for it: two Fees sections on one page, or a Prices section
+and a Fees section, read the fees once, since both clauses read them as
+`:fees`. `Billboard.Data.cached/3` gives the shared read back for the
+section to shape, as `Billboard.Data`'s news example does.
 
-The stock Reviews and News sections read their rows this way, and their
-renderers document the fields each row has:
-[Reviews](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/reviews.ex)
-and [News](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/news.ex).
+The stock Reviews, News, and Prices sections read their rows this way,
+and their renderers document the fields each row has:
+[Reviews](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/reviews.ex),
+[News](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/news.ex),
+and [Prices](https://github.com/wallyfoo/billboard/blob/v0.5.1/lib/billboard/sections/prices.ex).
 
-## The component that draws it
+## The stock Prices section
+
+`Billboard.Components.Prices`, key `:prices`, draws a price list:
+rows between hairlines, each a title on the left and its price on the
+right. The prices are the site's: it keeps them, edits them, and
+formats them, in its own resource and its own admin pages, and hands
+them over through its data module, with the `Billboard.Components.Prices`
+clause above. Billboard never stores or changes a price. A site lists
+it in `use Billboard.Site`'s `components:` once its data module has
+that clause, as it does Reviews and News; it isn't in the installer's
+palette, and without a clause it draws nothing.
+
+Each row is a map, or a struct such as an Ash record, with:
+
+| Field | What it is | Needed |
+| --- | --- | --- |
+| `id` | names the row's element, `#<anchor>-<id>` | yes |
+| `title` | what the price is for, as `"A first assessment"` | yes |
+| `price` | a string the site has already formatted, drawn as it is, as `"£1,950"`, `"from £40"`, or `"Free"` | yes |
+| `unit` | what the price buys, drawn under it, as `"60 minutes"` or `"total"` | no |
+| `note` | a line drawn under the title | no |
+| `group` | whose price it is: a value of the site's `:scope` choices, as `"assessments"` | no |
+
+The rows are drawn in the order the data module gives them, as plain
+text. `MySite.Fees.list/0`, in this guide's example, gives rows in this
+shape, so the stock section and the site's own Fees draw the same fees.
+
+The section's fields, which the editor changes:
+
+| Field | What it is |
+| --- | --- |
+| `head` | an optional section head (`Billboard.Parts.Head`), "Prices" when it's added from the palette |
+| `body` | opening words, in Markdown |
+| `actions` | up to one action, under the opening words |
+| `note` | words under the rows, in Markdown, drawn small |
+| `group` | one of the site's `:scope` choices, or none: the editor's "Group" |
+| `this_page_only` | a toggle, off at first: the editor's "Only this page's group" |
+
+Which rows it shows:
+
+- With a `group` chosen, that group's rows, on whatever page the
+  section is.
+- Otherwise, with `this_page_only` on, the rows whose `group` is the
+  page's scope, `ctx.context.scope`, and none on a page about nothing
+  in particular.
+- Otherwise every row.
+
+A chosen group wins over the toggle, so the editor hides the toggle
+while a group is chosen (`hide_when: [group: :any]`, as
+[Writing a component](writing-a-component.md#hiding-an-entry) shows).
+The "Group" picker offers the choices the context module gives for
+the set named `:scope` ([What a page is about](#what-a-page-is-about)),
+with its "every" words for none; a site whose context gives no `:scope`
+set has no picker, and the toggle alone. A row's `group`, the picker's
+values, and a page's `:scope` are the same strings.
+
+With opening words, and always in the open section, the head, the
+words, and the action sit on one side and the rows beside them, from
+`md` up, five parts to six; on narrower screens and in a column, the
+rows come under them. With no opening words, the head sits above the
+rows. Each row's title is body text, and its note under it is small,
+in `ink-soft`; its price is the subheading role, and its unit under it
+small, in `ink-soft`. Each row carries the `bb-price` hook
+([Theming's Hooks for decoration](theming.md#hooks-for-decoration)),
+and it's drawn only from billboard's tokens and utilities, so a site's
+theme restyles it.
+
+When it has no row to show, it draws nothing for a visitor, and the
+editor draws a stand-in in its place that says why: there are no
+prices, none in its group, none for this page, or the page is about
+nothing in particular.
+
+## A section of the site's own
+
+Where the stock Prices section doesn't fit, as for a layout of its own
+or rows of another kind, a site writes a component that draws its
+records. The Fees section is one, kept short: a title, and the toggle
+that keeps it to the page's service.
+
+### The component that draws it
 
 <!-- from: guides/examples/lib/my_site/sections/fees.ex#component -->
 ```elixir
@@ -146,11 +239,12 @@ defp shown(%{this_service_only: false}, fees, _ctx), do: fees || []
 
 defp shown(_content, fees, ctx) do
   scope = get_in(ctx, [:context, :scope])
-  Enum.filter(fees || [], &(&1.service == scope))
+  Enum.filter(fees || [], &(&1.group == scope))
 end
 ```
 
-`ctx.data[@section.key]` is what `fetch/3` gave this section. A section
+`ctx.data[@section.key]` is what `fetch/3` gave this section, here
+the same rows the stock Prices section reads. A section
 with nothing to show draws nothing for a visitor, so `empty?/3` tells
 the editor when that's so, and the editor draws a stand-in in its place
 that says why, in the words of `nothing_to_show/2`.
@@ -174,7 +268,9 @@ defmodule MySite.Pages.Context do
   @moduledoc """
   What the site's pages are about: a service's page is about that
   service, whose name stands in for its hero's heading, and whose fees
-  a Fees section may show alone.
+  a Prices or Fees section may show alone. The services are the site's
+  `:scope` choices, which a Prices section's group and a detail's
+  "Shows on" pick from.
   """
   @behaviour Billboard.Context
 
@@ -195,10 +291,10 @@ defmodule MySite.Pages.Context do
     ]
 
   @impl true
-  def choice_sets, do: [:services]
+  def choice_sets, do: [:scope]
 
   @impl true
-  def choices(:services),
+  def choices(:scope),
     do: %{
       options: @services,
       every: "Every service",
@@ -225,7 +321,10 @@ end
   says so in the note, and links to where it's changed.
 - `choice_sets/0` names the sets of choices `choices/1` gives, and
   `use Billboard.Site` refuses a context that gives one without the
-  other. A picker of a set the site doesn't give draws nothing.
+  other. A picker of a set the site doesn't give draws nothing. The
+  stock components pick from the set named `:scope`, whose values are
+  those a page's `:scope` takes: a Prices section's "Group" and a
+  detail's "Shows on". So the services here are `:scope`.
 - `choices/1` fills a picker: its options, and the words for every
   option, none yet, and an option that's gone.
 - `sample/1` is what the editor draws a page with a parameter about,
@@ -289,14 +388,15 @@ end
   `fetch/3`, as its second argument.
 - `ctx={%{context: @context}}` is where every renderer reads it, as
   `ctx.context`: a bound hero its `:bindings`, a detail its `:scope`,
-  and the Fees section above its `:scope`.
+  and the Prices and Fees sections above their `:scope`.
 
 A page whose route has no parameter, such as `/assessments`, is always
 about the same thing, so its sample is its context. A context module
 with `def sample(%{pattern: "/assessments"}), do: %{scope: "assessments"}`
 draws that page about the assessments, for its visitors and in the
-editor alike, and its Fees section, with "Only this page's service"
-on, shows the assessments' fees.
+editor alike, and its Prices section, with "Only this page's group"
+on, shows the assessments' fees, as a Fees section with "Only this
+page's service" on does.
 
 A page whose route takes a parameter, such as `/services/:slug`, is
 about whatever the address names, so it has a LiveView of its own,
@@ -477,6 +577,7 @@ these, and a field left out takes the default shown:
 | `:details` | `width` (`:standard` or `:narrow`), `head`, `items` (details, up to twelve) |
 | `:reviews` | `head` (headed "What clients say"), `note`, `initial` (6, how many show at first); its rows are the site's data |
 | `:news` | `head`, `empty` (the words when there's none), `limit` (2); its rows are the site's data |
+| `:prices` | `head` (none unless given), `body` (Markdown), `actions` (up to one), `note` (Markdown), `group` (one of the site's `:scope` choices, or nil for none), `this_page_only` (false); its rows are the site's data |
 | `:columns` | `variant` (`:even`, `:wide_left`, or `:wide_right`); its two sections are its `children` |
 | `:shared` | `key`, the key of the library section it places |
 

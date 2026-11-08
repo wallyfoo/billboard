@@ -495,7 +495,7 @@ them.
 
 ## Hooks for decoration
 
-Eleven parts of the stock sections carry a class with no styles of its
+Twelve parts of the stock sections carry a class with no styles of its
 own, and no stylesheet of billboard's defines it, so a site can
 decorate them in its CSS without replacing a component:
 
@@ -507,6 +507,7 @@ decorate them in its CSS without replacing a component:
 | `bb-section-head` | a section head's wrapper |
 | `bb-point` | each point in Points |
 | `bb-detail` | each row in Details |
+| `bb-price` | each row in Prices |
 | `bb-item-title` | a point's title, a detail's label, and a news post's title |
 | `bb-quote` | a quote's words |
 | `bb-photo` | a photograph's figure |

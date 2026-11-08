@@ -14,6 +14,7 @@ defmodule Billboard.StockComponentsWorkTest do
 
   @reviews [%{id: "r1", name: "Ana", reviewed_on: ~D[2026-10-01], quote: "Lovely."}]
   @news [%{id: "n1", published_on: ~D[2026-10-02], title: "Open late", body: "On Fridays."}]
+  @prices [%{id: "p1", title: "Boots", price: "£90", unit: "a pair", group: "shoes"}]
 
   for component <- [
         Components.Hero,
@@ -28,7 +29,7 @@ defmodule Billboard.StockComponentsWorkTest do
     end
   end
 
-  # Reviews and News draw the rows a site's `Billboard.Data` gives them,
+  # Reviews, News, and Prices draw the rows a site's `Billboard.Data` gives them,
   # which `data:` stands in for.
   test "Reviews works, with the rows the site's data gives" do
     assert_component_works(Components.Reviews, data: @reviews)
@@ -36,6 +37,19 @@ defmodule Billboard.StockComponentsWorkTest do
 
   test "News works, with the posts the site's data gives" do
     assert_component_works(Components.News, data: @news)
+  end
+
+  test "Prices works, with the rows the site's data gives, on a page about their group" do
+    assert_component_works(Components.Prices, data: @prices, context: %{scope: "shoes"})
+  end
+
+  # Its toggle is hidden while a group is chosen (`hide_when: [group: :any]`),
+  # so the check doesn't look for it.
+  test "Prices works with a group chosen, its toggle hidden" do
+    assert_component_works(Components.Prices,
+      attrs: %{head: %{heading: "Shoes"}, group: "shoes"},
+      data: @prices
+    )
   end
 
   # A Shared section has no placeholder: the editor gives it the key of a

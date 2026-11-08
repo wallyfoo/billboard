@@ -655,7 +655,8 @@ defmodule Billboard.SectionsTest do
     data = %{
       reviews: [review(1)],
       fees: MySite.Fees.list(),
-      news: [%{id: "n1", title: "Late", body: "Open late.", published_on: ~D[2026-09-12]}]
+      news: [%{id: "n1", title: "Late", body: "Open late.", published_on: ~D[2026-09-12]}],
+      prices: [%{id: "p1", title: "A first session", price: "£95"}]
     }
 
     section = s(type, Catalogue.placeholder(type))

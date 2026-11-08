@@ -42,8 +42,8 @@ deploy.
 - [Theming](guides/theming.md): the tokens, surfaces, utilities, and
   hooks that make billboard's pages look like the site's.
 - [Page kinds and bound sections](guides/page-kinds-and-bound-sections.md):
-  page kinds, data a section reads, what a page is about, and replacing
-  a stock component.
+  page kinds, data a section reads, the stock Prices section, what a
+  page is about, and replacing a stock component.
 - [Why the rules exist](guides/why-the-rules-exist.md): each check
   billboard makes, and what it protects.
 

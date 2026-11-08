@@ -14,7 +14,7 @@ defmodule Billboard.Test.Shop do
   columns to free pages, Shared to free and item pages, and Unwritten
   and Misdrawn off every page's palette. Its action kinds and context
   are the test site's (`Billboard.Test.Actions` and
-  `Billboard.Test.Context`), its reviews and news are a test's own
+  `Billboard.Test.Context`), its reviews, news, and prices are a test's own
   (`Billboard.Test.Data`), and its chrome is `Billboard.Test.Layout`. It
   names a filter's event as its pages' own (`page_events:`), as a site
   with a filter on a page would. Its pages: a free home page and about
@@ -47,6 +47,7 @@ defmodule Billboard.Test.Shop do
       MySite.Sections.Fees,
       Billboard.Components.Reviews,
       Billboard.Components.News,
+      Billboard.Components.Prices,
       Billboard.Components.Columns,
       Billboard.Components.Shared,
       Test.Unwritten,

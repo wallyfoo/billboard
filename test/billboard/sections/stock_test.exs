@@ -19,7 +19,8 @@ defmodule Billboard.Sections.StockTest do
     Components.TextMedia,
     Components.Details,
     Components.Reviews,
-    Components.News
+    Components.News,
+    Components.Prices
   ]
 
   setup do
@@ -40,24 +41,27 @@ defmodule Billboard.Sections.StockTest do
     },
     details: %{items: [%{label: "Parking", body: "Behind the shop.", only_for_group: "shoes"}]},
     reviews: %{note: "From our customers."},
-    news: %{head: %{heading: "What's on"}, empty: "Nothing new yet."}
+    news: %{head: %{heading: "What's on"}, empty: "Nothing new yet."},
+    prices: %{head: %{heading: "Prices"}, body: "What things cost.", this_page_only: true}
   }
 
-  # A word each draws from its content or its data: Details' item is
-  # scoped to the page's aisle, so it draws only because the page is
-  # about shoes.
+  # A word each draws from its content or its data: Details' item and
+  # Prices' row are scoped to the page's aisle, so each draws only
+  # because the page is about shoes.
   @words %{
     band: "Open daily.",
     points: "Round the corner.",
     text_media: "Since 1999.",
     details: "Behind the shop.",
     reviews: "Lovely.",
-    news: "Open late"
+    news: "Open late",
+    prices: "£90"
   }
 
   @data %{
     reviews: [%{id: "r1", name: "Ana", reviewed_on: ~D[2026-10-01], quote: "Lovely."}],
-    news: [%{id: "n1", published_on: ~D[2026-10-02], title: "Open late", body: "On Fridays."}]
+    news: [%{id: "n1", published_on: ~D[2026-10-02], title: "Open late", body: "On Fridays."}],
+    prices: [%{id: "p1", title: "Boots", price: "£90", group: "shoes"}]
   }
 
   # A hero slot's words, as HTML.
@@ -125,7 +129,7 @@ defmodule Billboard.Sections.StockTest do
   test "each draws from its placeholder too, for a visitor and open" do
     for module <- @stock, key = Billboard.Component.Info.component_key!(module), key != :hero do
       section = section(key, Billboard.Catalogue.placeholder(key))
-      # Reviews and news draw nothing for a visitor until there's some.
+      # Reviews, news, and prices draw nothing for a visitor until there's some.
       ctx = %{data: %{"s1" => @data[key]}}
 
       assert visitor(section, ctx) =~ ~s(id="section-s1")
@@ -156,7 +160,8 @@ defmodule Billboard.Sections.StockTest do
              Components.TextMedia => [],
              Components.Details => [:scope],
              Components.Reviews => [],
-             Components.News => []
+             Components.News => [],
+             Components.Prices => [:scope]
            }
   end
 
